@@ -1,0 +1,127 @@
+###############################################################################
+#  back-envio-resultados-api  -  Colección de pruebas (curl / Postman)
+#-----------------------------------------------------------------------------
+#  BASE URL (local):  http://localhost:7090/back-envio-resultados-api
+#  Auth del panel:    Basic Auth  ->  usuario: osteoperu   password: Osteoperu@2026
+#
+#  NOTA PARA POSTMAN:
+#   - En cada request protegido: pestaña "Authorization" -> Type "Basic Auth"
+#     Username: osteoperu   Password: Osteoperu@2026
+#   - El endpoint de carga usa "form-data" (NO raw/JSON):
+#       phone       -> Text
+#       dni         -> Text
+#       patientName -> Text (opcional)
+#       files       -> File   (puedes agregar varias filas 'files' para subir varios)
+#   - Los endpoints /s/**, /r/** son PÚBLICOS (no requieren auth).
+#   - En Postman, para ver el redirect del link corto, desactiva
+#     Settings -> "Automatically follow redirects" y observa el 302 + Location.
+###############################################################################
+
+
+# =============================================================================
+# 1) SUBIR RESULTADOS DE UN PACIENTE   (POST, requiere Basic Auth)
+#    Crea la carpeta {telefono}_{dni}, guarda los archivos, genera el link
+#    corto y encola el SMS. Responde con batchId, shortLink y viewerUrl.
+# =============================================================================
+
+# ---- 1 archivo ----
+curl -X POST "http://localhost:7090/back-envio-resultados-api/api/resultados/upload" ^
+  -u osteoperu:Osteoperu@2026 ^
+  -F "phone=987654321" ^
+  -F "dni=12345678" ^
+  -F "patientName=Juan Perez" ^
+  -F "files=@C:/ruta/a/tu/resultado.pdf;type=application/pdf"
+
+# ---- Varios archivos (PDF + imagen + video) ----
+curl -X POST "http://localhost:7090/back-envio-resultados-api/api/resultados/upload" ^
+  -u osteoperu:Osteoperu@2026 ^
+  -F "phone=987654321" ^
+  -F "dni=12345678" ^
+  -F "patientName=Juan Perez" ^
+  -F "files=@C:/ruta/a/resultado.pdf;type=application/pdf" ^
+  -F "files=@C:/ruta/a/ecografia.jpg;type=image/jpeg" ^
+  -F "files=@C:/ruta/a/video.mp4;type=video/mp4"
+
+# Respuesta ejemplo:
+# {
+#   "batchId": 1,
+#   "phone": "51987654321",
+#   "dni": "12345678",
+#   "folderName": "51987654321_12345678",
+#   "totalFiles": 1,
+#   "storedFiles": ["resultado_20260703_133956820.pdf"],
+#   "shortLink": "http://localhost:7090/back-envio-resultados-api/s/k814Tw7",
+#   "viewerUrl": "http://localhost:7090/back-envio-resultados-api/r/Sw7gtAiZtsWJUL06i4EKFEJY",
+#   "smsStatus": "QUEUED"
+# }
+
+
+# =============================================================================
+# 2) ABRIR EL LINK CORTO   (GET, público)  -> cuenta el CLICK y redirige (302)
+#    Reemplaza {code} por el "shortLink" que devolvió el paso 1 (ej: k814Tw7)
+# =============================================================================
+
+# Ver el 302 y la cabecera Location sin seguir el redirect:
+curl -i "http://localhost:7090/back-envio-resultados-api/s/{code}"
+
+# Seguir el redirect automáticamente hasta el visor (-L):
+curl -iL "http://localhost:7090/back-envio-resultados-api/s/{code}"
+
+
+# =============================================================================
+# 3) VER LA PÁGINA DE RESULTADOS   (GET, público) -> marca "visto" y cuenta VIEW
+#    Reemplaza {token} por el "viewerUrl" del paso 1 (ej: Sw7gtAiZtsWJUL06i4EKFEJY)
+#    Devuelve HTML. En navegador se ve la página; en curl verás el HTML.
+# =============================================================================
+
+curl "http://localhost:7090/back-envio-resultados-api/r/{token}"
+
+
+# =============================================================================
+# 4) VER UN ARCHIVO INLINE   (GET, público)
+#    {fileId} es el id de un archivo del lote (empieza en 1).
+# =============================================================================
+
+curl -i "http://localhost:7090/back-envio-resultados-api/r/{token}/archivo/1"
+
+# Guardarlo en disco:
+curl "http://localhost:7090/back-envio-resultados-api/r/{token}/archivo/1" -o archivo_visto.pdf
+
+
+# =============================================================================
+# 5) DESCARGAR UN ARCHIVO   (GET, público) -> registra DOWNLOAD
+# =============================================================================
+
+curl -OJ "http://localhost:7090/back-envio-resultados-api/r/{token}/descargar/1"
+
+
+# =============================================================================
+# 6) DOCUMENTACIÓN OPENAPI / SWAGGER  (público)
+# =============================================================================
+
+# Swagger UI (abrir en navegador):
+#   http://localhost:7090/back-envio-resultados-api/swagger-ui.html
+
+# JSON OpenAPI:
+curl "http://localhost:7090/back-envio-resultados-api/v3/api-docs"
+
+
+# =============================================================================
+# 7) HEALTHCHECK  (público)
+# =============================================================================
+
+curl "http://localhost:7090/back-envio-resultados-api/actuator/health"
+
+
+###############################################################################
+#  VERSIÓN GIT BASH / LINUX / MAC  (usa \ en vez de ^ para saltos de línea)
+###############################################################################
+#
+# curl -X POST "http://localhost:7090/back-envio-resultados-api/api/resultados/upload" \
+#   -u osteoperu:Osteoperu@2026 \
+#   -F "phone=987654321" \
+#   -F "dni=12345678" \
+#   -F "patientName=Juan Perez" \
+#   -F "files=@/ruta/resultado.pdf;type=application/pdf"
+#
+###############################################################################

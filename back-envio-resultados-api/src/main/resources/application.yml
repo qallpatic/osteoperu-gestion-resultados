@@ -1,0 +1,99 @@
+# ============================================================
+#  Configuracion base (comun a todos los ambientes).
+#  El ambiente se selecciona con SPRING_PROFILES_ACTIVE
+#  (local | server). Por defecto: local.
+# ============================================================
+spring:
+  application:
+    name: back-envio-resultados-api
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  # --- JPA / Hibernate: el esquema lo gobierna Flyway, no Hibernate ---
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: false
+
+  # --- Flyway: migraciones versionadas ---
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  # --- Limites de subida de archivos ---
+  servlet:
+    multipart:
+      max-file-size: ${UPLOAD_MAX_FILE_SIZE:50MB}
+      max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:250MB}
+
+server:
+  port: ${SERVER_PORT:7090}
+  servlet:
+    context-path: ${CONTEXT_PATH:/back-envio-resultados-api}
+  forward-headers-strategy: framework
+
+# ------------------------------------------------------------
+#  Parametros de negocio (sin hardcodear en el codigo)
+# ------------------------------------------------------------
+app:
+  # Usuario del panel de carga (Basic Auth). En prod usar variables de entorno.
+  security:
+    username: ${PANEL_USER:osteoperu}
+    password: ${PANEL_PASSWORD:Osteoperu@2026}
+  # URL publica base con la que se arma el link que va en el SMS.
+  public-base-url: ${PUBLIC_BASE_URL:http://localhost:7090/back-envio-resultados-api}
+  # Origenes del front autorizados a consumir la API (CORS). Lista separada por comas.
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+  # Prefijo de codigo de pais para normalizar el numero destino.
+  phone:
+    country-code: "51"
+  shortlink:
+    code-length: 7
+    # dias de validez del link enviado por SMS (0 = sin expiracion)
+    ttl-days: 0
+
+# ------------------------------------------------------------
+#  Almacenamiento de resultados (se sobreescribe por ambiente)
+# ------------------------------------------------------------
+storage:
+  base-path: ${STORAGE_BASE_PATH:./data/resultados}
+  allowed-content-types: >-
+    application/pdf,
+    image/jpeg, image/png, image/webp, image/gif,
+    video/mp4, video/quicktime, video/webm
+
+# ------------------------------------------------------------
+#  Gateway SMS (Textbee) - mismo mecanismo del proyecto base
+# ------------------------------------------------------------
+sms:
+  enabled: ${SMS_ENABLED:true}
+  textbee:
+    url: ${SMS_GATEWAY_URL:http://161.132.53.229:3001/api/v1/gateway/devices/69b88ed724a851efe4c5a68f/send-sms}
+    api-key: ${SMS_API_KEY:576f18ae-07f5-4102-968b-57ac26f5f6dc}
+    frequency-ms: ${SMS_FREQUENCY_MS:5000}
+  message:
+    template: "OSTEOPERU: Hola {nombre}, tus resultados medicos ya estan disponibles. Ver aqui: {link}"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    root: INFO
+    pe.com.qallpatic.resultados: DEBUG
+    org.flywaydb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36}.%M:%L - %msg%n"
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

@@ -1,0 +1,30 @@
+/* ===== Estilos globales ===== */
+:root {
+  --brand-900: #043d36;
+  --brand-700: #075e54;
+  --brand-500: #128c7e;
+  --brand-300: #25d366;
+  --brand-050: #f1f5f4;
+  --border: #dfe7e5;
+  --muted: #6c757d;
+  --muted-2: #4b6f6a;
+  --danger: #d32f2f;
+  --danger-bg: #fdecea;
+  --shadow: 0 10px 40px rgba(7, 94, 84, 0.15);
+  --radius: 16px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: 'Poppins', sans-serif;
+  color: #1f2d2b;
+  background: var(--brand-050);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--brand-700); }
+
+button { font-family: inherit; }

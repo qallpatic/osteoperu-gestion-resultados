@@ -1,0 +1,30 @@
+# ============================================================
+#  AMBIENTE SERVER (produccion - servidor Linux 161.132.53.229)
+#  Activar con: SPRING_PROFILES_ACTIVE=server
+#  Los valores sensibles se pueden inyectar por variables de entorno.
+# ============================================================
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:osteoperu_resultados}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima&characterEncoding=UTF-8
+    username: ${DB_USER:resultados_user}
+    password: ${DB_PASSWORD:R3sultados@2026!}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      max-lifetime: 1800000
+      idle-timeout: 300000
+      connection-timeout: 30000
+
+app:
+  # URL publica real por donde el paciente abre el link del SMS.
+  public-base-url: ${PUBLIC_BASE_URL:https://resultados.osteoperu.qallpatic.com.pe}
+  # Origen del front en el servidor de despliegue (panel de carga).
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://161.132.53.229}
+
+storage:
+  # Carpeta 'uploads' (montada como volumen) donde se crean las subcarpetas {telefono}_{dni}
+  base-path: ${STORAGE_BASE_PATH:/app/uploads}
+
+sms:
+  enabled: ${SMS_ENABLED:true}

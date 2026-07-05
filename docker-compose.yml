@@ -1,0 +1,55 @@
+# ============================================================
+#  Despliegue completo (front + backend) en el servidor.
+#  Uso:
+#    docker compose up -d --build
+#
+#  - backend  -> API Spring Boot en el puerto 7090 (perfil 'server')
+#  - frontend -> Angular servido por Nginx en el puerto 80
+#  - Los resultados de los pacientes se guardan en ./uploads del host,
+#    montado en /app/uploads dentro del contenedor del backend.
+#  - La base de datos MySQL es externa (ya existente) en el mismo servidor.
+# ============================================================
+services:
+  backend:
+    build: ./back-envio-resultados-api
+    image: osteoperu/back-envio-resultados-api:latest
+    container_name: osteoperu-backend
+    restart: unless-stopped
+    ports:
+      - "7090:7090"
+    environment:
+      SPRING_PROFILES_ACTIVE: server
+      # Base de datos MySQL (externa, en el propio servidor)
+      DB_HOST: 161.132.53.229
+      DB_PORT: "3306"
+      DB_NAME: osteoperu_resultados
+      DB_USER: resultados_user
+      DB_PASSWORD: "R3sultados@2026!"
+      # Carpeta de resultados montada como volumen
+      STORAGE_BASE_PATH: /app/uploads
+      # URL publica con la que se arma el link del SMS (apunta a este backend)
+      PUBLIC_BASE_URL: http://161.132.53.229:7090/back-envio-resultados-api
+      # Origen del front autorizado por CORS
+      CORS_ALLOWED_ORIGINS: http://161.132.53.229
+      # Envio real de SMS por Textbee
+      SMS_ENABLED: "true"
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - osteoperu-net
+
+  frontend:
+    build: ./front-envio-resultados
+    image: osteoperu/front-envio-resultados:latest
+    container_name: osteoperu-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - osteoperu-net
+
+networks:
+  osteoperu-net:
+    driver: bridge

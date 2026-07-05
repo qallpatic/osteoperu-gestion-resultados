@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	<meta name="robots" content="noindex, nofollow"/>
+	<title>Resultados del paciente — OSTEOPERU</title>
+	<style>
+		:root {
+			--verde: #0f766e;
+			--verde-osc: #115e59;
+			--verde-claro: #5eaaa1;
+			--bg: #f1f5f4;
+			--card: #ffffff;
+			--texto: #1f2937;
+			--muted: #6b7280;
+		}
+		* { box-sizing: border-box; margin: 0; padding: 0; }
+		body {
+			font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+			background: var(--bg);
+			color: var(--texto);
+			line-height: 1.5;
+		}
+		header {
+			background: linear-gradient(90deg, var(--verde-osc), var(--verde));
+			color: #fff;
+			padding: 18px 20px;
+			text-align: center;
+			font-weight: 700;
+			font-size: 1.15rem;
+			letter-spacing: .5px;
+		}
+		.container { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+		.intro { text-align: center; margin-bottom: 24px; }
+		.intro h1 { color: var(--verde-osc); font-size: 1.5rem; margin-bottom: 6px; }
+		.intro p { color: var(--muted); font-size: .95rem; }
+		.file-card {
+			background: var(--card);
+			border-radius: 14px;
+			box-shadow: 0 6px 20px rgba(15,118,110,.08);
+			padding: 18px;
+			margin-bottom: 18px;
+		}
+		.file-head {
+			display: flex; align-items: center; justify-content: space-between;
+			gap: 12px; margin-bottom: 12px; flex-wrap: wrap;
+		}
+		.file-name { font-weight: 600; color: var(--verde-osc); word-break: break-word; }
+		.file-meta { font-size: .8rem; color: var(--muted); }
+		.badge {
+			font-size: .7rem; text-transform: uppercase; letter-spacing: .5px;
+			background: #e6f2f0; color: var(--verde-osc);
+			padding: 3px 8px; border-radius: 999px; font-weight: 700;
+		}
+		.media { width: 100%; border-radius: 10px; overflow: hidden; background: #000; }
+		.media img { width: 100%; display: block; }
+		.media video { width: 100%; display: block; }
+		.pdf-frame { width: 100%; height: 70vh; border: 0; border-radius: 10px; background: #fff; }
+		.actions { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
+		.btn {
+			display: inline-block; text-decoration: none; font-weight: 600; font-size: .9rem;
+			padding: 10px 16px; border-radius: 10px; cursor: pointer; border: 0;
+		}
+		.btn-primary { background: var(--verde); color: #fff; }
+		.btn-outline { background: #fff; color: var(--verde-osc); border: 1.5px solid var(--verde-claro); }
+		.empty { text-align: center; color: var(--muted); padding: 40px 0; }
+		footer { text-align: center; color: var(--muted); font-size: .8rem; padding: 24px 0; }
+	</style>
+</head>
+<body>
+<header>OSTEOPERU · Resultados del paciente</header>
+
+<div class="container">
+	<div class="intro">
+		<h1>Tus resultados están listos</h1>
+		<p>DNI: <strong th:text="${dni}">00000000</strong></p>
+	</div>
+
+	<div th:if="${files.isEmpty()}" class="empty">
+		Aún no hay archivos disponibles.
+	</div>
+
+	<div th:each="file : ${files}" class="file-card">
+		<div class="file-head">
+			<span class="file-name" th:text="${file.name}">archivo</span>
+			<span>
+				<span class="badge" th:text="${file.mediaType}">TIPO</span>
+				<span class="file-meta" th:text="${file.sizeLabel}">0 KB</span>
+			</span>
+		</div>
+
+		<!-- Imagen -->
+		<div class="media" th:if="${file.image}">
+			<img th:src="@{${file.url}}" th:alt="${file.name}" loading="lazy"/>
+		</div>
+
+		<!-- Video -->
+		<div class="media" th:if="${file.video}">
+			<video controls preload="metadata">
+				<source th:src="@{${file.url}}"/>
+				Tu navegador no soporta la reproducción de video.
+			</video>
+		</div>
+
+		<!-- PDF -->
+		<iframe th:if="${file.pdf}" class="pdf-frame" th:src="@{${file.url}}" title="Documento PDF"></iframe>
+
+		<div class="actions">
+			<a class="btn btn-primary" th:href="@{${file.url}}" target="_blank" rel="noopener">Ver</a>
+			<a class="btn btn-outline" th:href="@{${file.downloadUrl}}">Descargar</a>
+		</div>
+	</div>
+</div>
+
+<footer>QALLPATIC © 2026 — Sistema de resultados</footer>
+</body>
+</html>
