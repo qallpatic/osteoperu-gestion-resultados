@@ -1,7 +1,3 @@
-# ============================================================
-#  AMBIENTE LOCAL (desarrollo en tu maquina Windows)
-#  Activar con: SPRING_PROFILES_ACTIVE=local  (o por defecto)
-# ============================================================
 spring:
   datasource:
     url: jdbc:mysql://161.132.53.229:3306/osteoperu_resultados?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima&characterEncoding=UTF-8
@@ -15,12 +11,9 @@ spring:
       connection-timeout: 30000
 
 app:
-  # En local el link apunta a tu propio servidor de desarrollo.
   public-base-url: http://localhost:7090/back-envio-resultados-api
 
 storage:
-  # Carpeta 'uploads' (relativa al directorio de ejecucion) donde se crean las
-  # subcarpetas {telefono}_{dni}. Se crea automaticamente al arrancar si no existe.
   base-path: ${STORAGE_BASE_PATH:./uploads}
 
 sms:

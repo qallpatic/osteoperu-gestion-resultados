@@ -1,37 +1,58 @@
 # ============================================================
-#  Despliegue completo (front + backend) en el servidor.
-#  Uso:
-#    docker compose up -d --build
+#  OSTEOPERU - Resultados  |  Despliegue Docker
+#  ------------------------------------------------------------
+#  Estructura esperada en el servidor:
+#    /home/docker/osteoperu-resultados/
+#      ├── docker-compose.yml   (este archivo)
+#      ├── back-resultados/     (contenido de back-envio-resultados-api + Dockerfile)
+#      ├── front-resultados/    (contenido de front-envio-resultados + Dockerfile)
+#      └── uploads/             (volumen: aqui se guardan los resultados)
 #
-#  - backend  -> API Spring Boot en el puerto 7090 (perfil 'server')
-#  - frontend -> Angular servido por Nginx en el puerto 80
-#  - Los resultados de los pacientes se guardan en ./uploads del host,
-#    montado en /app/uploads dentro del contenedor del backend.
-#  - La base de datos MySQL es externa (ya existente) en el mismo servidor.
+#  Arranque:   docker compose up -d --build
+#  Logs:       docker compose logs -f
+#  Parar:      docker compose down
 # ============================================================
 services:
   backend:
-    build: ./back-envio-resultados-api
-    image: osteoperu/back-envio-resultados-api:latest
+    build: ./back-resultados
+    image: osteoperu/back-resultados:latest
     container_name: osteoperu-backend
     restart: unless-stopped
+    # 7090 solo accesible localmente (por SSH). El publico entra por Nginx (front).
     ports:
       - "7090:7090"
     environment:
       SPRING_PROFILES_ACTIVE: server
-      # Base de datos MySQL (externa, en el propio servidor)
+
+      # --- Base de datos MySQL (externa, en el propio servidor) ---
       DB_HOST: 161.132.53.229
       DB_PORT: "3306"
       DB_NAME: osteoperu_resultados
       DB_USER: resultados_user
       DB_PASSWORD: "R3sultados@2026!"
-      # Carpeta de resultados montada como volumen
+
+      # --- Almacenamiento de resultados (volumen) ---
       STORAGE_BASE_PATH: /app/uploads
-      # URL publica con la que se arma el link del SMS (apunta a este backend)
-      PUBLIC_BASE_URL: http://161.132.53.229:7090/back-envio-resultados-api
-      # Origen del front autorizado por CORS
-      CORS_ALLOWED_ORIGINS: http://161.132.53.229
-      # Envio real de SMS por Textbee
+
+      # --- Prefijo (context-path) del backend. DEBE coincidir con la ruta del
+      #     API en el nginx del front y con apiBaseUrl (/osteoperu-api-resultados).
+      CONTEXT_PATH: /osteoperu-api-resultados
+
+      # --- URLs publicas (acceso directo por IP:puerto del front) ---
+      # El front se publica en 6060; el SMS/QR apuntan a esa direccion.
+      PUBLIC_BASE_URL: http://161.132.53.229:6060/osteoperu-api-resultados
+      # Destino del QR de la credencial (pagina de login del front)
+      PORTAL_URL: http://161.132.53.229:6060/login
+      CORS_ALLOWED_ORIGINS: http://161.132.53.229:6060
+
+      # --- Seguridad (CAMBIAR en produccion) ---
+      JWT_SECRET: osteoperu-cambia-esta-clave-secreta-jwt-hs256-minimo-32-bytes-2026
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: Admin@2026
+
+      # --- Integraciones ---
+      RENIEC_ENABLED: "true"
+      RENIEC_TOKEN: sk_10724.CaV0hlik8qjqno2Opn8FZA7mzlLegx43
       SMS_ENABLED: "true"
     volumes:
       - ./uploads:/app/uploads
@@ -39,12 +60,15 @@ services:
       - osteoperu-net
 
   frontend:
-    build: ./front-envio-resultados
-    image: osteoperu/front-envio-resultados:latest
+    # El proyecto Angular esta anidado en front-resultados/front-envio-resultados
+    # (ahi vive su Dockerfile + nginx.conf). Se compila desde codigo.
+    build: ./front-resultados/front-envio-resultados
+    image: osteoperu/front-resultados:latest
     container_name: osteoperu-frontend
     restart: unless-stopped
+    # Sitio publico por IP directa: http://161.132.53.229:6060
     ports:
-      - "80:80"
+      - "6060:80"
     depends_on:
       - backend
     networks:

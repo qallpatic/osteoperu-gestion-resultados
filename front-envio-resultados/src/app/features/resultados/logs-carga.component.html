@@ -1,0 +1,66 @@
+<section class="page">
+  <header class="page__head">
+    <h1>Logs de carga</h1>
+    <p>Bitácora de cada intento de carga, incluida la validación RENIEC/PDF.</p>
+  </header>
+
+  @if (notice()) {
+    <div class="alert alert--err"><i class="fas fa-circle-exclamation"></i><span>{{ notice() }}</span></div>
+  }
+
+  <div class="toolbar">
+    <input class="in" type="text" placeholder="DNI" [(ngModel)]="fdni" (keyup.enter)="aplicar()" maxlength="8" />
+    <label class="fecha">Desde <input type="date" [(ngModel)]="fdesde" /></label>
+    <label class="fecha">Hasta <input type="date" [(ngModel)]="fhasta" /></label>
+    <button class="btn btn--primary" (click)="aplicar()"><i class="fas fa-magnifying-glass"></i> Buscar</button>
+  </div>
+
+  <div class="tabla-wrap">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Fecha</th><th>Estado</th><th>DNI</th><th>Usuario</th>
+          <th>RENIEC</th><th>PDF</th><th>Coincide</th><th>Mensaje</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (cargando()) {
+          <tr><td colspan="8" class="vacia"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
+        } @else if (logs().length === 0) {
+          <tr><td colspan="8" class="vacia">No hay registros.</td></tr>
+        } @else {
+          @for (l of logs(); track l.id) {
+            <tr>
+              <td>{{ l.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>
+                <span class="estado"
+                      [class.estado--ok]="l.estado === 'EXITO'"
+                      [class.estado--warn]="l.estado === 'ADVERTENCIA'"
+                      [class.estado--err]="l.estado === 'ERROR'">{{ l.estado }}</span>
+              </td>
+              <td class="mono">{{ l.dni || '—' }}</td>
+              <td>{{ l.usuarioCarga || '—' }}</td>
+              <td>{{ l.nombreReniec || '—' }}</td>
+              <td>{{ l.nombrePdf || '—' }}</td>
+              <td>
+                @if (l.coincideNombre === true) { <i class="fas fa-check coincide--ok"></i> }
+                @else if (l.coincideNombre === false) { <i class="fas fa-xmark coincide--no"></i> }
+                @else { — }
+              </td>
+              <td class="msg">{{ l.mensaje || '—' }}</td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="paginacion">
+    <span class="paginacion__info">{{ rangoDesde() }}–{{ rangoHasta() }} de {{ totalElementos() }}</span>
+    <div class="paginacion__ctrl">
+      <button class="btn btn--ghost" [disabled]="pagina() === 0" (click)="irPagina(-1)"><i class="fas fa-chevron-left"></i></button>
+      <span class="paginacion__pag">Página {{ pagina() + 1 }} de {{ totalPaginas() || 1 }}</span>
+      <button class="btn btn--ghost" [disabled]="pagina() + 1 >= totalPaginas()" (click)="irPagina(1)"><i class="fas fa-chevron-right"></i></button>
+    </div>
+  </div>
+</section>

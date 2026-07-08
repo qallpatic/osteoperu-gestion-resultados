@@ -1,11 +1,10 @@
 /**
  * Configuracion de PRODUCCION (build por defecto).
- * El front y el backend se despliegan en el servidor 161.132.53.229.
+ * El front se sirve con Nginx y las llamadas a /back-envio-resultados-api
+ * se redirigen (proxy) al backend en el mismo origen -> sin CORS ni IPs fijas,
+ * y compatible con dominio + HTTPS. Auth por JWT (Bearer).
  */
 export const environment = {
   production: true,
-  // API del backend (Basic Auth). El front se sirve en :80 y llama al backend en :7090.
-  apiBaseUrl: 'http://161.132.53.229:7090/back-envio-resultados-api',
-  apiUser: 'osteoperu',
-  apiPassword: 'Osteoperu@2026',
+  apiBaseUrl: '/osteoperu-api-resultados',
 };

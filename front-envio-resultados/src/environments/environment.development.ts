@@ -5,6 +5,4 @@
 export const environment = {
   production: false,
   apiBaseUrl: 'http://localhost:7090/back-envio-resultados-api',
-  apiUser: 'osteoperu',
-  apiPassword: 'Osteoperu@2026',
 };

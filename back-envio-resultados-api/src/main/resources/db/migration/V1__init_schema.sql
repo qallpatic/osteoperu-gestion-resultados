@@ -1,73 +1,216 @@
 -- ============================================================
---  Esquema inicial - Envio de resultados de pacientes
+--  Esquema inicial OSTEOPERU  (espanol / MAYUSCULAS)
 --  BD: osteoperu_resultados  (utf8mb4 / utf8mb4_unicode_ci)
+--  El esquema lo gobierna Flyway; Hibernate ddl-auto = none.
 -- ============================================================
 
--- Lote de resultados de un paciente (una entrega = una carpeta {telefono}_{dni})
-CREATE TABLE patient_result_batch (
-    id               BIGINT       NOT NULL AUTO_INCREMENT,
-    phone            VARCHAR(20)  NOT NULL COMMENT 'Numero destino normalizado, ej: 51987654321',
-    dni              VARCHAR(20)  NOT NULL,
-    folder_name      VARCHAR(80)  NOT NULL COMMENT 'Carpeta fisica: {telefono}_{dni}',
-    public_token     VARCHAR(64)  NOT NULL COMMENT 'Token secreto e irrepetible del visor /r/{token}',
-    sms_status       VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING | QUEUED | SENT | FAILED | DISABLED',
-    view_count       INT          NOT NULL DEFAULT 0 COMMENT 'Veces que el paciente abrio la pagina de resultados',
-    first_viewed_at  DATETIME     NULL COMMENT 'Marca la primera vez que el paciente vio sus resultados',
-    last_viewed_at   DATETIME     NULL,
-    created_by       VARCHAR(100) NULL COMMENT 'Usuario del panel que subio los resultados',
-    created_at       DATETIME     NOT NULL,
-    updated_at       DATETIME     NULL,
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_batch_public_token (public_token),
-    KEY idx_batch_phone_dni (phone, dni),
-    KEY idx_batch_created_at (created_at)
+-- ============================================================
+--  SEGURIDAD / USUARIOS
+-- ============================================================
+
+-- Roles del sistema
+CREATE TABLE ROL (
+    ID_ROL                BIGINT       NOT NULL AUTO_INCREMENT,
+    NOMBRE                VARCHAR(30)  NOT NULL COMMENT 'ADMIN | RESULTADOS | ADMISION | PACIENTE | CALLCENTER',
+    DESCRIPCION           VARCHAR(150) NULL,
+    ESTADO                TINYINT      NOT NULL DEFAULT 1 COMMENT '1=activo, 0=inactivo',
+    FECHA_CREACION        DATETIME     NOT NULL,
+    USUARIO_CREACION      VARCHAR(100) NULL,
+    FECHA_MODIFICACION    DATETIME     NULL,
+    USUARIO_MODIFICACION  VARCHAR(100) NULL,
+    PRIMARY KEY (ID_ROL),
+    UNIQUE KEY UK_ROL_NOMBRE (NOMBRE)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Archivos (pdf / imagen / video) asociados a un lote
-CREATE TABLE result_file (
-    id                 BIGINT       NOT NULL AUTO_INCREMENT,
-    batch_id           BIGINT       NOT NULL,
-    original_filename  VARCHAR(255) NOT NULL,
-    stored_filename    VARCHAR(255) NOT NULL COMMENT 'Nombre saneado con el que se guardo en disco',
-    content_type       VARCHAR(120) NULL,
-    media_type         VARCHAR(20)  NOT NULL COMMENT 'PDF | IMAGE | VIDEO | OTHER',
-    size_bytes         BIGINT       NOT NULL DEFAULT 0,
-    created_at         DATETIME     NOT NULL,
-    PRIMARY KEY (id),
-    KEY idx_file_batch (batch_id),
-    CONSTRAINT fk_file_batch FOREIGN KEY (batch_id)
-        REFERENCES patient_result_batch (id) ON DELETE CASCADE
+-- Usuarios de acceso (internos y pacientes). Para pacientes, USUARIO = DNI.
+CREATE TABLE USUARIO (
+    ID_USUARIO            BIGINT       NOT NULL AUTO_INCREMENT,
+    USUARIO               VARCHAR(100) NOT NULL COMMENT 'Login; para pacientes = DNI',
+    NOMBRE                VARCHAR(120) NULL,
+    APELLIDO              VARCHAR(120) NULL,
+    CORREO                VARCHAR(150) NULL,
+    CONTRASENA            VARCHAR(100) NOT NULL COMMENT 'Hash BCrypt',
+    DNI                   VARCHAR(15)  NULL,
+    ESTADO                TINYINT      NOT NULL DEFAULT 1 COMMENT '1=activo, 0=inactivo',
+    FECHA_CREACION        DATETIME     NOT NULL,
+    USUARIO_CREACION      VARCHAR(100) NULL,
+    FECHA_MODIFICACION    DATETIME     NULL,
+    USUARIO_MODIFICACION  VARCHAR(100) NULL,
+    PRIMARY KEY (ID_USUARIO),
+    UNIQUE KEY UK_USUARIO_USUARIO (USUARIO),
+    KEY IDX_USUARIO_DNI (DNI)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Relacion N:M usuario-rol
+CREATE TABLE USUARIO_ROL (
+    ID_USUARIO_ROL  BIGINT NOT NULL AUTO_INCREMENT,
+    ID_USUARIO      BIGINT NOT NULL,
+    ID_ROL          BIGINT NOT NULL,
+    PRIMARY KEY (ID_USUARIO_ROL),
+    UNIQUE KEY UK_USUARIO_ROL (ID_USUARIO, ID_ROL),
+    KEY IDX_UR_ROL (ID_ROL),
+    CONSTRAINT FK_UR_USUARIO FOREIGN KEY (ID_USUARIO) REFERENCES USUARIO (ID_USUARIO) ON DELETE CASCADE,
+    CONSTRAINT FK_UR_ROL     FOREIGN KEY (ID_ROL)     REFERENCES ROL (ID_ROL)         ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tokens de refresco para JWT (Fase 5)
+CREATE TABLE TOKEN_REFRESCO (
+    ID_TOKEN          BIGINT       NOT NULL AUTO_INCREMENT,
+    ID_USUARIO        BIGINT       NOT NULL,
+    TOKEN             VARCHAR(255) NOT NULL,
+    FECHA_EXPIRACION  DATETIME     NOT NULL,
+    REVOCADO          TINYINT      NOT NULL DEFAULT 0,
+    FECHA_CREACION    DATETIME     NOT NULL,
+    PRIMARY KEY (ID_TOKEN),
+    UNIQUE KEY UK_TOKEN_REFRESCO (TOKEN),
+    KEY IDX_TOKEN_USUARIO (ID_USUARIO),
+    CONSTRAINT FK_TOKEN_USUARIO FOREIGN KEY (ID_USUARIO) REFERENCES USUARIO (ID_USUARIO) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  PACIENTES
+-- ============================================================
+CREATE TABLE PACIENTE (
+    ID_PACIENTE           BIGINT       NOT NULL AUTO_INCREMENT,
+    DNI                   VARCHAR(15)  NOT NULL,
+    NOMBRE                VARCHAR(120) NULL,
+    APELLIDO              VARCHAR(120) NULL,
+    TELEFONO              VARCHAR(20)  NULL,
+    CORREO                VARCHAR(150) NULL,
+    ID_USUARIO            BIGINT       NULL COMMENT 'Cuenta de acceso al portal (rol PACIENTE)',
+    ESTADO                TINYINT      NOT NULL DEFAULT 1,
+    FECHA_CREACION        DATETIME     NOT NULL,
+    USUARIO_CREACION      VARCHAR(100) NULL,
+    FECHA_MODIFICACION    DATETIME     NULL,
+    USUARIO_MODIFICACION  VARCHAR(100) NULL,
+    PRIMARY KEY (ID_PACIENTE),
+    UNIQUE KEY UK_PACIENTE_DNI (DNI),
+    KEY IDX_PACIENTE_USUARIO (ID_USUARIO),
+    CONSTRAINT FK_PACIENTE_USUARIO FOREIGN KEY (ID_USUARIO) REFERENCES USUARIO (ID_USUARIO) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  RESULTADOS
+-- ============================================================
+
+-- Lote de resultados de un paciente (una entrega = carpeta {telefono}_{dni})
+CREATE TABLE RESULTADO (
+    ID_RESULTADO          BIGINT       NOT NULL AUTO_INCREMENT,
+    ID_PACIENTE           BIGINT       NULL,
+    TELEFONO              VARCHAR(20)  NOT NULL COMMENT 'Numero destino normalizado, ej: 51987654321',
+    DNI                   VARCHAR(20)  NOT NULL,
+    NOMBRE_PACIENTE       VARCHAR(150) NULL COMMENT 'Nombre del paciente (RENIEC o ingresado)',
+    CARPETA               VARCHAR(80)  NOT NULL COMMENT 'Carpeta fisica: {telefono}_{dni}',
+    TOKEN_PUBLICO         VARCHAR(64)  NOT NULL COMMENT 'Token secreto del visor /r/{token}',
+    ESTADO_SMS            VARCHAR(20)  NOT NULL DEFAULT 'PENDIENTE' COMMENT 'PENDIENTE|EN_COLA|ENVIADO|FALLIDO|DESHABILITADO',
+    CONTADOR_VISTAS       INT          NOT NULL DEFAULT 0,
+    FECHA_PRIMERA_VISTA   DATETIME     NULL,
+    FECHA_ULTIMA_VISTA    DATETIME     NULL,
+    FECHA_CREACION        DATETIME     NOT NULL,
+    USUARIO_CREACION      VARCHAR(100) NULL COMMENT 'Agente que cargo los resultados',
+    FECHA_MODIFICACION    DATETIME     NULL,
+    USUARIO_MODIFICACION  VARCHAR(100) NULL,
+    PRIMARY KEY (ID_RESULTADO),
+    UNIQUE KEY UK_RESULTADO_TOKEN (TOKEN_PUBLICO),
+    KEY IDX_RESULTADO_DNI (DNI),
+    KEY IDX_RESULTADO_PACIENTE (ID_PACIENTE),
+    KEY IDX_RESULTADO_FECHA (FECHA_CREACION),
+    CONSTRAINT FK_RESULTADO_PACIENTE FOREIGN KEY (ID_PACIENTE) REFERENCES PACIENTE (ID_PACIENTE) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Archivos (pdf/imagen/video) asociados a un resultado
+CREATE TABLE ARCHIVO_RESULTADO (
+    ID_ARCHIVO         BIGINT       NOT NULL AUTO_INCREMENT,
+    ID_RESULTADO       BIGINT       NOT NULL,
+    NOMBRE_ORIGINAL    VARCHAR(255) NOT NULL,
+    NOMBRE_ALMACENADO  VARCHAR(255) NOT NULL COMMENT 'Nombre saneado con el que se guardo en disco',
+    TIPO_CONTENIDO     VARCHAR(120) NULL,
+    TIPO_MEDIO         VARCHAR(20)  NOT NULL COMMENT 'PDF|IMAGEN|VIDEO|OTRO',
+    TAMANO_BYTES       BIGINT       NOT NULL DEFAULT 0,
+    FECHA_CREACION     DATETIME     NOT NULL,
+    PRIMARY KEY (ID_ARCHIVO),
+    KEY IDX_ARCHIVO_RESULTADO (ID_RESULTADO),
+    CONSTRAINT FK_ARCHIVO_RESULTADO FOREIGN KEY (ID_RESULTADO) REFERENCES RESULTADO (ID_RESULTADO) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Acortador de links: el codigo corto que viaja en el SMS
-CREATE TABLE short_link (
-    id           BIGINT       NOT NULL AUTO_INCREMENT,
-    short_code   VARCHAR(16)  NOT NULL,
-    original_url TEXT         NOT NULL COMMENT 'Destino real, normalmente el visor /r/{token}',
-    type         VARCHAR(20)  NULL COMMENT 'RESULTADO, etc.',
-    batch_id     BIGINT       NULL,
-    click_count  INT          NOT NULL DEFAULT 0,
-    created_at   DATETIME     NOT NULL,
-    expires_at   DATETIME     NULL,
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_short_code (short_code),
-    KEY idx_short_batch (batch_id),
-    CONSTRAINT fk_short_batch FOREIGN KEY (batch_id)
-        REFERENCES patient_result_batch (id) ON DELETE SET NULL
+CREATE TABLE ENLACE_CORTO (
+    ID_ENLACE         BIGINT       NOT NULL AUTO_INCREMENT,
+    CODIGO_CORTO      VARCHAR(16)  NOT NULL,
+    URL_ORIGINAL      TEXT         NOT NULL COMMENT 'Destino real, normalmente el visor /r/{token}',
+    TIPO              VARCHAR(20)  NULL COMMENT 'RESULTADO, etc.',
+    ID_RESULTADO      BIGINT       NULL,
+    CONTADOR_CLICKS   INT          NOT NULL DEFAULT 0,
+    FECHA_CREACION    DATETIME     NOT NULL,
+    FECHA_EXPIRACION  DATETIME     NULL,
+    PRIMARY KEY (ID_ENLACE),
+    UNIQUE KEY UK_ENLACE_CODIGO (CODIGO_CORTO),
+    KEY IDX_ENLACE_RESULTADO (ID_RESULTADO),
+    CONSTRAINT FK_ENLACE_RESULTADO FOREIGN KEY (ID_RESULTADO) REFERENCES RESULTADO (ID_RESULTADO) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Traza detallada de cada click al link corto y cada vista de la pagina
-CREATE TABLE view_event (
-    id          BIGINT       NOT NULL AUTO_INCREMENT,
-    batch_id    BIGINT       NOT NULL,
-    short_code  VARCHAR(16)  NULL,
-    event_type  VARCHAR(20)  NOT NULL COMMENT 'CLICK (abrio el link corto) | VIEW (cargo la pagina) | DOWNLOAD',
-    ip_address  VARCHAR(64)  NULL,
-    user_agent  VARCHAR(512) NULL,
-    created_at  DATETIME     NOT NULL,
-    PRIMARY KEY (id),
-    KEY idx_view_batch (batch_id),
-    KEY idx_view_type (event_type),
-    CONSTRAINT fk_view_batch FOREIGN KEY (batch_id)
-        REFERENCES patient_result_batch (id) ON DELETE CASCADE
+-- Traza de cada click al link corto y cada vista/descarga
+CREATE TABLE EVENTO_VISTA (
+    ID_EVENTO       BIGINT       NOT NULL AUTO_INCREMENT,
+    ID_RESULTADO    BIGINT       NOT NULL,
+    CODIGO_CORTO    VARCHAR(16)  NULL,
+    TIPO_EVENTO     VARCHAR(20)  NOT NULL COMMENT 'CLICK|VISTA|DESCARGA',
+    IP              VARCHAR(64)  NULL,
+    USER_AGENT      VARCHAR(512) NULL,
+    FECHA_CREACION  DATETIME     NOT NULL,
+    PRIMARY KEY (ID_EVENTO),
+    KEY IDX_EVENTO_RESULTADO (ID_RESULTADO),
+    KEY IDX_EVENTO_TIPO (TIPO_EVENTO),
+    CONSTRAINT FK_EVENTO_RESULTADO FOREIGN KEY (ID_RESULTADO) REFERENCES RESULTADO (ID_RESULTADO) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bitacora de cada intento de carga de resultados (incluye validacion RENIEC/PDF)
+CREATE TABLE LOG_CARGA (
+    ID_LOG           BIGINT       NOT NULL AUTO_INCREMENT,
+    ID_RESULTADO     BIGINT       NULL,
+    DNI              VARCHAR(20)  NULL,
+    USUARIO_CARGA    VARCHAR(100) NULL COMMENT 'Agente que realizo la carga',
+    ESTADO           VARCHAR(20)  NOT NULL COMMENT 'EXITO|ERROR|ADVERTENCIA',
+    MENSAJE          VARCHAR(500) NULL,
+    NOMBRE_RENIEC    VARCHAR(200) NULL COMMENT 'Nombre oficial devuelto por RENIEC',
+    NOMBRE_PDF       VARCHAR(200) NULL COMMENT 'Nombre detectado en el PDF',
+    COINCIDE_NOMBRE  TINYINT      NULL COMMENT '1=coincide, 0=no coincide',
+    FECHA_CREACION   DATETIME     NOT NULL,
+    PRIMARY KEY (ID_LOG),
+    KEY IDX_LOG_RESULTADO (ID_RESULTADO),
+    KEY IDX_LOG_DNI (DNI),
+    KEY IDX_LOG_FECHA (FECHA_CREACION),
+    CONSTRAINT FK_LOG_RESULTADO FOREIGN KEY (ID_RESULTADO) REFERENCES RESULTADO (ID_RESULTADO) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  ADMISION
+-- ============================================================
+CREATE TABLE COMPROBANTE_PAGO (
+    ID_COMPROBANTE        BIGINT        NOT NULL AUTO_INCREMENT,
+    ID_PACIENTE           BIGINT        NULL,
+    DNI                   VARCHAR(15)   NULL,
+    NUMERO                VARCHAR(50)   NULL,
+    MONTO                 DECIMAL(10,2) NULL,
+    ESTADO                VARCHAR(20)   NOT NULL DEFAULT 'GENERADO' COMMENT 'GENERADO|ANULADO',
+    MOTIVO_ANULACION      VARCHAR(255)  NULL,
+    FECHA_ANULACION       DATETIME      NULL,
+    FECHA_CREACION        DATETIME      NOT NULL,
+    USUARIO_CREACION      VARCHAR(100)  NULL,
+    FECHA_MODIFICACION    DATETIME      NULL,
+    USUARIO_MODIFICACION  VARCHAR(100)  NULL,
+    PRIMARY KEY (ID_COMPROBANTE),
+    KEY IDX_COMPROBANTE_PACIENTE (ID_PACIENTE),
+    KEY IDX_COMPROBANTE_DNI (DNI),
+    CONSTRAINT FK_COMPROBANTE_PACIENTE FOREIGN KEY (ID_PACIENTE) REFERENCES PACIENTE (ID_PACIENTE) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  DATOS SEMILLA: roles del sistema
+-- ============================================================
+INSERT INTO ROL (NOMBRE, DESCRIPCION, ESTADO, FECHA_CREACION) VALUES
+    ('ADMIN',      'Acceso total al sistema',                     1, NOW()),
+    ('RESULTADOS', 'Carga y gestion de resultados',               1, NOW()),
+    ('ADMISION',   'Generacion de usuarios y comprobantes de pago',1, NOW()),
+    ('PACIENTE',   'Consulta de sus propios resultados',          1, NOW()),
+    ('CALLCENTER', 'Modulo de call center',                       1, NOW());

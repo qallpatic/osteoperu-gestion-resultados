@@ -1,0 +1,35 @@
+package pe.com.qallpatic.osteoperu.pacientes.repository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import pe.com.qallpatic.osteoperu.pacientes.entity.Paciente;
+import pe.com.qallpatic.osteoperu.resultados.dto.PacienteResumenProj;
+
+import java.util.Optional;
+
+public interface PacienteRepository extends JpaRepository<Paciente, Long> {
+
+	Optional<Paciente> findByDni(String dni);
+
+	/**
+	 * Lista los pacientes registrados (incluye los creados por Admision aunque
+	 * aun no tengan resultados) con su conteo de resultados. Para el modulo Admision.
+	 */
+	@Query(value = "SELECT p.dni AS dni, p.nombre AS nombre, "
+			+ "(SELECT COUNT(r) FROM Resultado r WHERE r.dni = p.dni) AS totalResultados, "
+			+ "(SELECT MAX(r.fechaCreacion) FROM Resultado r WHERE r.dni = p.dni) AS ultimaFecha "
+			+ "FROM Paciente p WHERE (:dni IS NULL OR p.dni LIKE CONCAT('%', :dni, '%')) "
+			+ "ORDER BY p.fechaCreacion DESC",
+			countQuery = "SELECT COUNT(p) FROM Paciente p "
+					+ "WHERE (:dni IS NULL OR p.dni LIKE CONCAT('%', :dni, '%'))")
+	Page<PacienteResumenProj> resumenDesdePacientes(@Param("dni") String dni, Pageable pageable);
+
+	/** Pacientes con resultados pendientes de subir (campanita de Resultados). */
+	Page<Paciente> findByPendienteResultadosTrueOrderByFechaCreacionDesc(Pageable pageable);
+
+	long countByPendienteResultadosTrue();
+}

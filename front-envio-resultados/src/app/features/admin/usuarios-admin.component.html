@@ -1,0 +1,228 @@
+<section class="page">
+  <header class="page__head">
+    <div>
+      <h1>Gestión de usuarios</h1>
+      <p>Crea, edita y administra los accesos del sistema.</p>
+    </div>
+    <button class="btn btn--primary" (click)="abrirCrear()">
+      <i class="fas fa-user-plus"></i> Nuevo usuario
+    </button>
+  </header>
+
+  @if (notice(); as n) {
+    <div class="alert" [class.alert--ok]="n.type === 'ok'" [class.alert--err]="n.type === 'error'">
+      <i class="fas" [class.fa-circle-check]="n.type === 'ok'" [class.fa-circle-exclamation]="n.type === 'error'"></i>
+      <span>{{ n.text }}</span>
+      <button class="alert__close" (click)="notice.set(null)" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>
+    </div>
+  }
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search">
+      <i class="fas fa-magnifying-glass"></i>
+      <input type="text" placeholder="Buscar por usuario, nombre, correo o DNI"
+             [(ngModel)]="buscar" (keyup.enter)="aplicarFiltros()" />
+    </div>
+    <select [(ngModel)]="filtroRol" (change)="aplicarFiltros()" aria-label="Filtrar por rol">
+      <option value="">Todos los roles</option>
+      @for (r of roles(); track r.id) {
+        <option [value]="r.nombre">{{ r.nombre }}</option>
+      }
+    </select>
+    <select [(ngModel)]="filtroEstado" (change)="aplicarFiltros()" aria-label="Filtrar por estado">
+      <option value="">Todos</option>
+      <option value="true">Activos</option>
+      <option value="false">Inactivos</option>
+    </select>
+    <button class="btn btn--ghost" (click)="aplicarFiltros()"><i class="fas fa-filter"></i> Filtrar</button>
+  </div>
+
+  <!-- Tabla -->
+  <div class="tabla-wrap">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Nombre</th>
+          <th>Correo</th>
+          <th>DNI</th>
+          <th>Roles</th>
+          <th>Estado</th>
+          <th class="acc">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (cargando()) {
+          <tr><td colspan="7" class="vacia"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
+        } @else if (usuarios().length === 0) {
+          <tr><td colspan="7" class="vacia">No se encontraron usuarios.</td></tr>
+        } @else {
+          @for (u of usuarios(); track u.id) {
+            <tr>
+              <td class="mono">{{ u.usuario }}</td>
+              <td class="celda-nombre">{{ (u.nombre || '') + ' ' + (u.apellido || '') }}</td>
+              <td>{{ u.correo || '—' }}</td>
+              <td>{{ u.dni || '—' }}</td>
+              <td>
+                <span class="chips">
+                  @for (rol of u.roles; track rol) { <span class="chip">{{ rol }}</span> }
+                </span>
+              </td>
+              <td>
+                <button class="estado" [class.estado--on]="u.estado" [class.estado--off]="!u.estado"
+                        (click)="cambiarEstado(u)" [title]="u.estado ? 'Desactivar' : 'Activar'">
+                  <i class="fas" [class.fa-circle-check]="u.estado" [class.fa-circle-xmark]="!u.estado"></i>
+                  {{ u.estado ? 'Activo' : 'Inactivo' }}
+                </button>
+              </td>
+              <td class="acc">
+                <button class="ico" (click)="abrirEditar(u)" title="Editar"><i class="fas fa-pen"></i></button>
+                <button class="ico" (click)="abrirRoles(u)" title="Asignar roles"><i class="fas fa-user-tag"></i></button>
+                <button class="ico" (click)="abrirPassword(u)" title="Cambiar contraseña"><i class="fas fa-key"></i></button>
+                <button class="ico ico--danger" (click)="confirmarEliminar(u)" title="Eliminar"><i class="fas fa-trash"></i></button>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Paginación -->
+  <div class="paginacion">
+    <span class="paginacion__info">
+      {{ rangoDesde() }}–{{ rangoHasta() }} de {{ totalElementos() }}
+    </span>
+    <div class="paginacion__ctrl">
+      <button class="btn btn--ghost" [disabled]="pagina() === 0" (click)="irPagina(-1)">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <span class="paginacion__pag">Página {{ pagina() + 1 }} de {{ totalPaginas() || 1 }}</span>
+      <button class="btn btn--ghost" [disabled]="pagina() + 1 >= totalPaginas()" (click)="irPagina(1)">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MODALES ===================== -->
+@if (modal(); as m) {
+  <div class="backdrop" (click)="cerrar()"></div>
+  <div class="modal" role="dialog">
+    <button class="modal__x" (click)="cerrar()" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>
+
+    @if (modalError()) {
+      <div class="alert alert--err modal__alert"><i class="fas fa-circle-exclamation"></i><span>{{ modalError() }}</span></div>
+    }
+
+    <!-- Crear / Editar -->
+    @if (m === 'crear' || m === 'editar') {
+      <h2 class="modal__title">{{ m === 'crear' ? 'Nuevo usuario' : 'Editar usuario' }}</h2>
+      <form (ngSubmit)="m === 'crear' ? guardarCrear() : guardarEditar()">
+        <div class="mgrid">
+          <label class="mf">
+            <span>Usuario <b>*</b></span>
+            <input name="usuario" [(ngModel)]="form.usuario" [disabled]="m === 'editar'" placeholder="login" />
+          </label>
+          <label class="mf">
+            <span>DNI</span>
+            <input name="dni" [(ngModel)]="form.dni" maxlength="15" placeholder="DNI" />
+          </label>
+          <label class="mf">
+            <span>Nombre</span>
+            <input name="nombre" [(ngModel)]="form.nombre" placeholder="Nombre" />
+          </label>
+          <label class="mf">
+            <span>Apellido</span>
+            <input name="apellido" [(ngModel)]="form.apellido" placeholder="Apellido" />
+          </label>
+          <label class="mf mf--full">
+            <span>Correo</span>
+            <input name="correo" type="email" [(ngModel)]="form.correo" placeholder="correo@dominio.com" />
+          </label>
+          @if (m === 'crear') {
+            <label class="mf mf--full">
+              <span>Contraseña <b>*</b></span>
+              <input name="password" type="password" [(ngModel)]="form.password" placeholder="Mínimo 6 caracteres" />
+            </label>
+          }
+        </div>
+
+        @if (m === 'crear') {
+          <div class="roles-box">
+            <span class="roles-box__label">Roles <b>*</b></span>
+            <div class="roles-box__list">
+              @for (r of roles(); track r.id) {
+                <label class="check">
+                  <input type="checkbox" [checked]="rolMarcado(r.id)" (change)="toggleRol(r.id)" />
+                  <span>{{ r.nombre }}</span>
+                </label>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" (click)="cerrar()">Cancelar</button>
+          <button type="submit" class="btn btn--primary" [disabled]="guardando()">
+            <i class="fas" [class.fa-check]="!guardando()" [class.fa-spinner]="guardando()" [class.fa-spin]="guardando()"></i>
+            Guardar
+          </button>
+        </div>
+      </form>
+    }
+
+    <!-- Roles -->
+    @if (m === 'roles') {
+      <h2 class="modal__title">Roles de {{ seleccionado()?.usuario }}</h2>
+      <div class="roles-box__list roles-box__list--modal">
+        @for (r of roles(); track r.id) {
+          <label class="check">
+            <input type="checkbox" [checked]="rolMarcado(r.id)" (change)="toggleRol(r.id)" />
+            <span>{{ r.nombre }}</span>
+          </label>
+        }
+      </div>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" (click)="cerrar()">Cancelar</button>
+        <button class="btn btn--primary" [disabled]="guardando()" (click)="guardarRoles()">
+          <i class="fas" [class.fa-check]="!guardando()" [class.fa-spinner]="guardando()" [class.fa-spin]="guardando()"></i>
+          Guardar roles
+        </button>
+      </div>
+    }
+
+    <!-- Contraseña -->
+    @if (m === 'password') {
+      <h2 class="modal__title">Cambiar contraseña</h2>
+      <p class="modal__sub">Usuario: <b>{{ seleccionado()?.usuario }}</b></p>
+      <label class="mf mf--full">
+        <span>Nueva contraseña</span>
+        <input type="password" [(ngModel)]="passwordNueva" placeholder="Mínimo 6 caracteres" />
+      </label>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" (click)="cerrar()">Cancelar</button>
+        <button class="btn btn--primary" [disabled]="guardando()" (click)="guardarPassword()">
+          <i class="fas" [class.fa-check]="!guardando()" [class.fa-spinner]="guardando()" [class.fa-spin]="guardando()"></i>
+          Actualizar
+        </button>
+      </div>
+    }
+
+    <!-- Eliminar -->
+    @if (m === 'eliminar') {
+      <h2 class="modal__title">Eliminar usuario</h2>
+      <p class="modal__sub">
+        ¿Seguro que deseas eliminar a <b>{{ seleccionado()?.usuario }}</b>? Esta acción no se puede deshacer.
+      </p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" (click)="cerrar()">Cancelar</button>
+        <button class="btn btn--danger" [disabled]="guardando()" (click)="eliminar()">
+          <i class="fas" [class.fa-trash]="!guardando()" [class.fa-spinner]="guardando()" [class.fa-spin]="guardando()"></i>
+          Eliminar
+        </button>
+      </div>
+    }
+  </div>
+}

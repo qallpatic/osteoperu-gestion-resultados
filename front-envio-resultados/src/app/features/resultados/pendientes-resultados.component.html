@@ -1,0 +1,50 @@
+<section class="page">
+  <header class="page__head">
+    <div>
+      <h1>Pendientes de subir</h1>
+      <p>Pacientes registrados por Admisión que aún no tienen resultados cargados.</p>
+    </div>
+    <button class="btn btn--ghost" (click)="refrescar()"><i class="fas fa-rotate"></i> Actualizar</button>
+  </header>
+
+  <div class="tabla-wrap">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>DNI</th><th>Paciente</th><th>Teléfono</th><th>Registrado</th><th>Estado</th><th class="acc">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (cargando()) {
+          <tr><td colspan="6" class="vacia"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
+        } @else if (lista().length === 0) {
+          <tr><td colspan="6" class="vacia"><i class="fas fa-circle-check"></i> No hay pacientes pendientes.</td></tr>
+        } @else {
+          @for (p of lista(); track p.dni) {
+            <tr>
+              <td class="mono">{{ p.dni }}</td>
+              <td>{{ p.nombre || '—' }}</td>
+              <td>{{ p.telefono || '—' }}</td>
+              <td>{{ p.fechaRegistro | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td><span class="estado">Pendiente</span></td>
+              <td class="acc">
+                <button class="btn btn--sm btn--primary" (click)="subir(p)">
+                  <i class="fas fa-cloud-arrow-up"></i> Subir resultados
+                </button>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Modal de carga precargado -->
+@if (prefill(); as pf) {
+  <div class="backdrop" (click)="cerrarModal()"></div>
+  <div class="modal">
+    <button class="modal__x" (click)="cerrarModal()" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>
+    <app-upload [prefill]="pf" (enviado)="onEnviado()" />
+  </div>
+}

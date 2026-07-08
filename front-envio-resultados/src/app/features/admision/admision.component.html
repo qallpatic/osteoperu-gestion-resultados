@@ -1,0 +1,148 @@
+<section class="page">
+  <header class="page__head">
+    <div>
+      <h1>Admisión</h1>
+      <p>Genera o anula el acceso de los pacientes. Puedes crear un usuario nuevo aunque aún no tenga resultados.</p>
+    </div>
+    <button class="btn btn--primary" (click)="abrirGenerarNuevo()">
+      <i class="fas fa-user-plus"></i> Nuevo usuario
+    </button>
+  </header>
+
+  @if (notice(); as n) {
+    <div class="alert" [class.alert--ok]="n.type === 'ok'" [class.alert--err]="n.type === 'error'">
+      <i class="fas" [class.fa-circle-check]="n.type === 'ok'" [class.fa-circle-exclamation]="n.type === 'error'"></i>
+      <span>{{ n.text }}</span>
+      <button class="alert__close" (click)="notice.set(null)"><i class="fas fa-xmark"></i></button>
+    </div>
+  }
+
+  <div class="toolbar">
+    <div class="search">
+      <i class="fas fa-magnifying-glass"></i>
+      <input type="text" placeholder="Buscar por DNI" [(ngModel)]="fdni" (keyup.enter)="aplicar()" maxlength="15" />
+    </div>
+    <button class="btn btn--primary" (click)="aplicar()"><i class="fas fa-magnifying-glass"></i> Buscar</button>
+  </div>
+
+  <div class="tabla-wrap">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>DNI</th><th>Paciente</th><th>Resultados</th><th>Último</th><th>Cuenta</th><th class="acc">Detalle</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (cargando()) {
+          <tr><td colspan="6" class="vacia"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
+        } @else if (pacientes().length === 0) {
+          <tr><td colspan="6" class="vacia">No hay pacientes con resultados cargados.</td></tr>
+        } @else {
+          @for (p of pacientes(); track p.dni) {
+            <tr>
+              <td class="mono">{{ p.dni }}</td>
+              <td>{{ p.nombre || '—' }}</td>
+              <td>{{ p.totalResultados }}</td>
+              <td>{{ p.ultimaFecha | date:'dd/MM/yyyy' }}</td>
+              <td>
+                <span class="estado"
+                      [class.estado--sin]="p.estadoCuenta === 'SIN_CUENTA'"
+                      [class.estado--ok]="p.estadoCuenta === 'ACTIVO'"
+                      [class.estado--anu]="p.estadoCuenta === 'ANULADO'">
+                  {{ p.estadoCuenta === 'SIN_CUENTA' ? 'Sin cuenta' : p.estadoCuenta === 'ACTIVO' ? 'Activo' : 'Anulado' }}
+                </span>
+              </td>
+              <td class="acc">
+                @if (p.estadoCuenta === 'SIN_CUENTA') {
+                  <button class="btn btn--sm btn--primary" (click)="abrirGenerar(p)"><i class="fas fa-id-card"></i> Generar</button>
+                } @else if (p.estadoCuenta === 'ACTIVO') {
+                  <button class="btn btn--sm btn--danger" (click)="confirmarAnular(p)"><i class="fas fa-user-slash"></i> Anular</button>
+                } @else {
+                  <button class="btn btn--sm btn--ghost" (click)="abrirGenerar(p)"><i class="fas fa-rotate"></i> Regenerar</button>
+                }
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="paginacion">
+    <span class="paginacion__info">{{ rangoDesde() }}–{{ rangoHasta() }} de {{ totalElementos() }}</span>
+    <div class="paginacion__ctrl">
+      <button class="btn btn--ghost btn--sm" [disabled]="pagina() === 0" (click)="irPagina(-1)"><i class="fas fa-chevron-left"></i></button>
+      <span class="paginacion__pag">Página {{ pagina() + 1 }} de {{ totalPaginas() || 1 }}</span>
+      <button class="btn btn--ghost btn--sm" [disabled]="pagina() + 1 >= totalPaginas()" (click)="irPagina(1)"><i class="fas fa-chevron-right"></i></button>
+    </div>
+  </div>
+</section>
+
+<!-- Modal generar / regenerar -->
+@if (genOpen()) {
+  <div class="backdrop" (click)="cerrarGenerar()"></div>
+  <div class="modal" role="dialog">
+    <button class="modal__x" (click)="cerrarGenerar()"><i class="fas fa-xmark"></i></button>
+    <h2 class="modal__title">{{ regenerando() ? 'Regenerar credencial' : 'Generar credencial' }}</h2>
+    @if (nuevoUsuario()) {
+      <div class="field">
+        <label>DNI <b class="req">*</b></label>
+        <input [(ngModel)]="genDni" maxlength="8" inputmode="numeric" placeholder="8 dígitos" />
+      </div>
+    } @else {
+      <p class="modal__sub">DNI <b>{{ genDni }}</b></p>
+    }
+    <div class="field">
+      <label>Nombre <small>(si lo dejas vacío se toma de RENIEC)</small></label>
+      <input [(ngModel)]="genNombre" maxlength="120" placeholder="Nombre del paciente" />
+    </div>
+    <div class="field">
+      <label>Teléfono (para enviar la credencial por SMS)</label>
+      <input [(ngModel)]="genTelefono" maxlength="20" inputmode="numeric" placeholder="Opcional" />
+    </div>
+    <div class="modal__actions">
+      <button class="btn btn--ghost" (click)="cerrarGenerar()">Cancelar</button>
+      <button class="btn btn--primary" [disabled]="generando() || !dniGenValido()" (click)="generar()">
+        <i class="fas" [class.fa-id-card]="!generando()" [class.fa-spinner]="generando()" [class.fa-spin]="generando()"></i>
+        {{ regenerando() ? 'Regenerar' : 'Generar' }}
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Modal credencial -->
+@if (credencial(); as c) {
+  <div class="backdrop" (click)="cerrarCredencial()"></div>
+  <div class="modal" role="dialog">
+    <button class="modal__x" (click)="cerrarCredencial()"><i class="fas fa-xmark"></i></button>
+    <h2 class="modal__title">Credencial del paciente</h2>
+    @if (c.smsEnviado) {
+      <div class="sms-ok"><i class="fas fa-comment-sms"></i> Credencial enviada por SMS.</div>
+    }
+    <div class="credencial">
+      <div class="cred__web"><b>WEB:</b> {{ c.portalUrl }}</div>
+      <div class="cred__row"><span class="cred__k">Nombre</span><span>{{ c.nombre || '—' }}</span></div>
+      <div class="cred__row"><span class="cred__k">Usuario</span><span>{{ c.usuario }}</span></div>
+      <div class="cred__row"><span class="cred__k">Clave</span><span class="cred__clave">{{ c.clave }}</span></div>
+      <img class="cred__qr" [src]="c.qrUrl" alt="QR" width="200" height="200" />
+    </div>
+    <div class="modal__actions">
+      <button class="btn btn--ghost" (click)="cerrarCredencial()">Cerrar</button>
+      <button class="btn btn--primary" (click)="imprimir(c)"><i class="fas fa-print"></i> Imprimir</button>
+    </div>
+  </div>
+}
+
+<!-- Confirmar anulación -->
+@if (anularDni(); as dni) {
+  <div class="backdrop" (click)="anularDni.set(null)"></div>
+  <div class="modal modal--confirm" role="dialog">
+    <div class="modal__icon"><i class="fas fa-triangle-exclamation"></i></div>
+    <h2 class="modal__title">Confirmar anulación</h2>
+    <p class="modal__q">¿Estás seguro de anular los accesos al DNI <b>{{ dni }}</b>?</p>
+    <div class="modal__actions modal__actions--center">
+      <button class="btn btn--ghost" (click)="anularDni.set(null)">No</button>
+      <button class="btn btn--danger" [disabled]="anulando()" (click)="anular()">Sí, anular</button>
+    </div>
+  </div>
+}

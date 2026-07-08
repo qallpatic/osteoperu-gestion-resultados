@@ -1,8 +1,3 @@
-# ============================================================
-#  AMBIENTE SERVER (produccion - servidor Linux 161.132.53.229)
-#  Activar con: SPRING_PROFILES_ACTIVE=server
-#  Los valores sensibles se pueden inyectar por variables de entorno.
-# ============================================================
 spring:
   datasource:
     url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:osteoperu_resultados}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima&characterEncoding=UTF-8
@@ -16,15 +11,16 @@ spring:
       connection-timeout: 30000
 
 app:
-  # URL publica real por donde el paciente abre el link del SMS.
-  public-base-url: ${PUBLIC_BASE_URL:https://resultados.osteoperu.qallpatic.com.pe}
-  # Origen del front en el servidor de despliegue (panel de carga).
+  # Estas URLs las controla el docker-compose (variables de entorno). Aqui solo el
+  # valor por defecto; NO hardcodear, para no tener que rebuildear el JAR al cambiarlas.
+  public-base-url: ${PUBLIC_BASE_URL:http://161.132.53.229:6060/osteoperu-api-resultados}
+  portal-url: ${PORTAL_URL:http://161.132.53.229:6060/login}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://161.132.53.229}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://161.132.53.229:6060}
 
 storage:
   # Carpeta 'uploads' (montada como volumen) donde se crean las subcarpetas {telefono}_{dni}
   base-path: ${STORAGE_BASE_PATH:/app/uploads}
 
 sms:
-  enabled: ${SMS_ENABLED:true}
+  enabled: ${SMS_ENABLED:false}

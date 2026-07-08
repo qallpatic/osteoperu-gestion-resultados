@@ -1,127 +1,135 @@
 ###############################################################################
-#  back-envio-resultados-api  -  Colección de pruebas (curl / Postman)
-#-----------------------------------------------------------------------------
-#  BASE URL (local):  http://localhost:7090/back-envio-resultados-api
-#  Auth del panel:    Basic Auth  ->  usuario: osteoperu   password: Osteoperu@2026
-#
-#  NOTA PARA POSTMAN:
-#   - En cada request protegido: pestaña "Authorization" -> Type "Basic Auth"
-#     Username: osteoperu   Password: Osteoperu@2026
-#   - El endpoint de carga usa "form-data" (NO raw/JSON):
-#       phone       -> Text
-#       dni         -> Text
-#       patientName -> Text (opcional)
-#       files       -> File   (puedes agregar varias filas 'files' para subir varios)
-#   - Los endpoints /s/**, /r/** son PÚBLICOS (no requieren auth).
-#   - En Postman, para ver el redirect del link corto, desactiva
-#     Settings -> "Automatically follow redirects" y observa el 302 + Location.
+#  OSTEOPERU API - Colección de endpoints (curl)
+#  BASE: http://localhost:7090/back-envio-resultados-api
+#  Auth: JWT Bearer. Primero LOGIN, copia el accessToken en TOKEN.
+#  Roles: ADMIN | RESULTADOS | ADMISION | PACIENTE | CALLCENTER
+#         (ADMIN accede a TODO)
 ###############################################################################
 
-
-# =============================================================================
-# 1) SUBIR RESULTADOS DE UN PACIENTE   (POST, requiere Basic Auth)
-#    Crea la carpeta {telefono}_{dni}, guarda los archivos, genera el link
-#    corto y encola el SMS. Responde con batchId, shortLink y viewerUrl.
-# =============================================================================
-
-# ---- 1 archivo ----
-curl -X POST "http://localhost:7090/back-envio-resultados-api/api/resultados/upload" ^
-  -u osteoperu:Osteoperu@2026 ^
-  -F "phone=987654321" ^
-  -F "dni=12345678" ^
-  -F "patientName=Juan Perez" ^
-  -F "files=@C:/ruta/a/tu/resultado.pdf;type=application/pdf"
-
-# ---- Varios archivos (PDF + imagen + video) ----
-curl -X POST "http://localhost:7090/back-envio-resultados-api/api/resultados/upload" ^
-  -u osteoperu:Osteoperu@2026 ^
-  -F "phone=987654321" ^
-  -F "dni=12345678" ^
-  -F "patientName=Juan Perez" ^
-  -F "files=@C:/ruta/a/resultado.pdf;type=application/pdf" ^
-  -F "files=@C:/ruta/a/ecografia.jpg;type=image/jpeg" ^
-  -F "files=@C:/ruta/a/video.mp4;type=video/mp4"
-
-# Respuesta ejemplo:
-# {
-#   "batchId": 1,
-#   "phone": "51987654321",
-#   "dni": "12345678",
-#   "folderName": "51987654321_12345678",
-#   "totalFiles": 1,
-#   "storedFiles": ["resultado_20260703_133956820.pdf"],
-#   "shortLink": "http://localhost:7090/back-envio-resultados-api/s/k814Tw7",
-#   "viewerUrl": "http://localhost:7090/back-envio-resultados-api/r/Sw7gtAiZtsWJUL06i4EKFEJY",
-#   "smsStatus": "QUEUED"
-# }
+BASE="http://localhost:7090/back-envio-resultados-api"
+TOKEN="pega-aqui-el-accessToken-del-login"
 
 
 # =============================================================================
-# 2) ABRIR EL LINK CORTO   (GET, público)  -> cuenta el CLICK y redirige (302)
-#    Reemplaza {code} por el "shortLink" que devolvió el paso 1 (ej: k814Tw7)
+# AUTENTICACION  (/api/auth)   ->   PUBLICO
 # =============================================================================
 
-# Ver el 302 y la cabecera Location sin seguir el redirect:
-curl -i "http://localhost:7090/back-envio-resultados-api/s/{code}"
+# Iniciar sesion (devuelve accessToken + refreshToken)   [PUBLICO]
+curl -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" \
+  -d '{"usuario":"admin","contrasena":"Admin@2026"}'
 
-# Seguir el redirect automáticamente hasta el visor (-L):
-curl -iL "http://localhost:7090/back-envio-resultados-api/s/{code}"
+# Renovar el accessToken con el refreshToken   [PUBLICO]
+curl -X POST "$BASE/api/auth/refresh" -H "Content-Type: application/json" \
+  -d '{"refreshToken":"pega-el-refreshToken"}'
 
-
-# =============================================================================
-# 3) VER LA PÁGINA DE RESULTADOS   (GET, público) -> marca "visto" y cuenta VIEW
-#    Reemplaza {token} por el "viewerUrl" del paso 1 (ej: Sw7gtAiZtsWJUL06i4EKFEJY)
-#    Devuelve HTML. En navegador se ve la página; en curl verás el HTML.
-# =============================================================================
-
-curl "http://localhost:7090/back-envio-resultados-api/r/{token}"
+# Cerrar sesion (revoca el refreshToken)   [PUBLICO]
+curl -X POST "$BASE/api/auth/logout" -H "Content-Type: application/json" \
+  -d '{"refreshToken":"pega-el-refreshToken"}'
 
 
 # =============================================================================
-# 4) VER UN ARCHIVO INLINE   (GET, público)
-#    {fileId} es el id de un archivo del lote (empieza en 1).
+# ADMINISTRACION DE USUARIOS  (/api/admin)   ->   solo ADMIN
 # =============================================================================
 
-curl -i "http://localhost:7090/back-envio-resultados-api/r/{token}/archivo/1"
+# Listar usuarios (paginado + filtros)   [ADMIN]
+curl "$BASE/api/admin/usuarios?pagina=0&tamano=10&buscar=&rol=&estado=" -H "Authorization: Bearer $TOKEN"
 
-# Guardarlo en disco:
-curl "http://localhost:7090/back-envio-resultados-api/r/{token}/archivo/1" -o archivo_visto.pdf
+# Obtener un usuario por id   [ADMIN]
+curl "$BASE/api/admin/usuarios/1" -H "Authorization: Bearer $TOKEN"
+
+# Crear usuario   [ADMIN]
+curl -X POST "$BASE/api/admin/usuarios" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"usuario":"jperez","nombre":"Juan","apellido":"Perez","correo":"jp@x.com","dni":"12345678","password":"Clave123","rolesIds":[2]}'
+
+# Editar datos del usuario   [ADMIN]
+curl -X PUT "$BASE/api/admin/usuarios/2" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"nombre":"Juan","apellido":"Perez Lopez","correo":"jp@x.com","dni":"12345678"}'
+
+# Eliminar usuario   [ADMIN]
+curl -X DELETE "$BASE/api/admin/usuarios/2" -H "Authorization: Bearer $TOKEN"
+
+# Activar / desactivar usuario   [ADMIN]
+curl -X PATCH "$BASE/api/admin/usuarios/2/estado" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"activo":false}'
+
+# Asignar roles (reemplaza los actuales)   [ADMIN]
+curl -X PATCH "$BASE/api/admin/usuarios/2/roles" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"rolesIds":[2,4]}'
+
+# Cambiar contrasena del usuario   [ADMIN]
+curl -X PATCH "$BASE/api/admin/usuarios/2/password" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"password":"NuevaClave123"}'
+
+# Listar roles disponibles (para selects)   [ADMIN]
+curl "$BASE/api/admin/roles" -H "Authorization: Bearer $TOKEN"
 
 
 # =============================================================================
-# 5) DESCARGAR UN ARCHIVO   (GET, público) -> registra DOWNLOAD
+# RESULTADOS  (/api/resultados)   ->   ADMIN, RESULTADOS
 # =============================================================================
 
-curl -OJ "http://localhost:7090/back-envio-resultados-api/r/{token}/descargar/1"
+# Cargar resultados (multipart). mensaje=texto (max 500). confirmarNombre=true fuerza si el PDF no coincide con RENIEC   [ADMIN, RESULTADOS]
+curl -X POST "$BASE/api/resultados/upload" -H "Authorization: Bearer $TOKEN" \
+  -F "phone=987654321" -F "dni=12345678" -F "patientName=Juan Perez" \
+  -F "mensaje=Sus resultados estan listos" \
+  -F "confirmarNombre=false" \
+  -F "files=@/ruta/resultado.pdf;type=application/pdf"
+
+# Consultar resultados (paginado + filtros DNI/nombre/fecha)   [ADMIN, RESULTADOS]
+curl "$BASE/api/resultados?dni=&nombre=&desde=&hasta=&pagina=0&tamano=10" -H "Authorization: Bearer $TOKEN"
+
+# Ver detalle de un resultado (con sus archivos)   [ADMIN, RESULTADOS]
+curl "$BASE/api/resultados/1" -H "Authorization: Bearer $TOKEN"
+
+# Actualizar resultado (telefono/nombre + reenviar SMS)   [ADMIN, RESULTADOS]
+curl -X PUT "$BASE/api/resultados/1" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"telefono":"987654321","nombrePaciente":"Juan Perez","reenviarSms":true}'
+
+# Consultar logs de carga (paginado + filtros DNI/fecha)   [ADMIN, RESULTADOS]
+curl "$BASE/api/resultados/logs?dni=&desde=&hasta=&pagina=0&tamano=10" -H "Authorization: Bearer $TOKEN"
 
 
 # =============================================================================
-# 6) DOCUMENTACIÓN OPENAPI / SWAGGER  (público)
+# PORTAL DEL PACIENTE  (/api/paciente)   ->   ADMIN, PACIENTE (solo lo suyo)
 # =============================================================================
 
-# Swagger UI (abrir en navegador):
-#   http://localhost:7090/back-envio-resultados-api/swagger-ui.html
+# Mis resultados (los del paciente autenticado, filtro por fecha)   [ADMIN, PACIENTE]
+curl "$BASE/api/paciente/resultados?desde=&hasta=&pagina=0&tamano=10" -H "Authorization: Bearer $TOKEN"
 
-# JSON OpenAPI:
-curl "http://localhost:7090/back-envio-resultados-api/v3/api-docs"
+# Detalle de un resultado propio   [ADMIN, PACIENTE]
+curl "$BASE/api/paciente/resultados/1" -H "Authorization: Bearer $TOKEN"
+
+# Ver un archivo propio en linea   [ADMIN, PACIENTE]
+curl "$BASE/api/paciente/resultados/1/archivos/1" -H "Authorization: Bearer $TOKEN" -o archivo.pdf
+
+# Descargar un archivo propio (registra la descarga)   [ADMIN, PACIENTE]
+curl -OJ "$BASE/api/paciente/resultados/1/archivos/1/descargar" -H "Authorization: Bearer $TOKEN"
 
 
 # =============================================================================
-# 7) HEALTHCHECK  (público)
+# ACCESO ANONIMO DEL PACIENTE (link del SMS)   ->   PUBLICO (secreto = token/code)
 # =============================================================================
 
-curl "http://localhost:7090/back-envio-resultados-api/actuator/health"
+# Abrir link corto del SMS -> cuenta CLICK y redirige (302)   [PUBLICO]
+curl -i "$BASE/s/{code}"
+
+# Ver la pagina de resultados (HTML) -> marca visto   [PUBLICO]
+curl "$BASE/r/{token}"
+
+# Ver archivo inline por token   [PUBLICO]
+curl "$BASE/r/{token}/archivo/1" -o archivo.pdf
+
+# Descargar archivo por token   [PUBLICO]
+curl -OJ "$BASE/r/{token}/descargar/1"
 
 
-###############################################################################
-#  VERSIÓN GIT BASH / LINUX / MAC  (usa \ en vez de ^ para saltos de línea)
-###############################################################################
-#
-# curl -X POST "http://localhost:7090/back-envio-resultados-api/api/resultados/upload" \
-#   -u osteoperu:Osteoperu@2026 \
-#   -F "phone=987654321" \
-#   -F "dni=12345678" \
-#   -F "patientName=Juan Perez" \
-#   -F "files=@/ruta/resultado.pdf;type=application/pdf"
-#
-###############################################################################
+# =============================================================================
+# DOCUMENTACION / SALUD   ->   PUBLICO
+# =============================================================================
+
+# Swagger UI (navegador):  $BASE/swagger-ui.html
+# OpenAPI JSON   [PUBLICO]
+curl "$BASE/v3/api-docs"
+
+# Healthcheck   [PUBLICO]
+curl "$BASE/actuator/health"

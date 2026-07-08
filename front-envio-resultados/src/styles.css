@@ -12,6 +12,8 @@
   --danger-bg: #fdecea;
   --shadow: 0 10px 40px rgba(7, 94, 84, 0.15);
   --radius: 16px;
+  /* Ancho máximo del contenido de cada vista (uniforme en toda la app). */
+  --content-max: 1500px;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }

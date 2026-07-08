@@ -1,0 +1,141 @@
+<div class="shell" [class.shell--colapsado]="colapsado()" [class.shell--movil]="menuMovilAbierto()">
+
+  <!-- Capa oscura al abrir el menú en móvil -->
+  <div class="overlay" (click)="cerrarMenuMovil()"></div>
+
+  <!-- Menú lateral IZQUIERDO -->
+  <aside class="sidebar">
+    <div class="sidebar__top">
+      <img src="assets/logo_osteo_white.png" alt="OsteoPerú" class="sidebar__logo" />
+      <button class="sidebar__toggle" (click)="alternarColapso()"
+              [attr.aria-label]="colapsado() ? 'Expandir menú' : 'Colapsar menú'">
+        <i class="fas" [class.fa-angles-left]="!colapsado()" [class.fa-angles-right]="colapsado()"></i>
+      </button>
+    </div>
+
+    <nav class="menu">
+      @for (item of menu(); track item.label) {
+        @if (item.children && item.children.length) {
+          <!-- Grupo con submenús (Resultados) -->
+          <button class="menu__item menu__group" [class.menu__group--abierto]="expandido() === item.label"
+                  (click)="toggleGrupo(item)" [title]="item.label">
+            <i class="menu__icon fas {{ item.icon }}"></i>
+            <span class="menu__label">{{ item.label }}</span>
+            <i class="menu__chevron fas fa-chevron-down"
+               [class.menu__chevron--abierto]="expandido() === item.label"></i>
+          </button>
+          @if (expandido() === item.label && !colapsado()) {
+            <div class="submenu">
+              @for (sub of item.children; track sub.route) {
+                <a class="menu__subitem" [routerLink]="sub.route" routerLinkActive="menu__subitem--activo"
+                   (click)="cerrarMenuMovil()" [title]="sub.label">
+                  <i class="menu__subicon fas {{ sub.icon }}"></i>
+                  <span class="menu__label">{{ sub.label }}</span>
+                </a>
+              }
+            </div>
+          }
+        } @else if (item.disponible) {
+          <a class="menu__item" [routerLink]="item.route" routerLinkActive="menu__item--activo"
+             (click)="cerrarMenuMovil()" [title]="item.label">
+            <i class="menu__icon fas {{ item.icon }}"></i>
+            <span class="menu__label">{{ item.label }}</span>
+          </a>
+        } @else {
+          <span class="menu__item menu__item--pronto" [title]="item.label + ' (próximamente)'">
+            <i class="menu__icon fas {{ item.icon }}"></i>
+            <span class="menu__label">{{ item.label }}</span>
+            <span class="menu__badge">Pronto</span>
+          </span>
+        }
+      }
+    </nav>
+
+    <div class="sidebar__user">
+      <div class="avatar">{{ iniciales() }}</div>
+      <div class="usuario">
+        <span class="usuario__nombre" [title]="nombre()">{{ nombre() }}</span>
+        <span class="usuario__rol">{{ rolPrincipal() }}</span>
+      </div>
+      <button class="logout" (click)="cerrarSesion()" title="Cerrar sesión" aria-label="Cerrar sesión">
+        <i class="fas fa-right-from-bracket"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Contenido -->
+  <main class="contenido">
+    <!-- Topbar según el usuario logueado -->
+    <header class="topbar">
+      <div class="topbar__left">
+        <button class="topbar__ham" (click)="alternarMenuMovil()" aria-label="Abrir menú">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="saludo">
+          <span class="saludo__hola">Hola, {{ primerNombre() }}</span>
+          <span class="saludo__rol">{{ rolPrincipal() }}</span>
+        </div>
+      </div>
+
+      <div class="topbar__right">
+        @if (puedeSubir()) {
+          <div class="campana-wrap">
+            <button class="campana" (click)="alternarCampana()"
+                    title="Pacientes pendientes de subir" aria-label="Notificaciones">
+              <i class="fas fa-bell"></i>
+              @if (contadorPendientes() > 0) {
+                <span class="campana__badge">{{ contadorPendientes() }}</span>
+              }
+            </button>
+
+            @if (campanaAbierta()) {
+              <div class="campana__backdrop" (click)="cerrarCampana()"></div>
+              <div class="campana__menu">
+                <div class="campana__head">
+                  <span>Pendientes de subir</span>
+                  <span class="campana__count">{{ contadorPendientes() }}</span>
+                </div>
+                @if (listaPendientes().length === 0) {
+                  <div class="campana__vacio"><i class="fas fa-circle-check"></i> Sin pendientes</div>
+                } @else {
+                  <div class="campana__lista">
+                    @for (p of listaPendientes(); track p.dni) {
+                      <button class="campana__item" (click)="abrirCargaPendiente(p)">
+                        <div class="campana__info">
+                          <span class="campana__nombre">{{ p.nombre || 'Paciente' }}</span>
+                          <span class="campana__dni">DNI {{ p.dni }}</span>
+                        </div>
+                        <i class="fas fa-cloud-arrow-up"></i>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <div class="topbar__avatar" [title]="nombre()">{{ iniciales() }}</div>
+        <button class="topbar__logout" (click)="cerrarSesion()" title="Cerrar sesión">
+          <i class="fas fa-right-from-bracket"></i>
+          <span class="topbar__logout-txt">Salir</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="vista">
+      <router-outlet />
+    </div>
+  </main>
+
+  <!-- Modal de carga precargada (desde la campanita) -->
+  @if (prefillUpload(); as pf) {
+    <div class="carga-backdrop" (click)="cerrarCargaModal()"></div>
+    <div class="carga-modal">
+      <button class="carga-modal__x" (click)="cerrarCargaModal()" aria-label="Cerrar">
+        <i class="fas fa-xmark"></i>
+      </button>
+      <app-upload [prefill]="pf" (enviado)="onUploadEnviado()" />
+    </div>
+  }
+</div>

@@ -1,0 +1,205 @@
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
+
+import { AdmisionService, CredencialResponse, PacienteAdmision } from './admision.service';
+
+@Component({
+  selector: 'app-admision',
+  imports: [FormsModule, DatePipe],
+  templateUrl: './admision.component.html',
+  styleUrl: './admision.component.css',
+})
+export class AdmisionComponent implements OnInit {
+  private readonly srv = inject(AdmisionService);
+
+  readonly pacientes = signal<PacienteAdmision[]>([]);
+  readonly cargando = signal(false);
+  readonly pagina = signal(0);
+  readonly totalPaginas = signal(0);
+  readonly totalElementos = signal(0);
+  readonly tamano = 10;
+
+  fdni = '';
+  readonly notice = signal<{ type: 'ok' | 'error'; text: string } | null>(null);
+
+  // Modal generar
+  readonly genOpen = signal(false);
+  readonly generando = signal(false);
+  genDni = '';
+  genNombre = '';
+  genTelefono = '';
+  readonly regenerando = signal(false);
+  /** true = alta de un DNI nuevo (DNI editable). */
+  readonly nuevoUsuario = signal(false);
+
+  // Credencial resultante
+  readonly credencial = signal<CredencialResponse | null>(null);
+
+  // Confirmar anulación
+  readonly anularDni = signal<string | null>(null);
+  readonly anulando = signal(false);
+
+  readonly rangoDesde = computed(() =>
+    this.totalElementos() === 0 ? 0 : this.pagina() * this.tamano + 1,
+  );
+  readonly rangoHasta = computed(() =>
+    Math.min((this.pagina() + 1) * this.tamano, this.totalElementos()),
+  );
+
+  ngOnInit(): void {
+    this.cargar();
+  }
+
+  cargar(): void {
+    this.cargando.set(true);
+    this.srv.listarPacientes({ dni: this.fdni.trim() || undefined, pagina: this.pagina(), tamano: this.tamano }).subscribe({
+      next: (p) => {
+        this.pacientes.set(p.contenido);
+        this.totalPaginas.set(p.totalPaginas);
+        this.totalElementos.set(p.totalElementos);
+        this.cargando.set(false);
+      },
+      error: (e: HttpErrorResponse) => {
+        this.cargando.set(false);
+        this.notice.set({ type: 'error', text: this.msg(e) });
+      },
+    });
+  }
+
+  aplicar(): void {
+    this.pagina.set(0);
+    this.cargar();
+  }
+
+  irPagina(delta: number): void {
+    const nueva = this.pagina() + delta;
+    if (nueva < 0 || nueva >= this.totalPaginas()) {
+      return;
+    }
+    this.pagina.set(nueva);
+    this.cargar();
+  }
+
+  abrirGenerar(p: PacienteAdmision): void {
+    this.genDni = p.dni;
+    this.genNombre = p.nombre ?? '';
+    this.genTelefono = '';
+    this.regenerando.set(p.estadoCuenta === 'ANULADO');
+    this.nuevoUsuario.set(false);
+    this.credencial.set(null);
+    this.genOpen.set(true);
+  }
+
+  /** Alta de un paciente/DNI nuevo (no requiere que exista en la lista). */
+  abrirGenerarNuevo(): void {
+    this.genDni = '';
+    this.genNombre = '';
+    this.genTelefono = '';
+    this.regenerando.set(false);
+    this.nuevoUsuario.set(true);
+    this.credencial.set(null);
+    this.genOpen.set(true);
+  }
+
+  cerrarGenerar(): void {
+    this.genOpen.set(false);
+  }
+
+  dniGenValido(): boolean {
+    return /^\d{8}$/.test(this.genDni.trim());
+  }
+
+  generar(): void {
+    if (this.generando()) {
+      return;
+    }
+    if (!/^\d{8}$/.test(this.genDni.trim())) {
+      this.notice.set({ type: 'error', text: 'Ingresa un DNI válido de 8 dígitos.' });
+      return;
+    }
+    this.generando.set(true);
+    this.srv
+      .generarUsuario({
+        dni: this.genDni,
+        nombre: this.genNombre.trim() || undefined,
+        telefono: this.genTelefono.trim() || undefined,
+      })
+      .subscribe({
+        next: (cred) => {
+          this.generando.set(false);
+          this.genOpen.set(false);
+          this.credencial.set(cred);
+          this.notice.set({ type: 'ok', text: 'Credencial generada. Entrégala al paciente.' });
+          this.cargar();
+        },
+        error: (e: HttpErrorResponse) => {
+          this.generando.set(false);
+          this.notice.set({ type: 'error', text: this.msg(e) });
+        },
+      });
+  }
+
+  cerrarCredencial(): void {
+    this.credencial.set(null);
+  }
+
+  confirmarAnular(p: PacienteAdmision): void {
+    this.anularDni.set(p.dni);
+  }
+
+  anular(): void {
+    const dni = this.anularDni();
+    if (!dni) {
+      return;
+    }
+    this.anulando.set(true);
+    this.srv.anularUsuario(dni).subscribe({
+      next: () => {
+        this.anulando.set(false);
+        this.anularDni.set(null);
+        this.notice.set({ type: 'ok', text: `Acceso del DNI ${dni} anulado.` });
+        this.cargar();
+      },
+      error: (e: HttpErrorResponse) => {
+        this.anulando.set(false);
+        this.anularDni.set(null);
+        this.notice.set({ type: 'error', text: this.msg(e) });
+      },
+    });
+  }
+
+  imprimir(c: CredencialResponse): void {
+    const w = window.open('', '_blank', 'width=420,height=680');
+    if (!w) {
+      return;
+    }
+    w.document.write(`
+      <html><head><title>Credencial ${c.usuario}</title>
+      <style>
+        body{font-family:Arial,Helvetica,sans-serif;color:#1f2937;padding:24px;text-align:center}
+        .web{font-size:12px;color:#075e54;word-break:break-all;margin-bottom:18px}
+        .row{text-align:left;margin:6px 0;font-size:14px}
+        .k{color:#6b7280;font-size:11px;text-transform:uppercase}
+        .clave{font-size:20px;font-weight:700;letter-spacing:2px;color:#043d36}
+        img{margin-top:18px}
+      </style></head><body>
+        <div class="web"><b>WEB:</b> ${c.portalUrl}</div>
+        <div class="row"><span class="k">Nombre</span><br>${c.nombre ?? '-'}</div>
+        <div class="row"><span class="k">Usuario</span><br>${c.usuario}</div>
+        <div class="row"><span class="k">Clave</span><br><span class="clave">${c.clave}</span></div>
+        <img src="${c.qrUrl}" alt="QR" width="220" height="220" />
+      </body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 400);
+  }
+
+  private msg(e: HttpErrorResponse): string {
+    if (e.status === 0) {
+      return 'No se pudo conectar con el servidor.';
+    }
+    return e.error?.message ?? 'Ocurrió un error. Intenta nuevamente.';
+  }
+}
