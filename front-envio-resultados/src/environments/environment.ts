@@ -6,5 +6,5 @@
  */
 export const environment = {
   production: true,
-  apiBaseUrl: '/osteoperu-api-resultados',
+  apiBaseUrl: '/resultados/osteoperu-api-resultados',
 };

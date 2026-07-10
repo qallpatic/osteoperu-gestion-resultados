@@ -38,12 +38,13 @@ services:
       #     API en el nginx del front y con apiBaseUrl (/osteoperu-api-resultados).
       CONTEXT_PATH: /osteoperu-api-resultados
 
-      # --- URLs publicas (acceso directo por IP:puerto del front) ---
-      # El front se publica en 6060; el SMS/QR apuntan a esa direccion.
-      PUBLIC_BASE_URL: http://161.132.53.229:6060/osteoperu-api-resultados
-      # Destino del QR de la credencial (pagina de login del front)
-      PORTAL_URL: http://161.132.53.229:6060/login
-      CORS_ALLOWED_ORIGINS: http://161.132.53.229:6060
+      # --- URLs publicas (acceso por subdominio bajo /resultados) ---
+      # El front se publica en osteoperu-dev.qallpatic.com/resultados (vía Nginx Proxy Manager);
+      # el SMS/QR apuntan a esa direccion.
+      PUBLIC_BASE_URL: https://osteoperu-dev.qallpatic.com/resultados/osteoperu-api-resultados
+      # Destino del QR de la credencial (pagina de login del front, bajo /resultados)
+      PORTAL_URL: https://osteoperu-dev.qallpatic.com/resultados/login
+      CORS_ALLOWED_ORIGINS: https://osteoperu-dev.qallpatic.com
 
       # --- Seguridad (CAMBIAR en produccion) ---
       JWT_SECRET: osteoperu-cambia-esta-clave-secreta-jwt-hs256-minimo-32-bytes-2026
@@ -58,6 +59,7 @@ services:
       - ./uploads:/app/uploads
     networks:
       - osteoperu-net
+      - proxy-network
 
   frontend:
     # El proyecto Angular esta anidado en front-resultados/front-envio-resultados
@@ -67,13 +69,17 @@ services:
     container_name: osteoperu-frontend
     restart: unless-stopped
     # Sitio publico por IP directa: http://161.132.53.229:6060
+    # (acceso principal: https://osteoperu-dev.qallpatic.com/resultados via Nginx Proxy Manager)
     ports:
       - "6060:80"
     depends_on:
       - backend
     networks:
       - osteoperu-net
+      - proxy-network
 
 networks:
   osteoperu-net:
     driver: bridge
+  proxy-network:
+    external: true

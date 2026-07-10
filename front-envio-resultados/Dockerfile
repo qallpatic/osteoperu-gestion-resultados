@@ -5,7 +5,7 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 # Build de produccion (usa src/environments/environment.ts)
-RUN npm run build -- --configuration production
+RUN npm run build -- --configuration production --base-href=/resultados/
 
 # ---------- runtime (Nginx) ----------
 FROM nginx:1.27-alpine
