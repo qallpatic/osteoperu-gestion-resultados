@@ -52,19 +52,25 @@
 .backdrop { position: fixed; inset: 0; background: rgba(4, 61, 54, 0.5); z-index: 50; }
 .modal {
   position: fixed; z-index: 51; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto;
+  width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto;
   background: #fff; border-radius: 18px; padding: 28px; box-shadow: 0 20px 60px rgba(4, 61, 54, 0.35);
+  scrollbar-width: thin; scrollbar-color: var(--brand-300) transparent;
+  overscroll-behavior: contain;
 }
+.modal::-webkit-scrollbar { width: 8px; }
+.modal::-webkit-scrollbar-track { background: transparent; }
+.modal::-webkit-scrollbar-thumb { background: var(--brand-300); border-radius: 8px; }
+.modal::-webkit-scrollbar-thumb:hover { background: var(--brand-500); }
 .modal--load { text-align: center; color: var(--brand-700); font-weight: 600; }
 .modal__x { position: absolute; top: 16px; right: 16px; border: none; background: transparent; color: var(--muted-2); font-size: 1.1rem; cursor: pointer; }
 .modal__title { color: var(--brand-900); font-size: 1.2rem; font-weight: 700; }
 .modal__sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 18px; }
 
 .mensaje {
-  display: flex; align-items: flex-start; gap: 10px;
-  background: var(--brand-050); border-left: 4px solid var(--brand-300);
-  border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;
-  color: var(--brand-900); font-size: 0.9rem; line-height: 1.5;
+  display: flex; align-items: flex-start; gap: 12px;
+  background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 16px;
+  font-size: 0.9rem; line-height: 1.5;
 }
 .mensaje i { color: var(--brand-500); margin-top: 2px; }
 .mensaje__body { flex: 1; min-width: 0; word-break: break-word; }
