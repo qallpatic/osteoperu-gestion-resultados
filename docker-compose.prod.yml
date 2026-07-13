@@ -1,0 +1,29 @@
+# ============================================================
+#  Override de PRODUCCION
+#  ------------------------------------------------------------
+#  Uso:
+#    docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#      --env-file .env.prod up -d --build
+#  (envoltorio: ./scripts/prod-up.sh)
+#
+#  Diferencias vs el compose base:
+#    - Carga .env.prod en lugar de .env.dev
+#    - Quita el mapeo del puerto 7090 del backend al host (solo accesible
+#      via osteoperu-frontend dentro de la red Docker).
+#    - Quita el mapeo del puerto 6060 del frontend (NPM hace de proxy publico).
+# ============================================================
+
+services:
+  backend:
+    env_file:
+      - .env.prod
+    # Quita el puerto 7090 del host; solo accesible desde la red interna.
+    # En override de Compose, las listas se reemplazan (no se mergean), asi
+    # que `ports: []` deja al backend sin puertos publicados al host.
+    ports: []
+
+  frontend:
+    env_file:
+      - .env.prod
+    # Quita el puerto 6060 del host; solo accesible via Nginx Proxy Manager.
+    ports: []

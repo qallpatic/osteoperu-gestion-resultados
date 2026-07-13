@@ -11,7 +11,12 @@ spring:
       connection-timeout: 30000
 
 app:
-  public-base-url: http://localhost:7090/back-envio-resultados-api
+  # URL base que se usa para construir el link del SMS y del visor. Coincide con
+  # el CONTEXT_PATH del backend (/osteoperu-api-resultados). Se toma del env var
+  # PUBLIC_BASE_URL para que dev/prod puedan tener URLs distintas sin recompilar.
+  # Default local: apunta al frontend en :6060 (el proxy interno hace de puente
+  # hacia el backend, ver docker-compose + nginx.conf del front).
+  public-base-url: ${PUBLIC_BASE_URL:http://localhost:6060/osteoperu-api-resultados}
 
 storage:
   base-path: ${STORAGE_BASE_PATH:./uploads}

@@ -1,77 +1,51 @@
 # ============================================================
-#  OSTEOPERU - Resultados  |  Despliegue Docker
+#  OSTEOPERU - Resultados  |  Despliegue Docker parametrizado
 #  ------------------------------------------------------------
-#  Estructura esperada en el servidor:
-#    /home/docker/osteoperu-resultados/
-#      ├── docker-compose.yml   (este archivo)
-#      ├── back-resultados/     (contenido de back-envio-resultados-api + Dockerfile)
-#      ├── front-resultados/    (contenido de front-envio-resultados + Dockerfile)
-#      └── uploads/             (volumen: aqui se guardan los resultados)
+#  Por defecto levanta el perfil DEV con .env.dev.
+#  Para PROD usar docker-compose.prod.yml (ver DEPLOY.md).
 #
-#  Arranque:   docker compose up -d --build
-#  Logs:       docker compose logs -f
-#  Parar:      docker compose down
+#  Comandos rapidos:
+#    dev:  ./scripts/dev-up.sh  |  docker compose up -d --build
+#    prod: ./scripts/prod-up.sh
 # ============================================================
+
 services:
   backend:
-    build: ./back-resultados
-    image: osteoperu/back-resultados:latest
+    build: ./back-envio-resultados-api
+    image: osteoperu/back-resultados:${TAG:-latest}
     container_name: osteoperu-backend
     restart: unless-stopped
-    # 7090 solo accesible localmente (por SSH). El publico entra por Nginx (front).
+    # Mapeo del puerto al host. En prod se quita via docker-compose.prod.yml
+    # (el backend queda accesible solo desde osteoperu-frontend dentro de la red).
     ports:
-      - "7090:7090"
+      - "${BACKEND_PORT:-7090}:7090"
+    env_file:
+      - ${ENV_FILE:-.env.dev}
     environment:
-      SPRING_PROFILES_ACTIVE: server
-
-      # --- Base de datos MySQL (externa, en el propio servidor) ---
-      DB_HOST: 161.132.53.229
-      DB_PORT: "3306"
-      DB_NAME: osteoperu_resultados
-      DB_USER: resultados_user
-      DB_PASSWORD: "R3sultados@2026!"
-
-      # --- Almacenamiento de resultados (volumen) ---
+      # Valores fijos / derivados que aplican a ambos entornos. Las variables
+      # sensibles (DB_PASSWORD, JWT_SECRET, RENIEC_TOKEN, ...) vienen del env_file.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
+      CONTEXT_PATH: ${CONTEXT_PATH:-/osteoperu-api-resultados}
       STORAGE_BASE_PATH: /app/uploads
-
-      # --- Prefijo (context-path) del backend. DEBE coincidir con la ruta del
-      #     API en el nginx del front y con apiBaseUrl (/osteoperu-api-resultados).
-      CONTEXT_PATH: /osteoperu-api-resultados
-
-      # --- URLs publicas (acceso por subdominio bajo /resultados) ---
-      # El front se publica en osteoperu-dev.qallpatic.com/resultados (vía Nginx Proxy Manager);
-      # el SMS/QR apuntan a esa direccion.
-      PUBLIC_BASE_URL: https://osteoperu-dev.qallpatic.com/resultados/osteoperu-api-resultados
-      # Destino del QR de la credencial (pagina de login del front, bajo /resultados)
-      PORTAL_URL: https://osteoperu-dev.qallpatic.com/resultados/login
-      CORS_ALLOWED_ORIGINS: https://osteoperu-dev.qallpatic.com
-
-      # --- Seguridad (CAMBIAR en produccion) ---
-      JWT_SECRET: osteoperu-cambia-esta-clave-secreta-jwt-hs256-minimo-32-bytes-2026
-      ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: Admin@2026
-
-      # --- Integraciones ---
-      RENIEC_ENABLED: "true"
-      RENIEC_TOKEN: sk_10724.CaV0hlik8qjqno2Opn8FZA7mzlLegx43
-      SMS_ENABLED: "true"
+      SERVER_PORT: 7090
     volumes:
-      - ./uploads:/app/uploads
+      - ${UPLOADS_PATH:-./uploads}:/app/uploads
     networks:
       - osteoperu-net
       - proxy-network
 
   frontend:
-    # El proyecto Angular esta anidado en front-resultados/front-envio-resultados
-    # (ahi vive su Dockerfile + nginx.conf). Se compila desde codigo.
-    build: ./front-resultados/front-envio-resultados
-    image: osteoperu/front-resultados:latest
+    # Se compila desde el codigo fuente directo del repo (no requiere
+    # staging previo en el host: el Dockerfile del front hace el npm install
+    # y el ng build dentro de su propio multi-stage).
+    build: ./front-envio-resultados
+    image: osteoperu/front-resultados:${TAG:-latest}
     container_name: osteoperu-frontend
     restart: unless-stopped
-    # Sitio publico por IP directa: http://161.132.53.229:6060
-    # (acceso principal: https://osteoperu-dev.qallpatic.com/resultados via Nginx Proxy Manager)
+    # Acceso directo sin NPM: http://localhost:6060/resultados/
+    # Acceso por subdominio: https://osteoperu-dev.qallpatic.com/resultados/ (via NPM)
     ports:
-      - "6060:80"
+      - "${FRONTEND_PORT:-6060}:80"
     depends_on:
       - backend
     networks:
@@ -83,3 +57,4 @@ networks:
     driver: bridge
   proxy-network:
     external: true
+    name: proxy-network

@@ -1,0 +1,32 @@
+# Entornos con secretos reales — NUNCA commitear
+.env.prod
+.env.local
+.env.*.local
+.env.production
+
+# Mantener trackeados (no ignorar):
+#   .env.example  -> plantilla documentada
+#   .env.dev      -> valores seguros de desarrollo local
+
+# Codegraph
+.codegraph/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Builds
+back-envio-resultados-api/target/
+back-envio-resultados-api/*.jar
+back-envio-resultados-api/uploads/
+front-envio-resultados/dist/
+front-envio-resultados/node_modules/
+front-envio-resultados/.angular/
