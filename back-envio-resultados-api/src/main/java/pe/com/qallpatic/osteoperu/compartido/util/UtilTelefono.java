@@ -11,12 +11,13 @@ public final class UtilTelefono {
 	/**
 	 * Deja el numero como {countryCode}{9 digitos}, aceptando entradas con
 	 * espacios, guiones o el prefijo +51. Ej: "987 654 321" -> "51987654321".
+	 * Si el valor llega vacio o null devuelve null (telefono opcional).
 	 */
 	public static String normalizar(String rawPhone, String countryCode) {
-		if (rawPhone == null || rawPhone.isBlank()) {
-			throw new SolicitudInvalidaException("El numero de telefono es obligatorio.");
+		String digits = sanitizarDigitos(rawPhone);
+		if (digits.isEmpty()) {
+			return null;
 		}
-		String digits = rawPhone.replaceAll("\\D", "");
 
 		if (digits.startsWith(countryCode) && digits.length() == countryCode.length() + 9) {
 			return digits;
@@ -25,6 +26,10 @@ public final class UtilTelefono {
 			return countryCode + digits;
 		}
 		throw new SolicitudInvalidaException("Numero de telefono invalido. Debe tener 9 digitos (Peru).");
+	}
+
+	private static String sanitizarDigitos(String rawPhone) {
+		return rawPhone == null ? "" : rawPhone.replaceAll("\\D", "");
 	}
 
 	public static String validarDni(String dni) {

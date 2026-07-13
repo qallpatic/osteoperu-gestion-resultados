@@ -25,14 +25,14 @@
       </div>
 
       <div class="field">
-        <label for="phone"><i class="fas fa-mobile-screen"></i> Número de teléfono</label>
+        <label for="phone"><i class="fas fa-mobile-screen"></i> Número de teléfono (opcional)</label>
         <div class="control">
           <span class="prefix">+51</span>
           <input id="phone" name="phone" type="tel" inputmode="numeric" maxlength="9"
-                 placeholder="9 dígitos" [(ngModel)]="phone" />
+                 placeholder="Opcional" [(ngModel)]="phone" />
         </div>
         @if (phone && !phoneValid()) {
-          <small class="hint">Ingresa 9 dígitos.</small>
+          <small class="hint">Ingresa 9 dígitos o deja el campo vacío.</small>
         }
       </div>
     </div>

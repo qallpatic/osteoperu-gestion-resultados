@@ -143,4 +143,20 @@ export class MisResultadosComponent implements OnInit {
     }
     return 'Ocurrió un error. Intenta nuevamente.';
   }
+
+  /** Convierte el mensaje a HTML con enlaces clickeables. */
+  mensajeHtml(texto: string): string {
+    if (!texto) {
+      return '';
+    }
+    const htmlEscapado = texto
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\r?\n/g, '<br>');
+    return htmlEscapado.replace(
+      /(https?:\/\/[^\s<]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+    );
+  }
 }

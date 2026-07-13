@@ -171,25 +171,56 @@ export class AdmisionComponent implements OnInit {
   }
 
   imprimir(c: CredencialResponse): void {
-    const w = window.open('', '_blank', 'width=420,height=680');
+    const w = window.open('', '_blank', 'width=320,height=700');
     if (!w) {
       return;
     }
     w.document.write(`
       <html><head><title>Credencial ${c.usuario}</title>
       <style>
-        body{font-family:Arial,Helvetica,sans-serif;color:#1f2937;padding:24px;text-align:center}
-        .web{font-size:12px;color:#075e54;word-break:break-all;margin-bottom:18px}
-        .row{text-align:left;margin:6px 0;font-size:14px}
-        .k{color:#6b7280;font-size:11px;text-transform:uppercase}
-        .clave{font-size:20px;font-weight:700;letter-spacing:2px;color:#043d36}
-        img{margin-top:18px}
+        @page { size: 80mm 175mm; margin: 0; }
+        html, body { width: 80mm; height: 175mm; margin: 0; padding: 0; }
+        body {
+          font-family: Arial, Helvetica, sans-serif;
+          color: #1f2937;
+          padding: 3mm;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+        }
+        .header {
+          text-align: center;
+          flex: 0 0 auto;
+          font-size: 16px;
+          font-weight: 800;
+          letter-spacing: 2px;
+          color: #043d36;
+          padding-bottom: 2mm;
+          margin-bottom: 2mm;
+          border-bottom: 1px dashed #043d36;
+        }
+        .datos { text-align: left; flex: 0 0 auto; }
+        .web { font-size: 10px; color: #075e54; word-break: break-all; margin-bottom: 2mm; }
+        .row { text-align: left; margin: 0.5mm 0; font-size: 11px; line-height: 1.25; }
+        .k { color: #6b7280; font-size: 8px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .clave { font-size: 14px; font-weight: 700; letter-spacing: 1.5px; color: #043d36; }
+        .qr-wrap {
+          flex: 0 0 auto;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-top: 2mm;
+        }
+        .qr-wrap img { width: 28mm; height: 28mm; display: block; }
       </style></head><body>
-        <div class="web"><b>WEB:</b> ${c.portalUrl}</div>
-        <div class="row"><span class="k">Nombre</span><br>${c.nombre ?? '-'}</div>
-        <div class="row"><span class="k">Usuario</span><br>${c.usuario}</div>
-        <div class="row"><span class="k">Clave</span><br><span class="clave">${c.clave}</span></div>
-        <img src="${c.qrUrl}" alt="QR" width="220" height="220" />
+        <div class="header">OSTEOPERU</div>
+        <div class="datos">
+          <div class="web"><b>WEB:</b> ${c.portalUrl}</div>
+          <div class="row"><span class="k">Nombre</span><br>${c.nombre ?? '-'}</div>
+          <div class="row"><span class="k">Usuario</span><br>${c.usuario}</div>
+          <div class="row"><span class="k">Clave</span><br><span class="clave">${c.clave}</span></div>
+        </div>
+        <div class="qr-wrap"><img src="${c.qrUrl}" alt="QR" /></div>
       </body></html>`);
     w.document.close();
     w.focus();

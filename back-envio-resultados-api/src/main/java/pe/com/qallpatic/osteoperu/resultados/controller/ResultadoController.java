@@ -43,8 +43,8 @@ public class ResultadoController {
 	@PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
 			produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<UploadResultadoResponse> upload(
-			@Parameter(description = "Numero destino (9 digitos o con prefijo 51)")
-			@RequestParam("phone") String phone,
+			@Parameter(description = "Numero destino opcional (9 digitos o con prefijo 51)")
+			@RequestParam(value = "phone", required = false) String phone,
 			@Parameter(description = "DNI del paciente (8 digitos)")
 			@RequestParam("dni") String dni,
 			@Parameter(description = "Nombre del paciente (opcional, se usa en el SMS)")

@@ -41,7 +41,7 @@ public class Resultado extends EntidadAuditable {
 	@Column(name = "ID_RESULTADO")
 	private Long id;
 
-	@Column(name = "TELEFONO", nullable = false, length = 20)
+	@Column(name = "TELEFONO", length = 20)
 	private String telefono;
 
 	@Column(name = "DNI", nullable = false, length = 20)

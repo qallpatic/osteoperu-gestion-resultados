@@ -67,6 +67,12 @@
   color: var(--brand-900); font-size: 0.9rem; line-height: 1.5;
 }
 .mensaje i { color: var(--brand-500); margin-top: 2px; }
+.mensaje__body { flex: 1; min-width: 0; word-break: break-word; }
+.mensaje__body a {
+  color: var(--brand-700); font-weight: 600; text-decoration: underline;
+  word-break: break-all;
+}
+.mensaje__body a:hover { color: var(--brand-500); }
 
 .archivos { display: flex; flex-direction: column; gap: 10px; }
 .arch { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; flex-wrap: wrap; }

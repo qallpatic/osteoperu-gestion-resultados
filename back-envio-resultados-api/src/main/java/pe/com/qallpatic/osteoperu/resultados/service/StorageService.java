@@ -50,6 +50,9 @@ public class StorageService {
 	}
 
 	public String buildFolderName(String phone, String dni) {
+		if (phone == null || phone.isBlank()) {
+			return dni;
+		}
 		return phone + "_" + dni;
 	}
 

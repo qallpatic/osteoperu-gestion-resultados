@@ -73,6 +73,7 @@ public class ResultadoService {
 		String phone = UtilTelefono.normalizar(rawPhone, appProperties.getPhone().getCountryCode());
 		String dni = UtilTelefono.validarDni(rawDni);
 		String folderName = storageService.buildFolderName(phone, dni);
+		boolean tieneTelefono = phone != null;
 
 		// Validacion de nombre (RENIEC vs PDF)
 		ValidacionNombre val = validarNombre(dni, files);
@@ -106,7 +107,7 @@ public class ResultadoService {
 				.mensaje(mensaje != null && !mensaje.isBlank() ? mensaje.trim() : null)
 				.carpeta(folderName)
 				.tokenPublico(generateUniqueToken())
-				.estadoSms(EstadoSms.PENDIENTE)
+				.estadoSms(tieneTelefono ? EstadoSms.PENDIENTE : EstadoSms.DESHABILITADO)
 				.contadorVistas(0)
 				.build();
 		resultado.setUsuarioCreacion(createdBy);
@@ -143,14 +144,20 @@ public class ResultadoService {
 		EnlaceCorto enlace = shortLinkService.create(viewerUrl, "RESULTADO", resultado.getId());
 		String smsLink = buildShortUrl(enlace.getCodigoCorto());
 
-		smsService.enqueueResultLink(resultado.getId(), phone, nombrePaciente, smsLink);
+		String smsStatus;
+		if (tieneTelefono) {
+			smsService.enqueueResultLink(resultado.getId(), phone, nombrePaciente, smsLink);
+			smsStatus = EstadoSms.EN_COLA.name();
+		} else {
+			smsStatus = "SIN_TELEFONO";
+		}
 
 		registrarLog(resultado.getId(), dni, createdBy, EstadoCarga.EXITO,
 				"Carga exitosa. Archivos: " + storedNames.size(),
 				val.nombreReniec(), val.nombrePdf(), val.verificado() ? val.coincide() : null);
 
-		log.info("Resultados cargados. resultado={}, archivos={}, folder={}, link={}",
-				resultado.getId(), storedNames.size(), folderName, smsLink);
+		log.info("Resultados cargados. resultado={}, archivos={}, folder={}, link={}, sms={}",
+				resultado.getId(), storedNames.size(), folderName, smsLink, smsStatus);
 
 		return UploadResultadoResponse.builder()
 				.batchId(resultado.getId())
@@ -161,7 +168,7 @@ public class ResultadoService {
 				.storedFiles(storedNames)
 				.shortLink(smsLink)
 				.viewerUrl(viewerUrl)
-				.smsStatus(EstadoSms.EN_COLA.name())
+				.smsStatus(smsStatus)
 				.requiereConfirmacion(false)
 				.nombreReniec(val.nombreReniec())
 				.nombrePdf(val.nombrePdf())

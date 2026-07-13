@@ -82,7 +82,8 @@ export class UploadComponent implements OnInit {
   }
 
   phoneValid(): boolean {
-    return /^\d{9}$/.test(this.phone);
+    // Telefono opcional: vacio es valido, cuando hay valor exige 9 digitos.
+    return this.phone === '' || /^\d{9}$/.test(this.phone);
   }
 
   dniValid(): boolean {
