@@ -120,6 +120,8 @@ reniec:
   # En produccion mover el token a la variable de entorno RENIEC_TOKEN.
   token: ${RENIEC_TOKEN:sk_10724.CaV0hlik8qjqno2Opn8FZA7mzlLegx43}
   timeout-ms: ${RENIEC_TIMEOUT_MS:6000}
+  # TTL del cache local RENIEC_CACHE (dias). Por defecto medio ano: 180.
+  cache-dias: ${RENIEC_CACHE_DIAS:180}
 
 management:
   endpoints:

@@ -31,8 +31,7 @@ public class UsuarioAutenticado implements UserDetails {
 		this.id = u.getId();
 		this.usuario = u.getUsuario();
 		this.contrasena = u.getContrasena();
-		this.nombreCompleto = ((u.getNombre() == null ? "" : u.getNombre()) + " "
-				+ (u.getApellido() == null ? "" : u.getApellido())).trim();
+		this.nombreCompleto = (u.getNombre() == null ? "" : u.getNombre()).trim();
 		this.activo = u.isEstado();
 		this.roles = u.getRoles().stream().map(Rol::getNombre).collect(Collectors.toSet());
 	}

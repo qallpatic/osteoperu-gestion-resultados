@@ -93,8 +93,8 @@
       <p class="modal__sub">DNI <b>{{ genDni }}</b></p>
     }
     <div class="field">
-      <label>Nombre <small>(si lo dejas vacío se toma de RENIEC)</small></label>
-      <input [(ngModel)]="genNombre" maxlength="120" placeholder="Nombre del paciente" />
+      <label>Nombre completo <small>(si lo dejas vacío se toma de RENIEC)</small></label>
+      <input [(ngModel)]="genNombre" maxlength="250" placeholder="APELLIDO_P APELLIDO_M, NOMBRES" />
     </div>
     <div class="field">
       <label>Teléfono (para enviar la credencial por SMS)</label>

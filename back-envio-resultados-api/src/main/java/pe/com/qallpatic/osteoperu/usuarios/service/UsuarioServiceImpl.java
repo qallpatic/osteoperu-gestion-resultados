@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.com.qallpatic.osteoperu.compartido.excepcion.RecursoNoEncontradoException;
 import pe.com.qallpatic.osteoperu.compartido.excepcion.SolicitudInvalidaException;
 import pe.com.qallpatic.osteoperu.compartido.respuesta.PaginaResponse;
+import pe.com.qallpatic.osteoperu.compartido.util.NombreParser;
 import pe.com.qallpatic.osteoperu.seguridad.entity.Rol;
 import pe.com.qallpatic.osteoperu.seguridad.entity.Usuario;
 import pe.com.qallpatic.osteoperu.seguridad.repository.RolRepository;
@@ -71,13 +72,13 @@ public class UsuarioServiceImpl implements UsuarioService {
 		Usuario usuario = Usuario.builder()
 				.usuario(solicitud.usuario().trim())
 				.nombre(solicitud.nombre())
-				.apellido(solicitud.apellido())
 				.correo(solicitud.correo())
 				.dni(solicitud.dni())
 				.contrasena(passwordEncoder.encode(solicitud.password()))
 				.estado(true)
 				.roles(new HashSet<>(resolverRoles(solicitud.rolesIds())))
 				.build();
+		aplicarNombre(usuario, solicitud.nombre());
 		usuario.setUsuarioCreacion(actor);
 
 		Usuario guardado = usuarioRepository.save(usuario);
@@ -94,13 +95,27 @@ public class UsuarioServiceImpl implements UsuarioService {
 			throw new UsuarioYaExisteException("Ya existe un usuario con el DNI '" + solicitud.dni() + "'.");
 		}
 
-		usuario.setNombre(solicitud.nombre());
-		usuario.setApellido(solicitud.apellido());
+		aplicarNombre(usuario, solicitud.nombre());
 		usuario.setCorreo(solicitud.correo());
 		usuario.setDni(solicitud.dni());
 		usuario.setUsuarioModificacion(actor);
 
 		return usuarioMapper.toResponse(usuarioRepository.save(usuario));
+	}
+
+	/** Aplica el nombre canonico al usuario, segmentando en las 3 columnas. */
+	private void aplicarNombre(Usuario usuario, String nombreCompleto) {
+		if (nombreCompleto == null) {
+			return;
+		}
+		NombreParser np = NombreParser.parsear(nombreCompleto);
+		if (np.esVacio()) {
+			return;
+		}
+		usuario.setNombre(np.completo());
+		usuario.setNombres(np.nombres());
+		usuario.setApellidoPaterno(np.apellidoPaterno());
+		usuario.setApellidoMaterno(np.apellidoMaterno());
 	}
 
 	@Override

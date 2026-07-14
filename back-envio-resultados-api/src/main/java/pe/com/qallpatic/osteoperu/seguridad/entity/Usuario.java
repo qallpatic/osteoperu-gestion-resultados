@@ -45,8 +45,14 @@ public class Usuario extends EntidadAuditable {
 	@Column(name = "NOMBRE", length = 120)
 	private String nombre;
 
-	@Column(name = "APELLIDO", length = 120)
-	private String apellido;
+	@Column(name = "NOMBRES", length = 120)
+	private String nombres;
+
+	@Column(name = "APELLIDO_PATERNO", length = 120)
+	private String apellidoPaterno;
+
+	@Column(name = "APELLIDO_MATERNO", length = 120)
+	private String apellidoMaterno;
 
 	@Column(name = "CORREO", length = 150)
 	private String correo;

@@ -13,7 +13,7 @@ import java.util.Optional;
  * Incluye un DNI de demo para probar el flujo de validacion; el resto se
  * considera "no verificable" y la carga continua registrando el log.
  */
-@Component
+@Component("clienteReniecMock")
 @ConditionalOnProperty(prefix = "reniec", name = "enabled", havingValue = "false", matchIfMissing = true)
 @Slf4j
 public class ClienteReniecMock implements ClienteReniec {

@@ -16,7 +16,7 @@ public final class UsuarioSpecs {
 	}
 
 	/**
-	 * @param buscar texto libre (usuario, nombre, apellido, correo o dni)
+	 * @param buscar texto libre (usuario, nombre, correo o dni)
 	 * @param rol    nombre de rol exacto (opcional)
 	 * @param estado activo/inactivo (opcional)
 	 */
@@ -29,7 +29,9 @@ public final class UsuarioSpecs {
 				predicados.add(cb.or(
 						cb.like(cb.lower(root.get("usuario")), like),
 						cb.like(cb.lower(root.<String>get("nombre")), like),
-						cb.like(cb.lower(root.<String>get("apellido")), like),
+						cb.like(cb.lower(root.<String>get("nombres")), like),
+						cb.like(cb.lower(root.<String>get("apellidoPaterno")), like),
+						cb.like(cb.lower(root.<String>get("apellidoMaterno")), like),
 						cb.like(cb.lower(root.<String>get("correo")), like),
 						cb.like(cb.lower(root.<String>get("dni")), like)));
 			}

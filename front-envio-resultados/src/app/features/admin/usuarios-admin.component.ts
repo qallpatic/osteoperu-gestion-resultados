@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { UsuariosAdminService } from './usuarios-admin.service';
+import { ReniecService } from '../../core/services/reniec.service';
 import { RolResponse, UsuarioResponse } from './admin.models';
 
 type Modal = 'crear' | 'editar' | 'roles' | 'password' | 'eliminar' | null;
@@ -15,6 +16,7 @@ type Modal = 'crear' | 'editar' | 'roles' | 'password' | 'eliminar' | null;
 })
 export class UsuariosAdminComponent implements OnInit {
   private readonly srv = inject(UsuariosAdminService);
+  private readonly reniec = inject(ReniecService);
 
   // Listado
   readonly usuarios = signal<UsuarioResponse[]>([]);
@@ -36,10 +38,13 @@ export class UsuariosAdminComponent implements OnInit {
   readonly seleccionado = signal<UsuarioResponse | null>(null);
   readonly guardando = signal(false);
   readonly modalError = signal('');
+  /** Spinner mientras se autocompleta el nombre desde RENIEC por DNI. */
+  readonly consultandoReniec = signal(false);
 
-  form = { usuario: '', nombre: '', apellido: '', correo: '', dni: '', password: '' };
+  form = { usuario: '', nombre: '', correo: '', dni: '', password: '' };
   readonly rolesSel = signal<number[]>([]);
   passwordNueva = '';
+  private ultimoDniReniec = '';
 
   readonly rangoDesde = computed(() =>
     this.totalElementos() === 0 ? 0 : this.pagina() * this.tamano + 1,
@@ -108,9 +113,10 @@ export class UsuariosAdminComponent implements OnInit {
 
   // ===== Abrir modales =====
   abrirCrear(): void {
-    this.form = { usuario: '', nombre: '', apellido: '', correo: '', dni: '', password: '' };
+    this.form = { usuario: '', nombre: '', correo: '', dni: '', password: '' };
     this.rolesSel.set([]);
     this.modalError.set('');
+    this.ultimoDniReniec = '';
     this.modal.set('crear');
   }
 
@@ -119,12 +125,12 @@ export class UsuariosAdminComponent implements OnInit {
     this.form = {
       usuario: u.usuario,
       nombre: u.nombre ?? '',
-      apellido: u.apellido ?? '',
       correo: u.correo ?? '',
       dni: u.dni ?? '',
       password: '',
     };
     this.modalError.set('');
+    this.ultimoDniReniec = '';
     this.modal.set('editar');
   }
 
@@ -166,7 +172,6 @@ export class UsuariosAdminComponent implements OnInit {
       .crear({
         usuario: this.form.usuario.trim(),
         nombre: this.form.nombre || undefined,
-        apellido: this.form.apellido || undefined,
         correo: this.form.correo || undefined,
         dni: this.form.dni || undefined,
         password: this.form.password,
@@ -184,7 +189,6 @@ export class UsuariosAdminComponent implements OnInit {
     this.srv
       .actualizar(u.id, {
         nombre: this.form.nombre || undefined,
-        apellido: this.form.apellido || undefined,
         correo: this.form.correo || undefined,
         dni: this.form.dni || undefined,
       })
@@ -239,6 +243,29 @@ export class UsuariosAdminComponent implements OnInit {
         this.cargar();
       },
       error: (e) => this.notice.set({ type: 'error', text: this.msg(e) }),
+    });
+  }
+
+  /**
+   * Autocompleta el campo "Nombre completo" al completar el DNI.
+   * El backend ya cachea RENIEC en BD, asi que este lookup es gratuito
+   * para DNIs vistos en los ultimos 180 dias.
+   */
+  autocompletarNombrePorDni(): void {
+    const dni = (this.form.dni ?? '').trim();
+    if (!/^\d{8}$/.test(dni) || dni === this.ultimoDniReniec) {
+      return;
+    }
+    this.ultimoDniReniec = dni;
+    this.consultandoReniec.set(true);
+    this.reniec.consultarNombre(dni).subscribe({
+      next: (nombre) => {
+        this.consultandoReniec.set(false);
+        if (nombre && !this.form.nombre) {
+          this.form.nombre = nombre;
+        }
+      },
+      error: () => this.consultandoReniec.set(false),
     });
   }
 

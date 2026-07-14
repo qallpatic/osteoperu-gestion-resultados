@@ -61,7 +61,7 @@
           @for (u of usuarios(); track u.id) {
             <tr>
               <td class="mono">{{ u.usuario }}</td>
-              <td class="celda-nombre">{{ (u.nombre || '') + ' ' + (u.apellido || '') }}</td>
+              <td class="celda-nombre">{{ u.nombre || '—' }}</td>
               <td>{{ u.correo || '—' }}</td>
               <td>{{ u.dni || '—' }}</td>
               <td>
@@ -127,15 +127,15 @@
           </label>
           <label class="mf">
             <span>DNI</span>
-            <input name="dni" [(ngModel)]="form.dni" maxlength="15" placeholder="DNI" />
+            <input name="dni" [(ngModel)]="form.dni" maxlength="8" inputmode="numeric" placeholder="8 dígitos"
+                   (blur)="autocompletarNombrePorDni()" />
           </label>
-          <label class="mf">
-            <span>Nombre</span>
-            <input name="nombre" [(ngModel)]="form.nombre" placeholder="Nombre" />
-          </label>
-          <label class="mf">
-            <span>Apellido</span>
-            <input name="apellido" [(ngModel)]="form.apellido" placeholder="Apellido" />
+          <label class="mf mf--full">
+            <span>Nombre completo
+              @if (consultandoReniec()) { <i class="fas fa-spinner fa-spin" title="Consultando RENIEC..."></i> }
+            </span>
+            <input name="nombre" [(ngModel)]="form.nombre" maxlength="250"
+                   placeholder="APELLIDO_P APELLIDO_M, NOMBRES" />
           </label>
           <label class="mf mf--full">
             <span>Correo</span>

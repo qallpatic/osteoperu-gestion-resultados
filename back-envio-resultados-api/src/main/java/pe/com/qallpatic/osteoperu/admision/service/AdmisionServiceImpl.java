@@ -15,6 +15,7 @@ import pe.com.qallpatic.osteoperu.admision.dto.PacienteAdmisionResponse;
 import pe.com.qallpatic.osteoperu.compartido.excepcion.RecursoNoEncontradoException;
 import pe.com.qallpatic.osteoperu.compartido.respuesta.PaginaResponse;
 import pe.com.qallpatic.osteoperu.compartido.util.GeneradorCodigos;
+import pe.com.qallpatic.osteoperu.compartido.util.NombreParser;
 import pe.com.qallpatic.osteoperu.compartido.util.UtilTelefono;
 import pe.com.qallpatic.osteoperu.config.AppProperties;
 import pe.com.qallpatic.osteoperu.config.SmsProperties;
@@ -84,10 +85,12 @@ public class AdmisionServiceImpl implements AdmisionService {
 					"El DNI " + dni + " ya tiene una cuenta activa. Anulela antes de regenerar.");
 		}
 
-		String nombre = (solicitud.nombre() != null && !solicitud.nombre().isBlank())
+		String nombreCompleto = (solicitud.nombre() != null && !solicitud.nombre().isBlank())
 				? solicitud.nombre().trim()
 				: clienteReniec.consultar(dni).map(DatosReniec::nombreCompleto)
 						.orElse(existente != null ? existente.getNombre() : null);
+
+		NombreParser parser = NombreParser.parsear(nombreCompleto);
 
 		String clave = GeneradorCodigos.generar(6).toUpperCase();
 
@@ -96,8 +99,11 @@ public class AdmisionServiceImpl implements AdmisionService {
 			// Reactivar la cuenta anulada con una nueva clave.
 			existente.setEstado(true);
 			existente.setContrasena(passwordEncoder.encode(clave));
-			if (nombre != null) {
-				existente.setNombre(nombre);
+			if (!parser.esVacio()) {
+				existente.setNombre(parser.completo());
+				existente.setNombres(parser.nombres());
+				existente.setApellidoPaterno(parser.apellidoPaterno());
+				existente.setApellidoMaterno(parser.apellidoMaterno());
 			}
 			existente.setUsuarioModificacion(actor);
 			usuario = usuarioRepository.save(existente);
@@ -107,7 +113,10 @@ public class AdmisionServiceImpl implements AdmisionService {
 			usuario = Usuario.builder()
 					.usuario(dni)
 					.dni(dni)
-					.nombre(nombre)
+					.nombre(parser.esVacio() ? null : parser.completo())
+					.nombres(parser.nombres())
+					.apellidoPaterno(parser.apellidoPaterno())
+					.apellidoMaterno(parser.apellidoMaterno())
 					.estado(true)
 					.contrasena(passwordEncoder.encode(clave))
 					.roles(new HashSet<>(Set.of(rolPaciente)))
@@ -118,17 +127,17 @@ public class AdmisionServiceImpl implements AdmisionService {
 
 		// Pendiente de subir resultados si aun no tiene ninguno cargado.
 		boolean pendiente = !resultadoRepository.existsByDni(dni);
-		upsertPaciente(dni, nombre, solicitud.telefono(), usuario.getId(), actor, pendiente);
+		upsertPaciente(dni, parser, solicitud.telefono(), usuario.getId(), actor, pendiente);
 
 		String portalUrl = appProperties.getPortalUrl();
 		String qrUrl = appProperties.getQr().getBaseUrl() + "?size=220x220&data="
 				+ URLEncoder.encode(portalUrl == null ? "" : portalUrl, StandardCharsets.UTF_8);
 
-		boolean smsEnviado = enviarCredencialSms(solicitud.telefono(), nombre, dni, clave, portalUrl);
+		boolean smsEnviado = enviarCredencialSms(solicitud.telefono(), parser.completo(), dni, clave, portalUrl);
 
 		log.info("Credencial generada. dni={}, reactivada={}, sms={}, por={}",
 				dni, existente != null, smsEnviado, actor);
-		return new CredencialResponse(dni, nombre, dni, clave, portalUrl, qrUrl, smsEnviado);
+		return new CredencialResponse(dni, parser.completo(), dni, clave, portalUrl, qrUrl, smsEnviado);
 	}
 
 	@Override
@@ -156,11 +165,16 @@ public class AdmisionServiceImpl implements AdmisionService {
 				.orElse("SIN_CUENTA");
 	}
 
-	private void upsertPaciente(String dni, String nombre, String telefono, Long idUsuario,
+	private void upsertPaciente(String dni, NombreParser parser, String telefono, Long idUsuario,
 			String actor, boolean pendiente) {
 		Paciente paciente = pacienteRepository.findByDni(dni).orElseGet(Paciente::new);
 		paciente.setDni(dni);
-		paciente.setNombre(nombre);
+		if (!parser.esVacio()) {
+			paciente.setNombre(parser.completo());
+			paciente.setNombres(parser.nombres());
+			paciente.setApellidoPaterno(parser.apellidoPaterno());
+			paciente.setApellidoMaterno(parser.apellidoMaterno());
+		}
 		if (telefono != null && !telefono.isBlank()) {
 			paciente.setTelefono(telefono.trim());
 		}

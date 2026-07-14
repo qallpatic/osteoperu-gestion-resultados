@@ -39,12 +39,12 @@
 
     <div class="field">
       <label for="patientName">
-        <i class="fas fa-user"></i> Nombre del paciente
+        <i class="fas fa-user"></i> Nombre completo
         @if (buscandoNombre()) { <i class="fas fa-spinner fa-spin" title="Consultando RENIEC..."></i> }
       </label>
       <div class="control">
-        <input id="patientName" name="patientName" type="text" maxlength="120"
-               placeholder="Se autocompleta con el DNI (RENIEC)" [(ngModel)]="patientName" />
+        <input id="patientName" name="patientName" type="text" maxlength="250"
+               placeholder="APELLIDO_P APELLIDO_M, NOMBRES" [(ngModel)]="patientName" />
       </div>
     </div>
 

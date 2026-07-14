@@ -15,4 +15,10 @@ public class ReniecProperties {
 	private String url;
 	private String token;
 	private long timeoutMs = 6000;
+
+	/**
+	 * TTL del cache local (RENIEC_CACHE) en dias. Por defecto 180 (medio ano).
+	 * Cada DNI se cobra 1 vez al proveedor en este periodo.
+	 */
+	private int cacheDias = 180;
 }

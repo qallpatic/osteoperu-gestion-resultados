@@ -1,6 +1,7 @@
 package pe.com.qallpatic.osteoperu.usuarios.mapper;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 import pe.com.qallpatic.osteoperu.seguridad.entity.Rol;
 import pe.com.qallpatic.osteoperu.seguridad.entity.Usuario;
@@ -13,6 +14,9 @@ import java.util.Set;
 @Mapper(componentModel = "spring")
 public interface UsuarioMapper {
 
+	@Mapping(source = "nombres", target = "nombres")
+	@Mapping(source = "apellidoPaterno", target = "apellidoPaterno")
+	@Mapping(source = "apellidoMaterno", target = "apellidoMaterno")
 	UsuarioResponse toResponse(Usuario usuario);
 
 	/** Usado por MapStruct para el campo {@code roles}: nombres ordenados. */

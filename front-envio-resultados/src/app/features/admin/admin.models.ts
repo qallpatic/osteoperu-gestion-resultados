@@ -9,8 +9,11 @@ export interface RolResponse {
 export interface UsuarioResponse {
   id: number;
   usuario: string;
+  /** Nombre canónico "APELLIDO_P APELLIDO_M, NOMBRES" — lo que se muestra y se imprime. */
   nombre: string | null;
-  apellido: string | null;
+  nombres: string | null;
+  apellidoPaterno: string | null;
+  apellidoMaterno: string | null;
   correo: string | null;
   dni: string | null;
   estado: boolean;
@@ -30,8 +33,8 @@ export interface PaginaResponse<T> {
 
 export interface UsuarioRequest {
   usuario: string;
+  /** Nombre canónico "APELLIDO_P APELLIDO_M, NOMBRES". El backend lo segmenta. */
   nombre?: string;
-  apellido?: string;
   correo?: string;
   dni?: string;
   password: string;
@@ -40,7 +43,6 @@ export interface UsuarioRequest {
 
 export interface UsuarioUpdateRequest {
   nombre?: string;
-  apellido?: string;
   correo?: string;
   dni?: string;
 }
