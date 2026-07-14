@@ -14,13 +14,13 @@
   <form class="card" (ngSubmit)="send()">
     <div class="grid">
       <div class="field">
-        <label for="dni"><i class="fas fa-id-card"></i> DNI</label>
+        <label for="dni"><i class="fas fa-id-card"></i> Doc. identidad (DNI/CE) <b class="req">*</b></label>
         <div class="control">
-          <input id="dni" name="dni" type="text" inputmode="numeric" maxlength="8"
-                 placeholder="8 dígitos" [(ngModel)]="dni" (blur)="autocompletarNombre()" />
+          <input id="dni" name="dni" type="text" inputmode="numeric" maxlength="12"
+                 placeholder="8-12 dígitos" [(ngModel)]="dni" (blur)="autocompletarNombre()" />
         </div>
         @if (dni && !dniValid()) {
-          <small class="hint">Ingresa 8 dígitos.</small>
+          <small class="hint">Ingresa entre 8 y 12 dígitos.</small>
         }
       </div>
 
@@ -28,8 +28,10 @@
         <label for="phone"><i class="fas fa-mobile-screen"></i> Número de teléfono (opcional)</label>
         <div class="control">
           <span class="prefix">+51</span>
-          <input id="phone" name="phone" type="tel" inputmode="numeric" maxlength="9"
-                 placeholder="Opcional" [(ngModel)]="phone" />
+          <input id="phone" name="phone" type="tel" inputmode="numeric"
+                 placeholder="### ### ###"
+                 [value]="formatPhoneDisplay(phone)"
+                 (input)="onPhoneInput($event)" />
         </div>
         @if (phone && !phoneValid()) {
           <small class="hint">Ingresa 9 dígitos o deja el campo vacío.</small>
@@ -49,15 +51,27 @@
     </div>
 
     <div class="field">
-      <label for="mensaje"><i class="fas fa-comment-dots"></i> Mensaje (opcional)</label>
-      <textarea id="mensaje" name="mensaje" rows="2" maxlength="500"
+      <label for="mensaje" class="label--with-hint">
+        <span class="label__text"><i class="fas fa-comment-dots"></i> Mensaje <b class="req">*</b></span>
+        @if (mensajeTocado() && !mensajeValido()) {
+          <span class="hint hint--inline">El mensaje es obligatorio.</span>
+        }
+      </label>
+      <textarea id="mensaje" name="mensaje" maxlength="500"
                 placeholder="Mensaje para el paciente (máx. 500 caracteres)"
-                [(ngModel)]="mensaje"></textarea>
+                [(ngModel)]="mensaje"
+                (input)="onMensajeInteraccion()"
+                (blur)="onMensajeInteraccion()"></textarea>
       <small class="contador">{{ mensaje.length }}/500</small>
     </div>
 
     <div class="field">
-      <label><i class="fas fa-cloud-arrow-up"></i> Archivos de resultados</label>
+      <label>
+        <i class="fas fa-cloud-arrow-up"></i> Archivos adjuntos
+        @if (files().length) {
+          <span class="files-count">({{ files().length }})</span>
+        }
+      </label>
       <label class="drop" [class.drop--active]="dragging()"
              (dragover)="onDragOver($event)"
              (dragleave)="dragging.set(false)"

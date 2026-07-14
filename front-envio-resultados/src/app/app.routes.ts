@@ -63,8 +63,8 @@ export const routes: Routes = [
           import('./features/admin/usuarios-admin.component').then((m) => m.UsuariosAdminComponent),
       },
       {
-        path: 'admision',
-        canActivate: [roleGuard(['ADMIN', 'ADMISION'])],
+        path: 'gestion-usuarios',
+        canActivate: [roleGuard(['ADMIN', 'RESULTADOS', 'ADMISION'])],
         loadComponent: () =>
           import('./features/admision/admision.component').then((m) => m.AdmisionComponent),
       },

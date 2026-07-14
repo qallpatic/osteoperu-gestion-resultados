@@ -50,8 +50,24 @@
 
 .hint { display: block; margin-top: 6px; color: var(--danger); font-size: 0.8rem; }
 
+.req { color: var(--danger); font-weight: 700; margin-left: 2px; }
+
+/* Label con hint en linea (a la derecha) — usado para "Mensaje". */
+.label--with-hint { width: 100%; justify-content: space-between; }
+.label__text { display: inline-flex; align-items: center; gap: 8px; }
+.hint--inline { display: inline; margin-top: 0; font-weight: 500; }
+
+/* Contador de archivos al lado del titulo "Archivos adjuntos". */
+.files-count {
+  margin-left: 6px;
+  color: var(--muted-2);
+  font-weight: 500;
+  font-size: 0.8rem;
+}
+
 .field textarea {
   width: 100%;
+  min-height: 135px;
   padding: 9px 14px;
   border: 2px solid var(--border);
   border-radius: 12px;
@@ -84,7 +100,17 @@
 .drop__hint { font-size: 0.82rem; color: var(--muted); }
 
 /* Lista de archivos */
-.files { list-style: none; margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.files {
+  list-style: none; margin-top: 12px;
+  display: flex; flex-direction: column; gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.files::-webkit-scrollbar { width: 6px; }
+.files::-webkit-scrollbar-track { background: transparent; }
+.files::-webkit-scrollbar-thumb { background: var(--brand-300); border-radius: 6px; }
+.files::-webkit-scrollbar-thumb:hover { background: var(--brand-500); }
 .file {
   display: flex; align-items: center; gap: 12px;
   padding: 9px 14px;

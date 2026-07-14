@@ -108,10 +108,10 @@ export class DashboardComponent {
       descripcion: 'Cargar y enviar resultados de pacientes',
     },
     {
-      label: 'Admisión',
+      label: 'Gestión de usuarios',
       icon: 'fa-id-badge',
-      route: '/admision',
-      roles: ['ADMIN', 'ADMISION'],
+      route: '/gestion-usuarios',
+      roles: ['ADMIN', 'RESULTADOS', 'ADMISION'],
       descripcion: 'Generar y anular accesos de pacientes',
     },
     {

@@ -52,6 +52,8 @@ export class UploadComponent implements OnInit {
   dragging = signal(false);
   sending = signal(false);
   notice = signal<{ type: 'ok' | 'error'; text: string } | null>(null);
+  /** Marca si el usuario interactuo con el textarea de mensaje (para mostrar el hint solo cuando aplica). */
+  mensajeTocado = signal(false);
 
   /** Autocompletado de nombre por RENIEC. */
   buscandoNombre = signal(false);
@@ -81,18 +83,49 @@ export class UploadComponent implements OnInit {
     return d.length <= 9 ? d : d.slice(-9);
   }
 
+  /** Da formato visual "### ### ###" a un telefono (9 digitos o menos). */
+  formatPhoneDisplay(value: string): string {
+    const digits = this.normalizarTelefono(value);
+    const a = digits.slice(0, 3);
+    const b = digits.slice(3, 6);
+    const c = digits.slice(6, 9);
+    return [a, b, c].filter(Boolean).join(' ');
+  }
+
+  /** Handler de input para el telefono: normaliza y reformatea (cubre paste con +51 o 51). */
+  onPhoneInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.phone = this.normalizarTelefono(input.value);
+    input.value = this.formatPhoneDisplay(this.phone);
+  }
+
   phoneValid(): boolean {
     // Telefono opcional: vacio es valido, cuando hay valor exige 9 digitos.
     return this.phone === '' || /^\d{9}$/.test(this.phone);
   }
 
   dniValid(): boolean {
-    return /^\d{8}$/.test(this.dni);
+    // DNI peruano = 8 digitos. Carnet de Extranjeria (CE) = 9 a 12.
+    return /^\d{8,12}$/.test(this.dni);
   }
 
-  /** Al completar el DNI, trae el nombre desde RENIEC y autocompleta el campo. */
+  /** El mensaje es obligatorio (los adjuntos pueden ir por link externo). */
+  mensajeValido(): boolean {
+    return this.mensaje.trim().length > 0;
+  }
+
+  /** Marca el textarea como tocado al primer input/blur. */
+  onMensajeInteraccion(): void {
+    this.mensajeTocado.set(true);
+  }
+
+  /**
+   * Al completar el DNI, trae el nombre desde RENIEC y autocompleta el campo.
+   * Solo consulta si es exactamente 8 digitos (DNI): CE (>8) no existe en RENIEC,
+   * asi evitamos gastar una llamada al proveedor.
+   */
   autocompletarNombre(): void {
-    if (!this.dniValid() || this.dni === this.ultimoDniConsultado) {
+    if (!this.dniValid() || this.dni.length !== 8 || this.dni === this.ultimoDniConsultado) {
       return;
     }
     this.ultimoDniConsultado = this.dni;
@@ -109,7 +142,8 @@ export class UploadComponent implements OnInit {
   }
 
   canSend(): boolean {
-    return this.phoneValid() && this.dniValid() && this.files().length > 0;
+    // Los archivos son opcionales: el paciente puede recibirlos por link en el mensaje.
+    return this.phoneValid() && this.dniValid() && this.mensajeValido();
   }
 
   onBrowse(event: Event): void {
@@ -225,6 +259,7 @@ export class UploadComponent implements OnInit {
     this.dni = '';
     this.patientName = '';
     this.mensaje = '';
+    this.mensajeTocado.set(false);
     this.files.set([]);
   }
 

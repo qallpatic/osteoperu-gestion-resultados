@@ -23,10 +23,10 @@
 .fecha { display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; color: var(--muted-2); }
 .fecha input { padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; }
 
-.tabla-wrap { overflow-x: auto; background: #fff; border: 1px solid var(--border); border-radius: 14px; }
+.tabla-wrap { overflow: auto; max-height: calc(100dvh - 240px); background: #fff; border: 1px solid var(--border); border-radius: 14px; }
 .tabla { width: 100%; border-collapse: collapse; min-width: 900px; }
 .tabla th, .tabla td { padding: 11px 14px; text-align: left; font-size: 0.86rem; }
-.tabla thead th { background: var(--brand-050); color: var(--brand-700); font-weight: 600; white-space: nowrap; }
+.tabla thead th { position: sticky; top: 0; z-index: 2; background: var(--brand-050); color: var(--brand-700); font-weight: 600; white-space: nowrap; }
 .tabla tbody tr { border-top: 1px solid var(--border); }
 .tabla tbody tr:hover { background: #fafcfb; }
 .mono { font-weight: 600; color: var(--brand-900); }

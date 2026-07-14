@@ -27,6 +27,12 @@ WORKDIR /app
 # Copia el JAR compilado en el stage anterior.
 COPY --from=build /tmp/app.jar /app/app.jar
 
+# Zona horaria por defecto: America/Lima (UTC-5, Peru). Se sobreescribe al
+# levantar el contenedor con la variable de entorno TZ (sin rebuildear la
+# imagen). Ej.: TZ=America/Bogota docker compose up -d
+ARG TZ=America/Lima
+ENV TZ=${TZ}
+
 # Ambiente por defecto (perfil y volumen).
 # SPRING_PROFILES_ACTIVE se sobreescribe por docker-compose / .env.
 ENV SPRING_PROFILES_ACTIVE=server
@@ -34,4 +40,10 @@ ENV STORAGE_BASE_PATH=/app/uploads
 VOLUME ["/app/uploads"]
 
 EXPOSE 7090
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+# -Duser.timezone fija la zona del JVM (base de LocalDateTime.now()), con lo que
+# las fechas que se guardan/serializan coinciden con la hora real de Peru.
+# -Dfile.encoding=UTF-8 mantiene consistencia con la codificacion de MySQL.
+# Se usa el wrapper `sh -c` para que $TZ se expanda desde la variable de entorno
+# al momento del arranque (ARG/ENV evaluados en build no son overridables por
+# `docker run -e TZ=...`, pero la ENV queda disponible como ${TZ}).
+ENTRYPOINT ["sh", "-c", "exec java -Duser.timezone=\"$TZ\" -Dfile.encoding=UTF-8 -jar /app/app.jar"]

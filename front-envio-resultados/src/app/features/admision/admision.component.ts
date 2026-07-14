@@ -4,6 +4,8 @@ import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { AdmisionService, CredencialResponse, PacienteAdmision } from './admision.service';
+import { AuthService } from '../../core/auth/auth.service';
+import { ReniecService } from '../../core/services/reniec.service';
 
 @Component({
   selector: 'app-admision',
@@ -13,6 +15,19 @@ import { AdmisionService, CredencialResponse, PacienteAdmision } from './admisio
 })
 export class AdmisionComponent implements OnInit {
   private readonly srv = inject(AdmisionService);
+  private readonly auth = inject(AuthService);
+  private readonly reniec = inject(ReniecService);
+
+  /** Spinner mientras se autocompleta el nombre desde RENIEC por DNI (flujo "Nuevo usuario"). */
+  readonly consultandoReniec = signal(false);
+  /** DNI ya consultado en este modal: evita repetir el lookup para el mismo valor. */
+  private ultimoDniReniec = '';
+
+  /**
+   * Solo ADMIN/ADMISION pueden generar o anular cuentas del paciente.
+   * RESULTADOS ve la lista pero no puede ejecutar acciones de escritura.
+   */
+  readonly puedeEditarCuenta = computed(() => this.auth.tieneAlgunRol(['ADMIN', 'ADMISION']));
 
   readonly pacientes = signal<PacienteAdmision[]>([]);
   readonly cargando = signal(false);
@@ -108,15 +123,39 @@ export class AdmisionComponent implements OnInit {
   }
 
   dniGenValido(): boolean {
-    return /^\d{8}$/.test(this.genDni.trim());
+    return /^\d{8,12}$/.test(this.genDni.trim());
+  }
+
+  /**
+   * Autocompleta el campo "Nombre completo" al completar el DNI en el modal
+   * "Nuevo usuario". Solo consulta RENIEC cuando el DNI tiene exactamente 8
+   * digitos (CE >8 no existe en RENIEC y se ahorra la llamada al proveedor).
+   * Si el operador ya escribio un nombre, no lo pisa.
+   */
+  autocompletarNombrePorDni(): void {
+    const dni = (this.genDni ?? '').trim();
+    if (!/^\d{8}$/.test(dni) || dni === this.ultimoDniReniec) {
+      return;
+    }
+    this.ultimoDniReniec = dni;
+    this.consultandoReniec.set(true);
+    this.reniec.consultarNombre(dni).subscribe({
+      next: (nombre) => {
+        this.consultandoReniec.set(false);
+        if (nombre && !this.genNombre.trim()) {
+          this.genNombre = nombre;
+        }
+      },
+      error: () => this.consultandoReniec.set(false),
+    });
   }
 
   generar(): void {
     if (this.generando()) {
       return;
     }
-    if (!/^\d{8}$/.test(this.genDni.trim())) {
-      this.notice.set({ type: 'error', text: 'Ingresa un DNI válido de 8 dígitos.' });
+    if (!this.dniGenValido()) {
+      this.notice.set({ type: 'error', text: 'Ingresa un documento válido de 8 a 12 dígitos.' });
       return;
     }
     this.generando.set(true);

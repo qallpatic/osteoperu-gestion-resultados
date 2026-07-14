@@ -13,11 +13,13 @@ import {
   UploadRequest,
   UploadResultadoResponse,
 } from './resultados.models';
+import { ReniecService } from '../../core/services/reniec.service';
 
 /** Consume la API de resultados (/api/resultados). El JWT lo añade el interceptor. */
 @Injectable({ providedIn: 'root' })
 export class ResultadosService {
   private readonly http = inject(HttpClient);
+  private readonly reniec = inject(ReniecService);
   private readonly base = `${environment.apiBaseUrl}/api/resultados`;
 
   /** Carga (el endpoint devuelve el DTO directo, no envuelto). */
@@ -73,9 +75,9 @@ export class ResultadosService {
 
   /** Nombre completo desde RENIEC (para autocompletar la carga). */
   consultarReniec(dni: string): Observable<{ dni: string; nombre: string | null }> {
-    return this.http
-      .get<RespuestaApi<{ dni: string; nombre: string | null }>>(`${this.base}/reniec/${dni}`)
-      .pipe(map((r) => r.data));
+    return this.reniec.consultarNombre(dni).pipe(
+      map((nombre) => ({ dni, nombre })),
+    );
   }
 
   private armarParams(p: Record<string, string | number | undefined>): HttpParams {

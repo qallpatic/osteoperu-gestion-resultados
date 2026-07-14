@@ -24,6 +24,9 @@ services:
     environment:
       # Valores fijos / derivados que aplican a ambos entornos. Las variables
       # sensibles (DB_PASSWORD, JWT_SECRET, RENIEC_TOKEN, ...) vienen del env_file.
+      # Zona horaria del JVM: America/Lima (UTC-5, Peru). Sobre-escribible con
+      # la variable TZ en .env.dev / .env.prod sin rebuildear la imagen.
+      TZ: ${TZ:-America/Lima}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
       CONTEXT_PATH: ${CONTEXT_PATH:-/osteoperu-api-resultados}
       STORAGE_BASE_PATH: /app/uploads

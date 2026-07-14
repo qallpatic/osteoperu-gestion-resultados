@@ -77,7 +77,7 @@ public class AdmisionServiceImpl implements AdmisionService {
 
 	@Override
 	public CredencialResponse generarUsuario(GenerarUsuarioRequest solicitud, String actor) {
-		String dni = UtilTelefono.validarDni(solicitud.dni());
+		String dni = UtilTelefono.validarDocumentoIdentidad(solicitud.dni());
 
 		Usuario existente = usuarioRepository.findByUsuario(dni).orElse(null);
 		if (existente != null && existente.isEstado()) {
@@ -142,7 +142,7 @@ public class AdmisionServiceImpl implements AdmisionService {
 
 	@Override
 	public void anularUsuario(String dni, String actor) {
-		String d = UtilTelefono.validarDni(dni);
+		String d = UtilTelefono.validarDocumentoIdentidad(dni);
 		Usuario usuario = usuarioRepository.findByUsuario(d)
 				.orElseThrow(() -> new RecursoNoEncontradoException("El DNI " + d + " no tiene una cuenta."));
 

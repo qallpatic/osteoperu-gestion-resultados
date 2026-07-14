@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 import pe.com.qallpatic.osteoperu.compartido.respuesta.PaginaResponse;
 import pe.com.qallpatic.osteoperu.compartido.respuesta.RespuestaApi;
 import pe.com.qallpatic.osteoperu.resultados.dto.LogCargaResponse;
-import pe.com.qallpatic.osteoperu.resultados.dto.NombreReniecResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.PacientePendienteResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.ResultadoDetalleResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.ResultadoResumenResponse;
@@ -61,13 +60,6 @@ public class ConsultaResultadoController {
 			@RequestParam(defaultValue = "10") int tamano) {
 		return ResponseEntity.ok(RespuestaApi.ok(
 				consultaService.listarLogs(dni, desde, hasta, pagina, tamano)));
-	}
-
-	@Operation(summary = "Consultar nombre en RENIEC por DNI",
-			description = "Devuelve el nombre completo para autocompletar el formulario de carga.")
-	@GetMapping("/reniec/{dni}")
-	public ResponseEntity<RespuestaApi<NombreReniecResponse>> reniec(@PathVariable String dni) {
-		return ResponseEntity.ok(RespuestaApi.ok(consultaService.consultarReniec(dni)));
 	}
 
 	@Operation(summary = "Pacientes pendientes de subir resultados",

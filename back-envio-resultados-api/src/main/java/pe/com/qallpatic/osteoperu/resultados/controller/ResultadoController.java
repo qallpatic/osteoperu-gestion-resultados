@@ -38,23 +38,24 @@ public class ResultadoController {
 	@Operation(
 			summary = "Subir resultados de un paciente",
 			description = "Crea la carpeta {telefono}_{dni}, guarda los archivos (PDF/imagen/video), "
-					+ "genera el link corto y encola el SMS con el enlace al visor de resultados.",
+					+ "genera el link corto y encola el SMS con el enlace al visor de resultados. "
+					+ "Los archivos son opcionales: el paciente puede recibirlos por un link publicado en el mensaje.",
 			security = @SecurityRequirement(name = "bearerAuth"))
 	@PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
 			produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<UploadResultadoResponse> upload(
 			@Parameter(description = "Numero destino opcional (9 digitos o con prefijo 51)")
 			@RequestParam(value = "phone", required = false) String phone,
-			@Parameter(description = "DNI del paciente (8 digitos)")
+			@Parameter(description = "Documento de identidad del paciente (DNI 8 digitos o CE 9-12)")
 			@RequestParam("dni") String dni,
 			@Parameter(description = "Nombre del paciente (opcional, se usa en el SMS)")
 			@RequestParam(value = "patientName", required = false) String patientName,
 			@Parameter(description = "Mensaje del agente (opcional, maximo 500 caracteres)")
 			@RequestParam(value = "mensaje", required = false) @Size(max = 500) String mensaje,
-			@Parameter(description = "Archivos de resultados",
+			@Parameter(description = "Archivos de resultados (opcional)",
 					content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
 							schema = @Schema(type = "array", format = "binary")))
-			@RequestParam("files") List<MultipartFile> files,
+			@RequestParam(value = "files", required = false) List<MultipartFile> files,
 			@Parameter(description = "Confirmar la carga aunque el nombre del PDF no coincida con RENIEC")
 			@RequestParam(value = "confirmarNombre", defaultValue = "false") boolean confirmarNombre,
 			Authentication authentication) {

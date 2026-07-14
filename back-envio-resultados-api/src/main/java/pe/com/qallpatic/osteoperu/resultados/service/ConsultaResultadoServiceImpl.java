@@ -14,11 +14,9 @@ import pe.com.qallpatic.osteoperu.compartido.respuesta.PaginaResponse;
 import pe.com.qallpatic.osteoperu.compartido.util.UtilTelefono;
 import pe.com.qallpatic.osteoperu.config.AppProperties;
 import pe.com.qallpatic.osteoperu.integracion.reniec.ClienteReniec;
-import pe.com.qallpatic.osteoperu.integracion.reniec.DatosReniec;
 import pe.com.qallpatic.osteoperu.pacientes.repository.PacienteRepository;
 import pe.com.qallpatic.osteoperu.resultados.dto.ArchivoResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.LogCargaResponse;
-import pe.com.qallpatic.osteoperu.resultados.dto.NombreReniecResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.PacientePendienteResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.ResultadoDetalleResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.ResultadoResumenResponse;
@@ -49,14 +47,6 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 	private final ClienteReniec clienteReniec;
 	private final PacienteRepository pacienteRepository;
 	private final AppProperties appProperties;
-
-	@Override
-	@Transactional(readOnly = true)
-	public NombreReniecResponse consultarReniec(String dni) {
-		String d = UtilTelefono.validarDni(dni);
-		String nombre = clienteReniec.consultar(d).map(DatosReniec::nombreCompleto).orElse(null);
-		return new NombreReniecResponse(d, nombre);
-	}
 
 	@Override
 	@Transactional(readOnly = true)

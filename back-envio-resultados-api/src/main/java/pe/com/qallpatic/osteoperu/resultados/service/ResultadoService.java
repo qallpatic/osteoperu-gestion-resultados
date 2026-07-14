@@ -66,17 +66,14 @@ public class ResultadoService {
 	public UploadResultadoResponse uploadResultados(String rawPhone, String rawDni, String patientName,
 			String mensaje, List<MultipartFile> files, String createdBy, boolean confirmarNombre) {
 
-		if (files == null || files.isEmpty() || files.stream().allMatch(MultipartFile::isEmpty)) {
-			throw new SolicitudInvalidaException("Debe adjuntar al menos un archivo de resultado.");
-		}
-
 		String phone = UtilTelefono.normalizar(rawPhone, appProperties.getPhone().getCountryCode());
-		String dni = UtilTelefono.validarDni(rawDni);
+		String dni = UtilTelefono.validarDocumentoIdentidad(rawDni);
 		String folderName = storageService.buildFolderName(phone, dni);
 		boolean tieneTelefono = phone != null;
+		List<MultipartFile> archivos = files == null ? List.of() : files;
 
-		// Validacion de nombre (RENIEC vs PDF)
-		ValidacionNombre val = validarNombre(dni, files);
+		// Validacion de nombre (RENIEC vs PDF). Si no hay PDF, no bloquea la carga.
+		ValidacionNombre val = validarNombre(dni, archivos);
 		if (val.verificado() && !val.coincide() && !confirmarNombre) {
 			registrarLog(null, dni, createdBy, EstadoCarga.ADVERTENCIA,
 					"El nombre del PDF no coincide con RENIEC. Requiere confirmacion del agente.",
@@ -113,7 +110,7 @@ public class ResultadoService {
 		resultado.setUsuarioCreacion(createdBy);
 
 		List<String> storedNames = new ArrayList<>();
-		for (MultipartFile file : files) {
+		for (MultipartFile file : archivos) {
 			if (file.isEmpty()) {
 				continue;
 			}
@@ -212,6 +209,9 @@ public class ResultadoService {
 	}
 
 	private byte[] primerPdf(List<MultipartFile> files) {
+		if (files == null) {
+			return null;
+		}
 		for (MultipartFile file : files) {
 			if (file.isEmpty()) {
 				continue;

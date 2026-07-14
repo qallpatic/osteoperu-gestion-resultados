@@ -1,7 +1,7 @@
 <section class="page">
   <header class="page__head">
     <h1>Consultar resultados</h1>
-    <p>Busca por DNI, nombre o rango de fechas.</p>
+    <p>Busca por documento de identidad, nombre o rango de fechas.</p>
   </header>
 
   @if (notice(); as n) {
@@ -13,7 +13,7 @@
   }
 
   <div class="toolbar">
-    <input class="in" type="text" placeholder="DNI" [(ngModel)]="fdni" (keyup.enter)="aplicar()" maxlength="8" />
+    <input class="in" type="text" placeholder="DNI/CE" [(ngModel)]="fdni" (keyup.enter)="aplicar()" maxlength="12" />
     <input class="in" type="text" placeholder="Nombre" [(ngModel)]="fnombre" (keyup.enter)="aplicar()" />
     <label class="fecha">Desde <input type="date" [(ngModel)]="fdesde" /></label>
     <label class="fecha">Hasta <input type="date" [(ngModel)]="fhasta" /></label>

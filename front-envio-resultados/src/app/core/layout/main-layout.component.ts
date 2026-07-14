@@ -45,14 +45,14 @@ export class MainLayoutComponent {
       label: 'Resultados', icon: 'fa-file-medical', route: '/resultados',
       roles: ['ADMIN', 'RESULTADOS'], disponible: true,
       children: [
+        { label: 'Consultar', icon: 'fa-magnifying-glass', route: '/resultados/consultar' },
         { label: 'Cargar', icon: 'fa-cloud-arrow-up', route: '/resultados/cargar' },
         { label: 'Pendientes', icon: 'fa-clock', route: '/resultados/pendientes' },
-        { label: 'Consultar', icon: 'fa-magnifying-glass', route: '/resultados/consultar' },
         { label: 'Logs de carga', icon: 'fa-list-check', route: '/resultados/logs' },
       ],
     },
     { label: 'Administración', icon: 'fa-users-gear', route: '/admin', roles: ['ADMIN'], disponible: true },
-    { label: 'Admisión', icon: 'fa-id-badge', route: '/admision', roles: ['ADMIN', 'ADMISION'], disponible: true },
+    { label: 'Gestión de usuarios', icon: 'fa-id-badge', route: '/gestion-usuarios', roles: ['ADMIN', 'RESULTADOS', 'ADMISION'], disponible: true },
     { label: 'Mis resultados', icon: 'fa-notes-medical', route: '/paciente', roles: ['ADMIN', 'PACIENTE'], disponible: true },
     { label: 'Call Center', icon: 'fa-headset', route: '/callcenter', roles: ['ADMIN', 'CALLCENTER'], disponible: false },
   ];

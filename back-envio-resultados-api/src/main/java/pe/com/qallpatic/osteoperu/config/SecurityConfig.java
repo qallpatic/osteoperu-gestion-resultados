@@ -3,6 +3,7 @@ package pe.com.qallpatic.osteoperu.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -73,10 +74,16 @@ public class SecurityConfig {
 						.requestMatchers("/api/auth/**").permitAll()
 						.requestMatchers("/actuator/health", "/actuator/info").permitAll()
 						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+						// RENIEC: lookup compartido por resultados, admin y admision.
+						// Ruta propia para no abrir /api/resultados a ADMISION solo por este caso.
+						.requestMatchers(HttpMethod.GET, "/api/reniec/**").hasAnyRole("ADMIN", "RESULTADOS", "ADMISION")
 						// Protegido por rol (ADMIN incluido en cada modulo)
 						.requestMatchers("/api/admin/**").hasRole("ADMIN")
 						.requestMatchers("/api/resultados/**").hasAnyRole("ADMIN", "RESULTADOS")
-						.requestMatchers("/api/admision/**").hasAnyRole("ADMIN", "ADMISION")
+						// Admision: lectura abierta a RESULTADOS (solo listado de pacientes),
+						// escritura (generar/anular cuenta) restringida a ADMIN/ADMISION.
+						.requestMatchers(HttpMethod.GET, "/api/admision/pacientes").hasAnyRole("ADMIN", "RESULTADOS", "ADMISION")
+						.requestMatchers("/api/admision/**").hasAnyRole("ADMIN", "ADMISION", "RESULTADOS")
 						.requestMatchers("/api/paciente/**").hasAnyRole("ADMIN", "PACIENTE")
 						.requestMatchers("/api/callcenter/**").hasAnyRole("ADMIN", "CALLCENTER")
 						.anyRequest().authenticated())
