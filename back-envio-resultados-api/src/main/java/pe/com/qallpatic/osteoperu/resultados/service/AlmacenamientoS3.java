@@ -34,9 +34,10 @@ import java.util.Map;
  * <p>Estructura del object key: {@code <DNI>/<YYYY-MM-DD>/<idGenerado>/<idArchivo>.<extension>}.
  * Operaciones: PutObject (subida), GetObject (descarga), HeadBucket (healthcheck).
  *
- * <p>Fallback: si la descarga con el key nuevo falla con NoSuchKey, intenta el
- * formato legacy {@code resultado_<idGenerado>_<idArchivo>.<ext>} para no romper
- * archivos pre-existentes subidos con el esquema plano anterior.
+ * <p>Sin fallback a formato plano legacy: la app inicia con corte limpio en prod,
+ * por lo que todos los archivos tienen el formato jerarquico. Un 404 indica
+ * archivo perdido o inconsistencia BD/S3 y se reporta sin sirvir datos desde
+ * una ubicacion inesperada.
  */
 @Service
 @Slf4j
@@ -45,7 +46,6 @@ import java.util.Map;
 public class AlmacenamientoS3 implements AlmacenamientoArchivos {
 
 	private static final DateTimeFormatter ISO_DATE = DateTimeFormatter.ISO_LOCAL_DATE;
-	private static final String LEGACY_KEY_PREFIX = "resultado_";
 
 	private final StorageProperties storageProperties;
 	private final S3Client s3Client;
@@ -92,20 +92,11 @@ public class AlmacenamientoS3 implements AlmacenamientoArchivos {
 		try {
 			return getObject(key);
 		} catch (NoSuchKeyException e) {
-			// Fallback: formato plano legacy `resultado_<idGenerado>_<idArchivo>.<ext>`.
-			// Si el archivo existe ahi (subido antes del rediseño de keys), lo servimos.
-			String legacyKey = legacyKey(idGenerado, idArchivo, extension);
-			if (!legacyKey.equals(key)) {
-				log.info("NoSuchKey en formato nuevo, intentando fallback legacy: {}", legacyKey);
-				try {
-					return getObject(legacyKey);
-				} catch (NoSuchKeyException e2) {
-					throw new RecursoNoEncontradoException("Archivo no encontrado.");
-				}
-			}
-			throw new RecursoNoEncontradoException("Archivo no encontrado.");
+			log.warn("Archivo no encontrado en S3: {}", key);
+			throw new RecursoNoEncontradoException("Archivo no encontrado");
 		} catch (S3Exception e) {
-			throw new IllegalStateException("Error al descargar de S3: " + e.awsErrorDetails().errorMessage(), e);
+			log.error("Error al descargar de S3: {} -> {}", key, e.awsErrorDetails().errorMessage());
+			throw new IllegalStateException("Error al descargar de S3", e);
 		}
 	}
 
@@ -155,16 +146,6 @@ public class AlmacenamientoS3 implements AlmacenamientoArchivos {
 		}
 		long size = resp.response().contentLength() != null ? resp.response().contentLength() : -1L;
 		return new ArchivoDescargable(resp, size, contentType, key);
-	}
-
-	private static String legacyKey(String idGenerado, String idArchivo, String extension) {
-		StringBuilder sb = new StringBuilder(LEGACY_KEY_PREFIX);
-		sb.append(AlmacenamientoLocal.sanitizar(idGenerado))
-				.append('_').append(AlmacenamientoLocal.sanitizar(idArchivo));
-		if (extension != null && !extension.isBlank()) {
-			sb.append('.').append(extension.toLowerCase(Locale.ROOT));
-		}
-		return sb.toString();
 	}
 
 	/** Util para purga futura (no usado por el flujo actual). */
