@@ -16,16 +16,17 @@ import pe.com.qallpatic.osteoperu.paciente.dto.ArchivoLocalizado;
 import pe.com.qallpatic.osteoperu.resultados.dto.ArchivoResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.ResultadoDetalleResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.ResultadoResumenResponse;
-import pe.com.qallpatic.osteoperu.resultados.entity.ArchivoResultado;
-import pe.com.qallpatic.osteoperu.resultados.entity.Resultado;
+import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoArchivo;
+import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoCarga;
 import pe.com.qallpatic.osteoperu.resultados.mapper.ResultadoMapper;
-import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoRepository;
-import pe.com.qallpatic.osteoperu.resultados.service.StorageService;
-import pe.com.qallpatic.osteoperu.resultados.spec.ResultadoSpecs;
+import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoCargaRepository;
+import pe.com.qallpatic.osteoperu.resultados.service.AlmacenamientoArchivos;
+import pe.com.qallpatic.osteoperu.resultados.service.ArchivoDescargable;
+import pe.com.qallpatic.osteoperu.resultados.spec.ResultadoCargaSpecs;
 import pe.com.qallpatic.osteoperu.seguridad.entity.Usuario;
 import pe.com.qallpatic.osteoperu.seguridad.repository.UsuarioRepository;
 
-import java.nio.file.Path;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -35,9 +36,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PacientePortalServiceImpl implements PacientePortalService {
 
-	private final ResultadoRepository resultadoRepository;
+	private final ResultadoCargaRepository resultadoCargaRepository;
 	private final ResultadoMapper resultadoMapper;
-	private final StorageService storageService;
+	private final AlmacenamientoArchivos almacenamiento;
 	private final UsuarioRepository usuarioRepository;
 	private final AppProperties appProperties;
 
@@ -46,14 +47,13 @@ public class PacientePortalServiceImpl implements PacientePortalService {
 	public PaginaResponse<ResultadoResumenResponse> misResultados(String username, boolean esAdmin,
 			LocalDate desde, LocalDate hasta, int pagina, int tamano) {
 		Pageable pageable = PageRequest.of(Math.max(pagina, 0), tamano <= 0 ? 10 : tamano,
-				Sort.by(Sort.Direction.DESC, "fechaCreacion"));
+				Sort.by(Sort.Direction.DESC, "fechaHoraCarga"));
 
-		// ADMIN ve todos los resultados; el paciente solo los de su DNI.
-		Specification<Resultado> spec = esAdmin
-				? ResultadoSpecs.filtro(null, null, inicioDia(desde), finDia(hasta))
-				: ResultadoSpecs.delPaciente(resolverDni(username), inicioDia(desde), finDia(hasta));
+		Specification<ResultadoCarga> spec = esAdmin
+				? ResultadoCargaSpecs.filtro(null, null, 1, inicioDia(desde), finDia(hasta))
+				: ResultadoCargaSpecs.delPacienteActivo(resolverDni(username), inicioDia(desde), finDia(hasta));
 
-		Page<ResultadoResumenResponse> page = resultadoRepository.findAll(spec, pageable)
+		Page<ResultadoResumenResponse> page = resultadoCargaRepository.findAll(spec, pageable)
 				.map(resultadoMapper::toResumen);
 		return PaginaResponse.de(page);
 	}
@@ -61,30 +61,85 @@ public class PacientePortalServiceImpl implements PacientePortalService {
 	@Override
 	@Transactional(readOnly = true)
 	public ResultadoDetalleResponse detalle(String username, boolean esAdmin, Long id) {
-		return armarDetalle(obtener(id, username, esAdmin));
+		return armarDetalle(obtenerPorId(id, username, esAdmin));
 	}
 
 	@Override
 	@Transactional(readOnly = true)
-	public ArchivoLocalizado localizarArchivo(String username, boolean esAdmin, Long idResultado, Long idArchivo) {
-		Resultado resultado = obtener(idResultado, username, esAdmin);
-		ArchivoResultado archivo = resultado.getArchivos().stream()
-				.filter(a -> a.getId().equals(idArchivo))
-				.findFirst()
-				.orElseThrow(() -> new RecursoNoEncontradoException("Archivo no encontrado."));
-		Path ruta = storageService.resolveFile(resultado.getCarpeta(), archivo.getNombreAlmacenado());
-		return new ArchivoLocalizado(ruta, archivo.getNombreOriginal(), resultado.getId());
+	public ResultadoDetalleResponse detallePorIdGenerado(String username, boolean esAdmin, String idGenerado) {
+		return armarDetalle(obtenerPorIdGenerado(idGenerado, username, esAdmin));
 	}
 
-	/** Carga el resultado; si no es ADMIN, verifica que pertenezca al DNI del paciente. */
-	private Resultado obtener(Long id, String username, boolean esAdmin) {
-		Resultado resultado = resultadoRepository.findById(id)
-				.orElseThrow(() -> new RecursoNoEncontradoException("Resultado no encontrado."));
-		if (!esAdmin && !resolverDni(username).equals(resultado.getDni())) {
-			// No se revela la existencia de resultados ajenos.
-			throw new RecursoNoEncontradoException("Resultado no encontrado.");
+	@Override
+	@Transactional(readOnly = true)
+	public ArchivoLocalizado localizarArchivo(String username, boolean esAdmin, Long idResultadoCarga, Long idArchivo) {
+		ResultadoCarga carga = obtenerPorId(idResultadoCarga, username, esAdmin);
+		ResultadoArchivo archivo = carga.getArchivos().stream()
+				.filter(a -> a.getIdResultadoArchivo().equals(idArchivo))
+				.findFirst()
+				.orElseThrow(() -> new RecursoNoEncontradoException("Archivo no encontrado."));
+		return new ArchivoLocalizado(
+				archivo.getIdGenerado(),
+				archivo.getIdArchivo(),
+				archivo.getExtension(),
+				archivo.getNombreOriginal(),
+				carga.getIdResultadoCarga());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public ArchivoDescargable descargarArchivo(String username, boolean esAdmin, Long idResultadoCarga, Long idArchivo) {
+		ResultadoCarga carga = obtenerPorId(idResultadoCarga, username, esAdmin);
+		ResultadoArchivo archivo = carga.getArchivos().stream()
+				.filter(a -> a.getIdResultadoArchivo().equals(idArchivo))
+				.findFirst()
+				.orElseThrow(() -> new RecursoNoEncontradoException("Archivo no encontrado."));
+		return almacenamiento.descargar(
+				archivo.getIdGenerado(), archivo.getIdArchivo(), archivo.getExtension(),
+				carga.getDocumentoIdentidad(), carga.getFechaHoraCarga());
+	}
+
+	@Override
+	@Transactional
+	public void softDelete(String username, boolean esAdmin, Long idResultadoCarga, String motivo) {
+		ResultadoCarga carga = obtenerPorId(idResultadoCarga, username, esAdmin);
+		carga.setEstado(0);
+		carga.setFechaEliminacion(LocalDateTime.now());
+		carga.setUsuarioEliminacion(username);
+		carga.setMotivoEliminacion(motivo);
+		resultadoCargaRepository.save(carga);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public BigDecimal pesoTotalCabecera(String idGenerado) {
+		return resultadoCargaRepository.findByIdGenerado(idGenerado)
+				.map(ResultadoCarga::getPesoTotalMb)
+				.orElse(BigDecimal.ZERO);
+	}
+
+	private ResultadoCarga obtenerPorId(Long id, String username, boolean esAdmin) {
+		ResultadoCarga carga = resultadoCargaRepository.findById(id)
+				.orElseThrow(() -> new RecursoNoEncontradoException("Carga no encontrada."));
+		if (!esAdmin && !carga.getEstado().equals(1)) {
+			throw new RecursoNoEncontradoException("Carga no encontrada.");
 		}
-		return resultado;
+		if (!esAdmin && !resolverDni(username).equals(carga.getDocumentoIdentidad())) {
+			throw new RecursoNoEncontradoException("Carga no encontrada.");
+		}
+		return carga;
+	}
+
+	private ResultadoCarga obtenerPorIdGenerado(String idGenerado, String username, boolean esAdmin) {
+		ResultadoCarga carga = resultadoCargaRepository.findByIdGenerado(idGenerado)
+				.orElseThrow(() -> new RecursoNoEncontradoException("Carga no encontrada."));
+		if (!esAdmin && !carga.getEstado().equals(1)) {
+			throw new RecursoNoEncontradoException("Carga no encontrada.");
+		}
+		if (!esAdmin && !resolverDni(username).equals(carga.getDocumentoIdentidad())) {
+			throw new RecursoNoEncontradoException("Carga no encontrada.");
+		}
+		return carga;
 	}
 
 	private String resolverDni(String username) {
@@ -94,16 +149,31 @@ public class PacientePortalServiceImpl implements PacientePortalService {
 				.orElse(username);
 	}
 
-	private ResultadoDetalleResponse armarDetalle(Resultado r) {
-		List<ArchivoResponse> archivos = r.getArchivos().stream()
+	private ResultadoDetalleResponse armarDetalle(ResultadoCarga c) {
+		List<ArchivoResponse> archivos = c.getArchivos().stream()
 				.map(resultadoMapper::toArchivo)
 				.toList();
 		return new ResultadoDetalleResponse(
-				r.getId(), r.getDni(), r.getNombrePaciente(), r.getMensaje(), r.getTelefono(), r.getCarpeta(),
-				r.getTokenPublico(), trimBase() + "/r/" + r.getTokenPublico(),
-				r.getEstadoSms() == null ? null : r.getEstadoSms().name(),
-				r.getContadorVistas(), r.getFechaPrimeraVista(), r.getFechaUltimaVista(),
-				r.getFechaCreacion(), archivos);
+				c.getIdResultadoCarga(),
+				c.getIdGenerado(),
+				c.getDocumentoIdentidad(),
+				c.getNombrePaciente(),
+				c.getMensaje(),
+				c.getTelefono(),
+				c.getTokenPublico(),
+				trimBase() + "/r/" + c.getTokenPublico(),
+				c.getEstadoSms() == null ? null : c.getEstadoSms().name(),
+				c.getContadorVistas(),
+				c.getEstado(),
+				c.getFechaEliminacion(),
+				c.getUsuarioEliminacion(),
+				c.getMotivoEliminacion(),
+				c.getCantidadArchivos() == null ? 0 : c.getCantidadArchivos(),
+				c.getPesoTotalMb(),
+				c.getFechaHoraCarga(),
+				c.getFechaPrimeraVista(),
+				c.getFechaUltimaVista(),
+				archivos);
 	}
 
 	private LocalDateTime inicioDia(LocalDate d) {

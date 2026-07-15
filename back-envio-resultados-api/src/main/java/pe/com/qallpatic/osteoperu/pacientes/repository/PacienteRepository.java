@@ -17,11 +17,11 @@ public interface PacienteRepository extends JpaRepository<Paciente, Long> {
 
 	/**
 	 * Lista los pacientes registrados (incluye los creados por Admision aunque
-	 * aun no tengan resultados) con su conteo de resultados. Para el modulo Admision.
+	 * aun no tengan resultados) con su conteo de cabeceras. Para el modulo Admision.
 	 */
 	@Query(value = "SELECT p.dni AS dni, p.nombre AS nombre, p.telefono AS telefono, "
-			+ "(SELECT COUNT(r) FROM Resultado r WHERE r.dni = p.dni) AS totalResultados, "
-			+ "(SELECT MAX(r.fechaCreacion) FROM Resultado r WHERE r.dni = p.dni) AS ultimaFecha "
+			+ "(SELECT COUNT(r) FROM ResultadoCarga r WHERE r.documentoIdentidad = p.dni) AS totalResultados, "
+			+ "(SELECT MAX(r.fechaHoraCarga) FROM ResultadoCarga r WHERE r.documentoIdentidad = p.dni) AS ultimaFecha "
 			+ "FROM Paciente p WHERE (:dni IS NULL OR p.dni LIKE CONCAT('%', :dni, '%')) "
 			+ "ORDER BY p.fechaCreacion DESC",
 			countQuery = "SELECT COUNT(p) FROM Paciente p "

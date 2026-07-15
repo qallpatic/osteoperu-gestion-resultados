@@ -24,7 +24,7 @@ import pe.com.qallpatic.osteoperu.integracion.reniec.DatosReniec;
 import pe.com.qallpatic.osteoperu.pacientes.entity.Paciente;
 import pe.com.qallpatic.osteoperu.pacientes.repository.PacienteRepository;
 import pe.com.qallpatic.osteoperu.resultados.dto.PacienteResumenProj;
-import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoRepository;
+import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoCargaRepository;
 import pe.com.qallpatic.osteoperu.resultados.service.SmsService;
 import pe.com.qallpatic.osteoperu.seguridad.entity.Rol;
 import pe.com.qallpatic.osteoperu.seguridad.entity.Usuario;
@@ -47,7 +47,7 @@ public class AdmisionServiceImpl implements AdmisionService {
 	private final UsuarioRepository usuarioRepository;
 	private final RolRepository rolRepository;
 	private final PacienteRepository pacienteRepository;
-	private final ResultadoRepository resultadoRepository;
+	private final ResultadoCargaRepository resultadoCargaRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final ClienteReniec clienteReniec;
 	private final SmsService smsService;
@@ -127,7 +127,7 @@ public class AdmisionServiceImpl implements AdmisionService {
 		}
 
 		// Pendiente de subir resultados si aun no tiene ninguno cargado.
-		boolean pendiente = !resultadoRepository.existsByDni(dni);
+		boolean pendiente = !resultadoCargaRepository.existsByDocumentoIdentidadAndEstado(dni, 1);
 		upsertPaciente(dni, parser, solicitud.telefono(), usuario.getId(), actor, pendiente);
 
 		String portalUrl = appProperties.getPortalUrl();

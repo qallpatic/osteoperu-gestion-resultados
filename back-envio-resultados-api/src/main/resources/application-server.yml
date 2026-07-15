@@ -19,8 +19,18 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://161.132.53.229:6060}
 
 storage:
-  # Carpeta 'uploads' (montada como volumen) donde se crean las subcarpetas {telefono}_{dni}
+  # Servidor: usa S3-compatible (MinIO) por defecto. Para volver a FS local:
+  # STORAGE_TYPE=local y montar volumen en /app/uploads.
+  type: ${STORAGE_TYPE:s3}
   base-path: ${STORAGE_BASE_PATH:/app/uploads}
+  s3:
+    endpoint: ${STORAGE_S3_ENDPOINT:https://ia.qallpatic.com.pe}
+    region: ${STORAGE_S3_REGION:us-east-1}
+    access-key: ${STORAGE_S3_ACCESS_KEY:}
+    secret-key: ${STORAGE_S3_SECRET_KEY:}
+    bucket: ${STORAGE_S3_BUCKET:}
+    force-path-style: ${STORAGE_S3_FORCE_PATH_STYLE:true}
+    presign-minutes: ${STORAGE_S3_PRESIGN_MINUTES:10}
 
 sms:
   enabled: ${SMS_ENABLED:false}

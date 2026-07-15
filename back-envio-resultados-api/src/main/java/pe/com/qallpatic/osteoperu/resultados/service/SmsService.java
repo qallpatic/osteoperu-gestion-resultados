@@ -9,7 +9,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import pe.com.qallpatic.osteoperu.config.SmsProperties;
 import pe.com.qallpatic.osteoperu.resultados.dto.SmsGatewayRequest;
 import pe.com.qallpatic.osteoperu.resultados.entity.EstadoSms;
-import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoRepository;
+import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoCargaRepository;
 
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -26,7 +26,7 @@ public class SmsService {
 
 	private final SmsProperties smsProperties;
 	private final WebClient.Builder webClientBuilder;
-	private final ResultadoRepository resultadoRepository;
+	private final ResultadoCargaRepository resultadoCargaRepository;
 
 	private final BlockingQueue<SmsTask> queue = new LinkedBlockingQueue<>();
 
@@ -113,12 +113,12 @@ public class SmsService {
 			return;
 		}
 		try {
-			resultadoRepository.findById(idResultado).ifPresent(resultado -> {
-				resultado.setEstadoSms(estado);
-				resultadoRepository.save(resultado);
+			resultadoCargaRepository.findById(idResultado).ifPresent(carga -> {
+				carga.setEstadoSms(estado);
+				resultadoCargaRepository.save(carga);
 			});
 		} catch (Exception e) {
-			log.error("No se pudo actualizar el estado SMS del resultado {}", idResultado, e);
+			log.error("No se pudo actualizar el estado SMS de la carga {}", idResultado, e);
 		}
 	}
 }

@@ -37,9 +37,8 @@ public class ResultadoController {
 
 	@Operation(
 			summary = "Subir resultados de un paciente",
-			description = "Crea la carpeta {telefono}_{dni}, guarda los archivos (PDF/imagen/video), "
-					+ "genera el link corto y encola el SMS con el enlace al visor de resultados. "
-					+ "Los archivos son opcionales: el paciente puede recibirlos por un link publicado en el mensaje.",
+			description = "Crea una cabecera por transaccion (idGenerado), guarda N archivos en el storage "
+					+ "(FS local o S3 segun storage.type), genera el link corto y encola el SMS.",
 			security = @SecurityRequirement(name = "bearerAuth"))
 	@PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
 			produces = MediaType.APPLICATION_JSON_VALUE)
@@ -52,10 +51,10 @@ public class ResultadoController {
 			@RequestParam(value = "patientName", required = false) String patientName,
 			@Parameter(description = "Mensaje del agente (opcional, maximo 500 caracteres)")
 			@RequestParam(value = "mensaje", required = false) @Size(max = 500) String mensaje,
-			@Parameter(description = "Archivos de resultados (opcional)",
+			@Parameter(description = "Archivos de resultados",
 					content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
 							schema = @Schema(type = "array", format = "binary")))
-			@RequestParam(value = "files", required = false) List<MultipartFile> files,
+			@RequestParam("files") List<MultipartFile> files,
 			@Parameter(description = "Confirmar la carga aunque el nombre del PDF no coincida con RENIEC")
 			@RequestParam(value = "confirmarNombre", defaultValue = "false") boolean confirmarNombre,
 			Authentication authentication) {
@@ -67,7 +66,7 @@ public class ResultadoController {
 		UploadResultadoResponse response =
 				resultadoService.uploadResultados(phone, dni, patientName, mensaje, files, createdBy, confirmarNombre);
 
-		log.info("FIN - Carga de resultados. batch={}", response.batchId());
+		log.info("FIN - Carga de resultados. carga={}", response.cargaId());
 		return ResponseEntity.status(HttpStatus.CREATED).body(response);
 	}
 }

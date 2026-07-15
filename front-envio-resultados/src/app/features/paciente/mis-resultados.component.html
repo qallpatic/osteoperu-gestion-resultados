@@ -31,7 +31,7 @@
         <article class="card">
           <div class="card__icon"><i class="fas fa-file-medical"></i></div>
           <div class="card__body">
-            <span class="card__title">Resultado del {{ r.fechaCreacion | date:'dd/MM/yyyy' }}</span>
+            <span class="card__title">Resultado del {{ r.fechaHoraCarga | date:'dd/MM/yyyy' }}</span>
             <span class="card__meta">{{ r.nombrePaciente || 'Paciente' }} · Documento de Identidad {{ r.dni }}</span>
           </div>
           <button class="btn btn--ghost" (click)="abrirDetalle(r)">
@@ -60,7 +60,7 @@
   <div class="backdrop" (click)="cerrarDetalle()"></div>
   <div class="modal" role="dialog">
     <button class="modal__x" (click)="cerrarDetalle()"><i class="fas fa-xmark"></i></button>
-    <h2 class="modal__title">Resultado del {{ d.fechaCreacion | date:'dd/MM/yyyy' }}</h2>
+    <h2 class="modal__title">Resultado del {{ d.fechaHoraCarga | date:'dd/MM/yyyy' }}</h2>
     <p class="modal__sub">{{ d.archivos.length }} archivo(s) disponible(s)</p>
 
     @if (d.mensaje) {

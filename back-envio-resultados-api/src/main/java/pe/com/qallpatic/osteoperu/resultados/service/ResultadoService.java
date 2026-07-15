@@ -12,24 +12,26 @@ import pe.com.qallpatic.osteoperu.compartido.util.GeneradorCodigos;
 import pe.com.qallpatic.osteoperu.compartido.util.NormalizadorTexto;
 import pe.com.qallpatic.osteoperu.compartido.util.UtilTelefono;
 import pe.com.qallpatic.osteoperu.config.AppProperties;
+import pe.com.qallpatic.osteoperu.config.StorageProperties;
 import pe.com.qallpatic.osteoperu.integracion.pdf.ValidadorPdf;
 import pe.com.qallpatic.osteoperu.integracion.reniec.ClienteReniec;
 import pe.com.qallpatic.osteoperu.integracion.reniec.DatosReniec;
 import pe.com.qallpatic.osteoperu.pacientes.entity.Paciente;
 import pe.com.qallpatic.osteoperu.pacientes.repository.PacienteRepository;
 import pe.com.qallpatic.osteoperu.resultados.dto.UploadResultadoResponse;
-import pe.com.qallpatic.osteoperu.resultados.entity.ArchivoResultado;
 import pe.com.qallpatic.osteoperu.resultados.entity.EnlaceCorto;
 import pe.com.qallpatic.osteoperu.resultados.entity.EstadoCarga;
 import pe.com.qallpatic.osteoperu.resultados.entity.EstadoSms;
 import pe.com.qallpatic.osteoperu.resultados.entity.LogCarga;
-import pe.com.qallpatic.osteoperu.resultados.entity.Resultado;
+import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoArchivo;
+import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoCarga;
 import pe.com.qallpatic.osteoperu.resultados.entity.TipoMedio;
 import pe.com.qallpatic.osteoperu.resultados.repository.LogCargaRepository;
-import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoRepository;
+import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoCargaRepository;
 
 import java.io.IOException;
-import java.nio.file.Path;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,9 +42,9 @@ import java.util.Optional;
  * Orquesta la carga de resultados de un paciente:
  *  1. valida telefono/dni,
  *  2. valida el nombre del PDF contra RENIEC (si hay proveedor),
- *  3. crea la carpeta {telefono}_{dni} y guarda los archivos,
- *  4. persiste el resultado, genera el link corto y encola el SMS,
- *  5. registra la operacion en la bitacora (LOG_CARGA).
+ *  3. sube los archivos al backend de almacenamiento (FS local o S3),
+ *  4. persiste la cabecera + detalles, genera el link corto y encola el SMS,
+ *  5. registra la operacion en la bitacora (LOG_CARGA) y limpia pendiente del paciente.
  */
 @Service
 @Slf4j
@@ -51,11 +53,13 @@ public class ResultadoService {
 
 	/** Proporcion minima de tokens del nombre RENIEC que deben aparecer en el PDF. */
 	private static final double UMBRAL_COINCIDENCIA = 0.6;
+	private static final int LONGITUD_ID_GENERADO = 32;
 
-	private final StorageService storageService;
+	private final AlmacenamientoArchivos almacenamiento;
+	private final StorageProperties storageProperties;
 	private final ShortLinkService shortLinkService;
 	private final SmsService smsService;
-	private final ResultadoRepository resultadoRepository;
+	private final ResultadoCargaRepository resultadoCargaRepository;
 	private final LogCargaRepository logCargaRepository;
 	private final PacienteRepository pacienteRepository;
 	private final ClienteReniec clienteReniec;
@@ -68,11 +72,9 @@ public class ResultadoService {
 
 		String phone = UtilTelefono.normalizar(rawPhone, appProperties.getPhone().getCountryCode());
 		String dni = UtilTelefono.validarDocumentoIdentidad(rawDni);
-		String folderName = storageService.buildFolderName(phone, dni);
 		boolean tieneTelefono = phone != null;
 		List<MultipartFile> archivos = files == null ? List.of() : files;
 
-		// Validacion de nombre (RENIEC vs PDF). Si no hay PDF, no bloquea la carga.
 		ValidacionNombre val = validarNombre(dni, archivos);
 		if (val.verificado() && !val.coincide() && !confirmarNombre) {
 			registrarLog(null, dni, createdBy, EstadoCarga.ADVERTENCIA,
@@ -84,7 +86,7 @@ public class ResultadoService {
 					.phone(phone)
 					.dni(dni)
 					.totalFiles(0)
-					.storedFiles(List.of())
+					.storedFileIds(List.of())
 					.smsStatus("NO_ENVIADO")
 					.requiereConfirmacion(true)
 					.nombreReniec(val.nombreReniec())
@@ -95,74 +97,98 @@ public class ResultadoService {
 		String nombrePaciente = val.nombreReniec() != null ? val.nombreReniec()
 				: (patientName != null && !patientName.isBlank() ? patientName.trim() : null);
 
-		Path patientDir = storageService.ensurePatientFolder(folderName);
+		String idGenerado = generateUniqueIdGenerado();
+		LocalDateTime ahora = LocalDateTime.now();
 
-		Resultado resultado = Resultado.builder()
+		ResultadoCarga carga = ResultadoCarga.builder()
+				.idGenerado(idGenerado)
+				.tokenPublico(generateUniqueToken())
+				.documentoIdentidad(dni)
 				.telefono(phone)
-				.dni(dni)
 				.nombrePaciente(nombrePaciente)
 				.mensaje(mensaje != null && !mensaje.isBlank() ? mensaje.trim() : null)
-				.carpeta(folderName)
-				.tokenPublico(generateUniqueToken())
+				.estado(1)
 				.estadoSms(tieneTelefono ? EstadoSms.PENDIENTE : EstadoSms.DESHABILITADO)
 				.contadorVistas(0)
+				.cantidadArchivos(0)
+				.pesoTotalMb(BigDecimal.ZERO)
+				.fechaHoraCarga(ahora)
+				.archivos(new ArrayList<>())
 				.build();
-		resultado.setUsuarioCreacion(createdBy);
+		carga.setUsuarioCreacion(createdBy);
 
-		List<String> storedNames = new ArrayList<>();
+		List<String> storedIds = new ArrayList<>();
+		int count = 0;
+		BigDecimal pesoTotal = BigDecimal.ZERO;
 		for (MultipartFile file : archivos) {
 			if (file.isEmpty()) {
 				continue;
 			}
-			String storedName = storageService.store(patientDir, file);
-			storedNames.add(storedName);
-
-			String resolvedContentType = MediaTypeFactory.getMediaType(storedName)
+			validateContentType(file);
+			String extension = extraerExtension(file.getOriginalFilename());
+			String contentType = MediaTypeFactory.getMediaType(file.getOriginalFilename() == null ? "" : file.getOriginalFilename())
 					.map(org.springframework.http.MediaType::toString)
-					.orElse(file.getContentType());
+					.orElse(file.getContentType() != null ? file.getContentType() : "application/octet-stream");
 
-			ArchivoResultado archivo = ArchivoResultado.builder()
+			String idArchivo;
+			try (var in = file.getInputStream()) {
+				idArchivo = almacenamiento.guardar(in, file.getSize(), contentType, extension,
+						idGenerado, dni, ahora);
+			} catch (IOException e) {
+				throw new IllegalStateException("No se pudo leer el archivo: " + file.getOriginalFilename(), e);
+			}
+			storedIds.add(idArchivo);
+
+			ResultadoArchivo archivo = ResultadoArchivo.builder()
+					.idGenerado(idGenerado)
+					.idArchivo(idArchivo)
 					.nombreOriginal(file.getOriginalFilename())
-					.nombreAlmacenado(storedName)
-					.tipoContenido(resolvedContentType)
-					.tipoMedio(TipoMedio.desdeTipoContenido(resolvedContentType))
-					.tamanoBytes(file.getSize())
+					.tipoContenido(contentType)
+					.tipoMedio(TipoMedio.desdeTipoContenido(contentType))
+					.extension(extension)
+					.pesoMb(BigDecimal.valueOf(file.getSize()).divide(BigDecimal.valueOf(1024L * 1024L), 4, RoundingMode.HALF_UP))
 					.fechaCreacion(LocalDateTime.now())
 					.build();
-			resultado.addArchivo(archivo);
+			carga.addArchivo(archivo);
+			count++;
+			pesoTotal = pesoTotal.add(archivo.getPesoMb());
 		}
+		carga.setCantidadArchivos(count);
+		carga.setPesoTotalMb(pesoTotal);
 
-		resultado = resultadoRepository.save(resultado);
+		carga = resultadoCargaRepository.save(carga);
 
-		// Registra/actualiza el paciente y limpia el "pendiente de subir".
 		registrarPacienteConResultados(dni, nombrePaciente, phone, createdBy);
 
-		String viewerUrl = buildViewerUrl(resultado.getTokenPublico());
-		EnlaceCorto enlace = shortLinkService.create(viewerUrl, "RESULTADO", resultado.getId());
+		String viewerUrl = buildViewerUrl(carga.getTokenPublico());
+		EnlaceCorto enlace = shortLinkService.create(viewerUrl, "RESULTADO", carga.getIdResultadoCarga());
 		String smsLink = buildShortUrl(enlace.getCodigoCorto());
 
 		String smsStatus;
 		if (tieneTelefono) {
-			smsService.enqueueResultLink(resultado.getId(), phone, nombrePaciente, smsLink);
+			smsService.enqueueResultLink(carga.getIdResultadoCarga(), phone, nombrePaciente, smsLink);
 			smsStatus = EstadoSms.EN_COLA.name();
 		} else {
 			smsStatus = "SIN_TELEFONO";
 		}
 
-		registrarLog(resultado.getId(), dni, createdBy, EstadoCarga.EXITO,
-				"Carga exitosa. Archivos: " + storedNames.size(),
+		registrarLog(carga.getIdResultadoCarga(), dni, createdBy, EstadoCarga.EXITO,
+				"Carga exitosa. Archivos: " + count,
 				val.nombreReniec(), val.nombrePdf(), val.verificado() ? val.coincide() : null);
 
-		log.info("Resultados cargados. resultado={}, archivos={}, folder={}, link={}, sms={}",
-				resultado.getId(), storedNames.size(), folderName, smsLink, smsStatus);
+		String folderKey = almacenamiento.construirCarpeta(idGenerado, dni, ahora);
+
+		log.info("Resultados cargados. carga={}, idGenerado={}, archivos={}, link={}, sms={}",
+				carga.getIdResultadoCarga(), idGenerado, count, smsLink, smsStatus);
 
 		return UploadResultadoResponse.builder()
-				.batchId(resultado.getId())
+				.cargaId(carga.getIdResultadoCarga())
+				.idGenerado(idGenerado)
 				.phone(phone)
 				.dni(dni)
-				.folderName(folderName)
-				.totalFiles(storedNames.size())
-				.storedFiles(storedNames)
+				.folderKey(folderKey)
+				.totalFiles(count)
+				.storedFileIds(storedIds)
 				.shortLink(smsLink)
 				.viewerUrl(viewerUrl)
 				.smsStatus(smsStatus)
@@ -170,6 +196,34 @@ public class ResultadoService {
 				.nombreReniec(val.nombreReniec())
 				.nombrePdf(val.nombrePdf())
 				.build();
+	}
+
+	private void validateContentType(MultipartFile file) {
+		List<String> allowed = storageProperties.allowedContentTypeList();
+		if (allowed.isEmpty()) {
+			return;
+		}
+		String clientCt = file.getContentType();
+		String extCt = MediaTypeFactory.getMediaType(file.getOriginalFilename() == null ? "" : file.getOriginalFilename())
+				.map(org.springframework.http.MediaType::toString)
+				.orElse(null);
+		boolean clientOk = clientCt != null && allowed.contains(clientCt.toLowerCase(java.util.Locale.ROOT));
+		boolean extOk = extCt != null && allowed.contains(extCt.toLowerCase(java.util.Locale.ROOT));
+		if (!clientOk && !extOk) {
+			throw new SolicitudInvalidaException(
+					"Tipo de archivo no permitido: " + clientCt + " (" + file.getOriginalFilename() + ")");
+		}
+	}
+
+	private String extraerExtension(String nombre) {
+		if (nombre == null) {
+			return null;
+		}
+		int dot = nombre.lastIndexOf('.');
+		if (dot < 0 || dot == nombre.length() - 1) {
+			return null;
+		}
+		return nombre.substring(dot + 1).toLowerCase(java.util.Locale.ROOT);
 	}
 
 	/** Compara el nombre oficial (RENIEC) con el texto del primer PDF adjunto. */
@@ -182,7 +236,6 @@ public class ResultadoService {
 
 		byte[] pdf = primerPdf(files);
 		if (pdf == null) {
-			// Hay nombre RENIEC pero no hay PDF para comparar: no se bloquea.
 			return new ValidacionNombre(false, true, nombreReniec, null);
 		}
 
@@ -195,9 +248,7 @@ public class ResultadoService {
 				.count();
 		boolean coincide = total > 0 && ((double) encontrados / total) >= UMBRAL_COINCIDENCIA;
 
-		String nombrePdf = coincide
-				? nombreReniec
-				: tokensEncontrados(tokens, texto);
+		String nombrePdf = coincide ? nombreReniec : tokensEncontrados(tokens, texto);
 		return new ValidacionNombre(true, coincide, nombreReniec, nombrePdf);
 	}
 
@@ -292,11 +343,18 @@ public class ResultadoService {
 		String token;
 		do {
 			token = GeneradorCodigos.generar(24);
-		} while (resultadoRepository.findByTokenPublico(token).isPresent());
+		} while (resultadoCargaRepository.findByTokenPublico(token).isPresent());
 		return token;
 	}
 
-	/** Resultado de la validacion de nombre (RENIEC vs PDF). */
+	private String generateUniqueIdGenerado() {
+		String id;
+		do {
+			id = GeneradorCodigos.generar(LONGITUD_ID_GENERADO);
+		} while (resultadoCargaRepository.findByIdGenerado(id).isPresent());
+		return id;
+	}
+
 	private record ValidacionNombre(boolean verificado, boolean coincide, String nombreReniec, String nombrePdf) {
 		static ValidacionNombre noVerificado() {
 			return new ValidacionNombre(false, true, null, null);

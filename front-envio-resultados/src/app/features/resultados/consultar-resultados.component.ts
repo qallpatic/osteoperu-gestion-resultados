@@ -93,7 +93,7 @@ export class ConsultarResultadosComponent implements OnInit {
     this.srv.detalle(r.id).subscribe({
       next: (d) => {
         this.detalle.set(d);
-        this.editTelefono = d.telefono;
+        this.editTelefono = d.telefono ?? '';
         this.editNombre = d.nombrePaciente ?? '';
         this.reenviar = false;
         this.cargandoDetalle.set(false);

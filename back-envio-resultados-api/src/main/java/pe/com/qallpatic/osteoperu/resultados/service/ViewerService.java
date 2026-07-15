@@ -6,12 +6,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import pe.com.qallpatic.osteoperu.compartido.excepcion.RecursoNoEncontradoException;
-import pe.com.qallpatic.osteoperu.resultados.entity.ArchivoResultado;
 import pe.com.qallpatic.osteoperu.resultados.entity.EventoVista;
-import pe.com.qallpatic.osteoperu.resultados.entity.Resultado;
+import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoArchivo;
+import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoCarga;
 import pe.com.qallpatic.osteoperu.resultados.entity.TipoEvento;
 import pe.com.qallpatic.osteoperu.resultados.repository.EventoVistaRepository;
-import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoRepository;
+import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoCargaRepository;
 
 import java.time.LocalDateTime;
 
@@ -21,10 +21,9 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class ViewerService {
 
-	private final ResultadoRepository resultadoRepository;
+	private final ResultadoCargaRepository resultadoCargaRepository;
 	private final EventoVistaRepository eventoVistaRepository;
 
-	/** Registra un CLICK (apertura del link corto) asociado al resultado. */
 	@Transactional
 	public void registerClick(Long idResultado, String codigoCorto, String ip, String userAgent) {
 		eventoVistaRepository.save(EventoVista.builder()
@@ -37,40 +36,42 @@ public class ViewerService {
 				.build());
 	}
 
-	/**
-	 * Carga el resultado por token, registra la VISTA, incrementa el contador y
-	 * marca la primera vez que el paciente vio sus resultados.
-	 */
 	@Transactional
-	public Resultado loadAndRegisterView(String token, String ip, String userAgent) {
-		Resultado resultado = resultadoRepository.findByTokenPublico(token)
+	public ResultadoCarga loadAndRegisterView(String token, String ip, String userAgent) {
+		ResultadoCarga carga = resultadoCargaRepository.findByTokenPublico(token)
 				.orElseThrow(() -> new RecursoNoEncontradoException("Resultados no encontrados."));
+		if (carga.getEstado() == null || carga.getEstado() != 1) {
+			throw new RecursoNoEncontradoException("Resultados no encontrados.");
+		}
 
 		LocalDateTime now = LocalDateTime.now();
-		resultado.setContadorVistas(resultado.getContadorVistas() + 1);
-		if (resultado.getFechaPrimeraVista() == null) {
-			resultado.setFechaPrimeraVista(now);
-			log.info("Paciente vio sus resultados por primera vez. resultado={}", resultado.getId());
+		carga.setContadorVistas(carga.getContadorVistas() + 1);
+		if (carga.getFechaPrimeraVista() == null) {
+			carga.setFechaPrimeraVista(now);
+			log.info("Paciente vio sus resultados por primera vez. carga={}", carga.getIdResultadoCarga());
 		}
-		resultado.setFechaUltimaVista(now);
-		resultadoRepository.save(resultado);
+		carga.setFechaUltimaVista(now);
+		resultadoCargaRepository.save(carga);
 
 		eventoVistaRepository.save(EventoVista.builder()
-				.idResultado(resultado.getId())
+				.idResultado(carga.getIdResultadoCarga())
 				.tipoEvento(TipoEvento.VISTA)
 				.ip(ip)
 				.userAgent(userAgent)
 				.fechaCreacion(now)
 				.build());
 
-		return resultado;
+		return carga;
 	}
 
-	/** Devuelve el resultado por token sin registrar vista (para servir archivos). */
 	@Transactional(readOnly = true)
-	public Resultado getByToken(String token) {
-		return resultadoRepository.findByTokenPublico(token)
+	public ResultadoCarga getByToken(String token) {
+		ResultadoCarga carga = resultadoCargaRepository.findByTokenPublico(token)
 				.orElseThrow(() -> new RecursoNoEncontradoException("Resultados no encontrados."));
+		if (carga.getEstado() == null || carga.getEstado() != 1) {
+			throw new RecursoNoEncontradoException("Resultados no encontrados.");
+		}
+		return carga;
 	}
 
 	@Transactional
@@ -84,9 +85,9 @@ public class ViewerService {
 				.build());
 	}
 
-	public ArchivoResultado findFile(Resultado resultado, Long fileId) {
-		return resultado.getArchivos().stream()
-				.filter(a -> a.getId().equals(fileId))
+	public ResultadoArchivo findFile(ResultadoCarga carga, Long fileId) {
+		return carga.getArchivos().stream()
+				.filter(a -> a.getIdResultadoArchivo().equals(fileId))
 				.findFirst()
 				.orElseThrow(() -> new RecursoNoEncontradoException("Archivo no encontrado."));
 	}

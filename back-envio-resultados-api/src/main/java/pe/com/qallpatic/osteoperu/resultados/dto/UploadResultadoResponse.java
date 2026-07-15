@@ -7,16 +7,16 @@ import java.util.List;
 /** Respuesta al panel tras subir (o intentar subir) los resultados de un paciente. */
 @Builder
 public record UploadResultadoResponse(
-		Long batchId,
+		Long cargaId,
+		String idGenerado,
 		String phone,
 		String dni,
-		String folderName,
+		String folderKey,
 		int totalFiles,
-		List<String> storedFiles,
+		List<String> storedFileIds,
 		String shortLink,
 		String viewerUrl,
 		String smsStatus,
-		/** true = el nombre del PDF no coincide con RENIEC; no se guardo nada, requiere confirmacion. */
 		boolean requiereConfirmacion,
 		String nombreReniec,
 		String nombrePdf) {

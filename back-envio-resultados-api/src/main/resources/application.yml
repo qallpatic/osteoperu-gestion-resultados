@@ -70,13 +70,23 @@ app:
 
 # ------------------------------------------------------------
 #  Almacenamiento de resultados (se sobreescribe por ambiente)
+#  storage.type: "local" (FS del contenedor) o "s3" (MinIO/S3-compatible)
 # ------------------------------------------------------------
 storage:
+  type: ${STORAGE_TYPE:local}
   base-path: ${STORAGE_BASE_PATH:./data/resultados}
   allowed-content-types: >-
     application/pdf,
     image/jpeg, image/png, image/webp, image/gif,
     video/mp4, video/quicktime, video/webm
+  s3:
+    endpoint: ${STORAGE_S3_ENDPOINT:}
+    region: ${STORAGE_S3_REGION:us-east-1}
+    access-key: ${STORAGE_S3_ACCESS_KEY:}
+    secret-key: ${STORAGE_S3_SECRET_KEY:}
+    bucket: ${STORAGE_S3_BUCKET:}
+    force-path-style: ${STORAGE_S3_FORCE_PATH_STYLE:true}
+    presign-minutes: ${STORAGE_S3_PRESIGN_MINUTES:10}
 
 # ------------------------------------------------------------
 #  Gateway SMS (Textbee) - mismo mecanismo del proyecto base

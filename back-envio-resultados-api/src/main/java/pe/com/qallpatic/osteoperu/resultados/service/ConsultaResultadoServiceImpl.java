@@ -13,7 +13,6 @@ import pe.com.qallpatic.osteoperu.compartido.excepcion.RecursoNoEncontradoExcept
 import pe.com.qallpatic.osteoperu.compartido.respuesta.PaginaResponse;
 import pe.com.qallpatic.osteoperu.compartido.util.UtilTelefono;
 import pe.com.qallpatic.osteoperu.config.AppProperties;
-import pe.com.qallpatic.osteoperu.integracion.reniec.ClienteReniec;
 import pe.com.qallpatic.osteoperu.pacientes.repository.PacienteRepository;
 import pe.com.qallpatic.osteoperu.resultados.dto.ArchivoResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.LogCargaResponse;
@@ -21,13 +20,13 @@ import pe.com.qallpatic.osteoperu.resultados.dto.PacientePendienteResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.ResultadoDetalleResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.ResultadoResumenResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.ResultadoUpdateRequest;
-import pe.com.qallpatic.osteoperu.resultados.entity.Resultado;
+import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoCarga;
 import pe.com.qallpatic.osteoperu.resultados.mapper.ResultadoMapper;
 import pe.com.qallpatic.osteoperu.resultados.repository.EnlaceCortoRepository;
 import pe.com.qallpatic.osteoperu.resultados.repository.LogCargaRepository;
-import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoRepository;
+import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoCargaRepository;
 import pe.com.qallpatic.osteoperu.resultados.spec.LogCargaSpecs;
-import pe.com.qallpatic.osteoperu.resultados.spec.ResultadoSpecs;
+import pe.com.qallpatic.osteoperu.resultados.spec.ResultadoCargaSpecs;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,12 +38,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 
-	private final ResultadoRepository resultadoRepository;
+	private final ResultadoCargaRepository resultadoCargaRepository;
 	private final LogCargaRepository logCargaRepository;
 	private final EnlaceCortoRepository enlaceCortoRepository;
 	private final ResultadoMapper resultadoMapper;
 	private final SmsService smsService;
-	private final ClienteReniec clienteReniec;
 	private final PacienteRepository pacienteRepository;
 	private final AppProperties appProperties;
 
@@ -70,9 +68,9 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 	public PaginaResponse<ResultadoResumenResponse> listar(String dni, String nombre,
 			LocalDate desde, LocalDate hasta, int pagina, int tamano) {
 		Pageable pageable = PageRequest.of(Math.max(pagina, 0), tamano <= 0 ? 10 : tamano,
-				Sort.by(Sort.Direction.DESC, "fechaCreacion"));
-		Page<ResultadoResumenResponse> page = resultadoRepository
-				.findAll(ResultadoSpecs.filtro(dni, nombre, inicioDia(desde), finDia(hasta)), pageable)
+				Sort.by(Sort.Direction.DESC, "fechaHoraCarga"));
+		Page<ResultadoResumenResponse> page = resultadoCargaRepository
+				.findAll(ResultadoCargaSpecs.filtro(dni, nombre, null, inicioDia(desde), finDia(hasta)), pageable)
 				.map(resultadoMapper::toResumen);
 		return PaginaResponse.de(page);
 	}
@@ -86,28 +84,28 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 	@Override
 	@Transactional
 	public ResultadoDetalleResponse actualizar(Long id, ResultadoUpdateRequest solicitud, String actor) {
-		Resultado resultado = buscar(id);
+		ResultadoCarga carga = buscar(id);
 
 		if (solicitud.telefono() != null && !solicitud.telefono().isBlank()) {
-			resultado.setTelefono(UtilTelefono.normalizar(solicitud.telefono(),
+			carga.setTelefono(UtilTelefono.normalizar(solicitud.telefono(),
 					appProperties.getPhone().getCountryCode()));
 		}
 		if (solicitud.nombrePaciente() != null) {
-			resultado.setNombrePaciente(
+			carga.setNombrePaciente(
 					solicitud.nombrePaciente().isBlank() ? null : solicitud.nombrePaciente().trim());
 		}
-		resultado.setUsuarioModificacion(actor);
-		resultadoRepository.save(resultado);
+		carga.setUsuarioModificacion(actor);
+		resultadoCargaRepository.save(carga);
 
 		if (solicitud.reenviarSms()) {
 			enlaceCortoRepository.findFirstByIdResultadoOrderByIdDesc(id).ifPresent(enlace -> {
 				String smsLink = trimBase() + "/s/" + enlace.getCodigoCorto();
-				smsService.enqueueResultLink(id, resultado.getTelefono(), resultado.getNombrePaciente(), smsLink);
-				log.info("SMS reencolado para resultado {}", id);
+				smsService.enqueueResultLink(id, carga.getTelefono(), carga.getNombrePaciente(), smsLink);
+				log.info("SMS reencolado para carga {}", id);
 			});
 		}
 
-		return armarDetalle(resultado);
+		return armarDetalle(carga);
 	}
 
 	@Override
@@ -122,30 +120,36 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 		return PaginaResponse.de(page);
 	}
 
-	private ResultadoDetalleResponse armarDetalle(Resultado r) {
-		List<ArchivoResponse> archivos = r.getArchivos().stream()
+	private ResultadoDetalleResponse armarDetalle(ResultadoCarga c) {
+		List<ArchivoResponse> archivos = c.getArchivos().stream()
 				.map(resultadoMapper::toArchivo)
 				.toList();
 		return new ResultadoDetalleResponse(
-				r.getId(),
-				r.getDni(),
-				r.getNombrePaciente(),
-				r.getMensaje(),
-				r.getTelefono(),
-				r.getCarpeta(),
-				r.getTokenPublico(),
-				trimBase() + "/r/" + r.getTokenPublico(),
-				r.getEstadoSms() == null ? null : r.getEstadoSms().name(),
-				r.getContadorVistas(),
-				r.getFechaPrimeraVista(),
-				r.getFechaUltimaVista(),
-				r.getFechaCreacion(),
+				c.getIdResultadoCarga(),
+				c.getIdGenerado(),
+				c.getDocumentoIdentidad(),
+				c.getNombrePaciente(),
+				c.getMensaje(),
+				c.getTelefono(),
+				c.getTokenPublico(),
+				trimBase() + "/r/" + c.getTokenPublico(),
+				c.getEstadoSms() == null ? null : c.getEstadoSms().name(),
+				c.getContadorVistas(),
+				c.getEstado(),
+				c.getFechaEliminacion(),
+				c.getUsuarioEliminacion(),
+				c.getMotivoEliminacion(),
+				c.getCantidadArchivos() == null ? 0 : c.getCantidadArchivos(),
+				c.getPesoTotalMb(),
+				c.getFechaHoraCarga(),
+				c.getFechaPrimeraVista(),
+				c.getFechaUltimaVista(),
 				archivos);
 	}
 
-	private Resultado buscar(Long id) {
-		return resultadoRepository.findById(id)
-				.orElseThrow(() -> new RecursoNoEncontradoException("Resultado no encontrado: " + id));
+	private ResultadoCarga buscar(Long id) {
+		return resultadoCargaRepository.findById(id)
+				.orElseThrow(() -> new RecursoNoEncontradoException("Carga no encontrada: " + id));
 	}
 
 	private LocalDateTime inicioDia(LocalDate d) {

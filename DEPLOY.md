@@ -22,6 +22,7 @@ Documentacion operativa para levantar el stack en **desarrollo local** o en **pr
 | **DB** | MySQL en `161.132.53.229`, schema `osteoperu_resultados` | Misma DB |
 | **Red Docker** | `osteoperu-net` (+ `proxy-network` para NPM si existe) | `osteoperu-net` + `proxy-network` |
 | **Volumen uploads** | `/home/docker/uploads` en el host | `./uploads` en `/home/docker/osteoperu-resultados/uploads` |
+| **Almacenamiento** | S3-compatible (MinIO `ia.qallpatic.com.pe`) — bucket `osteoperu-resultados-dev` | S3-compatible (MinIO `ia.qallpatic.com.pe`) — bucket `osteoperu-resultados-prod` |
 | **Nginx Proxy Manager** | No requerido | Requerido para el acceso publico |
 
 ---
@@ -135,6 +136,9 @@ Variables **obligatorias** a rellenar en `.env.prod` (tienen defaults inseguros 
 | `PUBLIC_BASE_URL` | `https://osteoperu-dev.qallpatic.com/resultados/osteoperu-api-resultados` |
 | `PORTAL_URL` | `https://osteoperu-dev.qallpatic.com/resultados/login` |
 | `CORS_ALLOWED_ORIGINS` | `https://osteoperu-dev.qallpatic.com` |
+| `STORAGE_S3_ACCESS_KEY` | Usuario IAM con alcance SOLO al bucket `osteoperu-resultados-prod` |
+| `STORAGE_S3_SECRET_KEY` | Secret del usuario IAM anterior (random ≥32 chars) |
+| `STORAGE_S3_BUCKET` | `osteoperu-resultados-prod` |
 
 ### 5.2 Crear la red `proxy-network` (solo si no existe)
 
@@ -216,6 +220,11 @@ proxy_read_timeout 300s;
 | `SMS_ENABLED` | `false` | `true` |
 | `RENIEC_TOKEN` | (placeholder) | (token real del proveedor) |
 | `SMS_API_KEY` | (placeholder) | (api key real) |
+| `STORAGE_TYPE` | `s3` | `s3` |
+| `STORAGE_S3_ENDPOINT` | `https://ia.qallpatic.com.pe` | `https://ia.qallpatic.com.pe` |
+| `STORAGE_S3_BUCKET` | `osteoperu-resultados-dev` | `osteoperu-resultados-prod` |
+| `STORAGE_S3_ACCESS_KEY` | (placeholder dev) | (credencial IAM con scope al bucket) |
+| `STORAGE_S3_SECRET_KEY` | (placeholder dev) | (secreto IAM) |
 
 ---
 
@@ -264,6 +273,32 @@ Otro proceso o contenedor usa el puerto. Ver `.env` y cambiar `BACKEND_PORT` / `
 sudo lsof -i :7090
 sudo lsof -i :6060
 ```
+
+### "No se pudo conectar a S3" / upload falla con 500
+
+- Verificar que `STORAGE_S3_ENDPOINT`, `STORAGE_S3_BUCKET`, `STORAGE_S3_ACCESS_KEY`, `STORAGE_S3_SECRET_KEY` están bien seteados en `.env.prod` (o `.env.dev` si `STORAGE_TYPE=s3`).
+- Probar acceso desde el contenedor: `docker compose exec backend wget -qO- $STORAGE_S3_ENDPOINT/minio/health/live` → debe devolver `200 OK`.
+- Verificar que el bucket existe y las credenciales tienen `s3:GetObject`, `s3:PutObject`, `s3:ListBucket`, `s3:HeadBucket`. Para purgas manuales agregar `s3:DeleteObject`.
+- Logs: `docker compose logs backend | grep -E "AlmacenamientoS3|S3Exception"` te da el detalle del error de AWS SDK.
+
+### El visor publico no muestra el PDF (404 o "Archivo no encontrado")
+
+- Verificar que el archivo esta en S3: `mc ls --recursive local/<bucket>/resultado_/`. Si no esta, el upload fallo silenciosamente (revisar logs del backend al momento del upload).
+- Si esta pero el visor falla, la causa mas probable es `STORAGE_S3_SECRET_KEY` desactualizado (cambio en IAM). Regenerar y re-desplegar.
+
+### Limpiar objetos huerfanos de S3
+
+El soft delete (`DELETE /api/paciente/resultados/{id}`) marca la cabecera como `estado=0` pero **NO borra** los archivos en S3 (preservacion de auditoria clinica). Para liberar espacio manualmente:
+
+```bash
+# Listar archivos del bucket
+mc ls --recursive local/osteoperu-resultados-prod/resultado_/
+
+# Borrar TODOS los archivos de una cabecera especifica (idGenerado conocido)
+mc rm --recursive --force local/osteoperu-resultados-prod/resultado_<idGenerado>_<idArchivo>.pdf
+```
+
+Ideal: job anual (cron) que consulta la BD cabeceras con `estado=0` y `fecha_eliminacion < NOW() - 365 days` y borra sus archivos en S3.
 
 ### Cambiar credenciales despues de un primer arranque
 

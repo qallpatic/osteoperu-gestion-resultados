@@ -3,10 +3,10 @@ package pe.com.qallpatic.osteoperu.resultados.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaTypeFactory;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -18,12 +18,12 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import pe.com.qallpatic.osteoperu.compartido.excepcion.RecursoNoEncontradoException;
 import pe.com.qallpatic.osteoperu.compartido.util.UtilInfoCliente;
 import pe.com.qallpatic.osteoperu.resultados.dto.FileViewItem;
-import pe.com.qallpatic.osteoperu.resultados.entity.ArchivoResultado;
-import pe.com.qallpatic.osteoperu.resultados.entity.Resultado;
-import pe.com.qallpatic.osteoperu.resultados.service.StorageService;
+import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoArchivo;
+import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoCarga;
+import pe.com.qallpatic.osteoperu.resultados.service.AlmacenamientoArchivos;
+import pe.com.qallpatic.osteoperu.resultados.service.ArchivoDescargable;
 import pe.com.qallpatic.osteoperu.resultados.service.ViewerService;
 
-import java.nio.file.Path;
 import java.util.List;
 
 /** Visor web publico de resultados del paciente. */
@@ -33,56 +33,55 @@ import java.util.List;
 public class ViewerController {
 
 	private final ViewerService viewerService;
-	private final StorageService storageService;
+	private final AlmacenamientoArchivos almacenamiento;
 
-	/** Pagina de resultados: se abre desde el link del SMS. */
 	@GetMapping("/r/{token}")
 	public String viewResults(@PathVariable String token, HttpServletRequest request, Model model) {
-		Resultado resultado = viewerService.loadAndRegisterView(
+		ResultadoCarga carga = viewerService.loadAndRegisterView(
 				token, UtilInfoCliente.ipCliente(request), UtilInfoCliente.userAgent(request));
 
-		List<FileViewItem> items = resultado.getArchivos().stream()
+		List<FileViewItem> items = carga.getArchivos().stream()
 				.map(a -> new FileViewItem(
-						a.getId(),
+						a.getIdResultadoArchivo(),
 						a.getNombreOriginal(),
-						"/r/" + token + "/archivo/" + a.getId(),
-						"/r/" + token + "/descargar/" + a.getId(),
+						"/r/" + token + "/archivo/" + a.getIdResultadoArchivo(),
+						"/r/" + token + "/descargar/" + a.getIdResultadoArchivo(),
 						a.getTipoMedio(),
-						humanSize(a.getTamanoBytes())))
+						humanSizeMb(a.getPesoMb())))
 				.toList();
 
-		model.addAttribute("dni", resultado.getDni());
+		model.addAttribute("dni", carga.getDocumentoIdentidad());
 		model.addAttribute("files", items);
 		return "resultados";
 	}
 
-	/** Sirve un archivo en linea (inline) para visualizarlo en el navegador. */
 	@GetMapping("/r/{token}/archivo/{fileId}")
 	@ResponseBody
 	public ResponseEntity<Resource> viewFile(@PathVariable String token, @PathVariable Long fileId) {
 		return serveFile(token, fileId, false);
 	}
 
-	/** Fuerza la descarga del archivo. */
 	@GetMapping("/r/{token}/descargar/{fileId}")
 	@ResponseBody
 	public ResponseEntity<Resource> downloadFile(@PathVariable String token, @PathVariable Long fileId,
 			HttpServletRequest request) {
-		Resultado resultado = viewerService.getByToken(token);
-		viewerService.registerDownload(resultado.getId(),
+		ResultadoCarga carga = viewerService.getByToken(token);
+		viewerService.registerDownload(carga.getIdResultadoCarga(),
 				UtilInfoCliente.ipCliente(request), UtilInfoCliente.userAgent(request));
 		return serveFile(token, fileId, true);
 	}
 
 	private ResponseEntity<Resource> serveFile(String token, Long fileId, boolean asAttachment) {
-		Resultado resultado = viewerService.getByToken(token);
-		ArchivoResultado archivo = viewerService.findFile(resultado, fileId);
+		ResultadoCarga carga = viewerService.getByToken(token);
+		ResultadoArchivo archivo = viewerService.findFile(carga, fileId);
 
-		Path path = storageService.resolveFile(resultado.getCarpeta(), archivo.getNombreAlmacenado());
-		Resource resource = new FileSystemResource(path);
+		ArchivoDescargable descargable = almacenamiento.descargar(
+				archivo.getIdGenerado(), archivo.getIdArchivo(), archivo.getExtension(),
+				carga.getDocumentoIdentidad(), carga.getFechaHoraCarga());
 
-		org.springframework.http.MediaType mediaType = MediaTypeFactory.getMediaType(resource)
-				.orElse(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM);
+		MediaType mediaType = descargable.contentType() == null
+				? MediaType.APPLICATION_OCTET_STREAM
+				: MediaType.parseMediaType(descargable.contentType());
 
 		String disposition = (asAttachment ? "attachment" : "inline")
 				+ "; filename=\"" + archivo.getNombreOriginal() + "\"";
@@ -91,27 +90,27 @@ public class ViewerController {
 				.header(HttpHeaders.CONTENT_DISPOSITION, disposition)
 				.header(HttpHeaders.ACCEPT_RANGES, "bytes")
 				.contentType(mediaType)
-				.body(resource);
+				.body(new InputStreamResource(descargable.contenido()));
 	}
 
-	/** Muestra una pagina amigable cuando el link no existe o expiro. */
 	@ExceptionHandler(RecursoNoEncontradoException.class)
 	public String handleNotFound(RecursoNoEncontradoException ex, Model model) {
 		model.addAttribute("mensaje", ex.getMessage());
 		return "error";
 	}
 
-	private static String humanSize(long bytes) {
-		if (bytes < 1024) {
-			return bytes + " B";
+	private static String humanSizeMb(java.math.BigDecimal pesoMb) {
+		if (pesoMb == null) {
+			return "0 B";
 		}
-		String[] units = {"KB", "MB", "GB"};
-		double size = bytes;
-		int i = -1;
-		do {
-			size /= 1024.0;
-			i++;
-		} while (size >= 1024 && i < units.length - 1);
-		return String.format("%.1f %s", size, units[i]);
+		double mb = pesoMb.doubleValue();
+		if (mb < 1.0) {
+			long kb = Math.round(mb * 1024);
+			return kb + " KB";
+		}
+		if (mb < 1024.0) {
+			return String.format("%.1f MB", mb);
+		}
+		return String.format("%.2f GB", mb / 1024.0);
 	}
 }

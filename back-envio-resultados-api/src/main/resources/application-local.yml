@@ -19,6 +19,8 @@ app:
   public-base-url: ${PUBLIC_BASE_URL:http://localhost:6060/osteoperu-api-resultados}
 
 storage:
+  # Dev: usa FS local por defecto. Cambiar STORAGE_TYPE=s3 en .env.dev para validar S3.
+  type: ${STORAGE_TYPE:local}
   base-path: ${STORAGE_BASE_PATH:./uploads}
 
 sms:

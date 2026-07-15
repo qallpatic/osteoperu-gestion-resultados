@@ -10,12 +10,13 @@ export interface PaginaResponse<T> {
 }
 
 export interface UploadResultadoResponse {
-  batchId: number | null;
+  cargaId: number | null;
+  idGenerado: string | null;
   phone: string;
   dni: string;
-  folderName: string;
+  folderKey: string;
   totalFiles: number;
-  storedFiles: string[];
+  storedFileIds: string[];
   shortLink: string;
   viewerUrl: string;
   smsStatus: string;
@@ -35,37 +36,51 @@ export interface UploadRequest {
 
 export interface ResultadoResumen {
   id: number;
+  idGenerado: string;
   dni: string;
   nombrePaciente: string | null;
-  telefono: string;
+  telefono: string | null;
   estadoSms: string;
   contadorVistas: number;
-  fechaCreacion: string;
+  cantidadArchivos: number;
+  pesoTotalMb: number;
+  estado: number;
+  fechaHoraCarga: string;
   fechaPrimeraVista: string | null;
 }
 
 export interface Archivo {
   id: number;
+  idGenerado: string;
+  idArchivo: string;
   nombreOriginal: string;
+  tipoContenido: string;
   tipoMedio: string;
-  tamanoBytes: number;
+  extension: string | null;
+  pesoMb: number;
   fechaCreacion: string;
 }
 
 export interface ResultadoDetalle {
   id: number;
+  idGenerado: string;
   dni: string;
   nombrePaciente: string | null;
   mensaje: string | null;
-  telefono: string;
-  carpeta: string;
+  telefono: string | null;
   tokenPublico: string;
   viewerUrl: string;
   estadoSms: string;
   contadorVistas: number;
+  estado: number;
+  fechaEliminacion: string | null;
+  usuarioEliminacion: string | null;
+  motivoEliminacion: string | null;
+  cantidadArchivos: number;
+  pesoTotalMb: number;
+  fechaHoraCarga: string;
   fechaPrimeraVista: string | null;
   fechaUltimaVista: string | null;
-  fechaCreacion: string;
   archivos: Archivo[];
 }
 

@@ -1,12 +1,17 @@
 package pe.com.qallpatic.osteoperu.resultados.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/** Archivo asociado a un resultado (para el detalle). */
+/** Archivo (detalle) asociado a una cabecera de resultado. */
 public record ArchivoResponse(
 		Long id,
+		String idGenerado,
+		String idArchivo,
 		String nombreOriginal,
+		String tipoContenido,
 		String tipoMedio,
-		long tamanoBytes,
+		String extension,
+		BigDecimal pesoMb,
 		LocalDateTime fechaCreacion) {
 }

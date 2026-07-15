@@ -40,7 +40,7 @@
               <td>{{ r.telefono }}</td>
               <td><span class="badge">{{ r.estadoSms }}</span></td>
               <td>{{ r.contadorVistas }}</td>
-              <td>{{ r.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>{{ r.fechaHoraCarga | date:'dd/MM/yyyy HH:mm' }}</td>
               <td class="acc">
                 <button class="ico" (click)="verDetalle(r)" title="Ver detalle"><i class="fas fa-eye"></i></button>
               </td>
