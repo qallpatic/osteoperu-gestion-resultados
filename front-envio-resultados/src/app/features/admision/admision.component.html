@@ -4,9 +4,9 @@
       <h1>Admisión</h1>
       <p>
         @if (puedeEditarCuenta()) {
-          Genera o anula el acceso de los pacientes. Puedes crear un usuario nuevo aunque aún no tenga resultados.
+        Genera o anula el acceso de los pacientes. Puedes crear un usuario nuevo aunque aún no tenga resultados.
         } @else {
-          Listado de pacientes con resultados. Solo el personal de admisión puede crear o anular cuentas.
+        Listado de pacientes con resultados. Solo el personal de admisión puede crear o anular cuentas.
         }
       </p>
     </div>
@@ -27,9 +27,9 @@
     </div>
     <button class="btn btn--primary" (click)="aplicar()"><i class="fas fa-magnifying-glass"></i> Buscar</button>
     @if (puedeEditarCuenta()) {
-      <button class="btn btn--primary" (click)="abrirGenerarNuevo()">
-        <i class="fas fa-user-plus"></i> Nuevo usuario
-      </button>
+    <button class="btn btn--primary" (click)="abrirGenerarNuevo()">
+      <i class="fas fa-user-plus"></i> Nuevo usuario
+    </button>
     }
   </div>
 
@@ -69,18 +69,18 @@
           </td>
           <td class="acc">
             @if (puedeEditarCuenta()) {
-              @if (p.estadoCuenta === 'SIN_CUENTA') {
-              <button class="btn btn--sm btn--primary" (click)="abrirGenerar(p)"><i class="fas fa-id-card"></i>
-                Generar</button>
-              } @else if (p.estadoCuenta === 'ACTIVO') {
-              <button class="btn btn--sm btn--danger" (click)="confirmarAnular(p)"><i class="fas fa-user-slash"></i>
-                Anular</button>
-              } @else {
-              <button class="btn btn--sm btn--ghost" (click)="abrirGenerar(p)"><i class="fas fa-rotate"></i>
-                Regenerar</button>
-              }
+            @if (p.estadoCuenta === 'SIN_CUENTA') {
+            <button class="btn btn--sm btn--primary" (click)="abrirGenerar(p)"><i class="fas fa-id-card"></i>
+              Generar</button>
+            } @else if (p.estadoCuenta === 'ACTIVO') {
+            <button class="btn btn--sm btn--danger" (click)="confirmarAnular(p)"><i class="fas fa-user-slash"></i>
+              Anular</button>
             } @else {
-              <span class="estado estado--sin">Solo lectura</span>
+            <button class="btn btn--sm btn--ghost" (click)="abrirGenerar(p)"><i class="fas fa-rotate"></i>
+              Regenerar</button>
+            }
+            } @else {
+            <span class="estado estado--sin">Solo lectura</span>
             }
           </td>
         </tr>
@@ -112,7 +112,7 @@
   <div class="field">
     <label>Doc. identidad (DNI/CE) <b class="req">*</b></label>
     <input [(ngModel)]="genDni" maxlength="12" inputmode="numeric" placeholder="8-12 dígitos"
-           (blur)="autocompletarNombrePorDni()" />
+      (blur)="autocompletarNombrePorDni()" />
   </div>
   } @else {
   <div class="field">
@@ -132,10 +132,10 @@
     <input [(ngModel)]="telefonoFmt" maxlength="24" inputmode="numeric" placeholder="Opcional" />
   </div>
   @if (genTelefono.trim()) {
-    <label class="check">
-      <input type="checkbox" [(ngModel)]="enviarSms" />
-      <span>Enviar credencial por SMS al {{ telefonoFmt }}</span>
-    </label>
+  <label class="check">
+    <input type="checkbox" [(ngModel)]="enviarSms" />
+    <span>Enviar credencial por SMS al {{ telefonoFmt }}</span>
+  </label>
   }
   <div class="modal__actions">
     <button class="btn btn--ghost" (click)="cerrarGenerar()">Cancelar</button>
@@ -158,7 +158,7 @@
   <div class="sms-ok"><i class="fas fa-comment-sms"></i> Credencial enviada por SMS.</div>
   }
   <div class="credencial">
-    <div class="cred__web"><b>WEB:</b> {{ c.portalUrl }}</div>
+    <div class="cred__row"><span class="cred__k">WEB:</span><span>{{ c.portalUrl }}</span></div>
     <div class="cred__row"><span class="cred__k">Nombre</span><span>{{ c.nombre || '—' }}</span></div>
     <div class="cred__row"><span class="cred__k">Usuario</span><span>{{ c.usuario }}</span></div>
     <div class="cred__row"><span class="cred__k">Clave</span><span class="cred__clave">{{ c.clave }}</span></div>
