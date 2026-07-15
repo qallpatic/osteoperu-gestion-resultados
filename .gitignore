@@ -27,6 +27,7 @@ Thumbs.db
 back-envio-resultados-api/target/
 back-envio-resultados-api/*.jar
 back-envio-resultados-api/uploads/
+uploads/
 front-envio-resultados/dist/
 front-envio-resultados/node_modules/
 front-envio-resultados/.angular/
