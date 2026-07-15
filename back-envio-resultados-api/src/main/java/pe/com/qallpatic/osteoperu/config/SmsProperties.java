@@ -33,5 +33,7 @@ public class SmsProperties {
 		private String template;
 		/** Plantilla del SMS de credencial. Placeholders: {nombre}, {usuario}, {clave}, {link}. Valor en application.yml. */
 		private String credencialTemplate;
+		/** Plantilla del SMS de recuperacion de password. Placeholders: {nombre}, {clave}. Valor en application.yml. */
+		private String recuperacionTemplate;
 	}
 }

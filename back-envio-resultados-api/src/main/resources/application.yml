@@ -67,6 +67,10 @@ app:
     code-length: 7
     # dias de validez del link enviado por SMS (0 = sin expiracion)
     ttl-days: 0
+  # Telefono al que el front muestra cuando un flujo publico no puede continuar
+  # (ej. recuperar password). Sobreescribible por SOPORTE_TELEFONO.
+  soporte:
+    telefono: ${SOPORTE_TELEFONO:080012346}
 
 # ------------------------------------------------------------
 #  Almacenamiento de resultados (se sobreescribe por ambiente)
@@ -100,6 +104,7 @@ sms:
   message:
     template: "OSTEOPERU: Hola {nombre}, tus resultados medicos ya estan disponibles. Ver aqui: {link}"
     credencial-template: "OSTEOPERU: Hola {nombre}, ya tienes acceso a tus resultados. Usuario: {usuario} Clave: {clave} Ingresa: {link}"
+    recuperacion-template: "OSTEOPERU: Hola {nombre}, tu nueva clave de acceso es {clave}. Por seguridad te recomendamos cambiarla al ingresar."
 
 # ------------------------------------------------------------
 #  Seguridad JWT y semilla del usuario ADMIN inicial
@@ -132,6 +137,20 @@ reniec:
   timeout-ms: ${RENIEC_TIMEOUT_MS:6000}
   # TTL del cache local RENIEC_CACHE (dias). Por defecto medio ano: 180.
   cache-dias: ${RENIEC_CACHE_DIAS:180}
+
+# ------------------------------------------------------------
+#  Rate-limit del endpoint /api/auth/recuperar-password
+#  Persiste en INTENTO_RECUPERACION_PASSWORD (ver V9).
+#  Cada var puede sobreescribirse via .env (dev/prod).
+# ------------------------------------------------------------
+recuperacion:
+  longitud-clave: ${RECUPERACION_LONGITUD_CLAVE:10}
+  max-intentos-ip: ${RECUPERACION_MAX_INTENTOS_IP:3}
+  max-intentos-telefono: ${RECUPERACION_MAX_INTENTOS_TELEFONO:3}
+  max-distintos-por-ip: ${RECUPERACION_MAX_DISTINTOS_POR_IP:3}
+  ventana-minutos: ${RECUPERACION_VENTANA_MINUTOS:10}
+  retention-horas: ${RECUPERACION_RETENCION_HORAS:24}
+  limpieza-cron: "0 0 * * * *"
 
 management:
   endpoints:

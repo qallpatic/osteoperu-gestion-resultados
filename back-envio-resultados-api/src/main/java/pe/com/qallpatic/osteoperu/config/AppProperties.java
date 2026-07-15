@@ -19,6 +19,7 @@ public class AppProperties {
 	private Shortlink shortlink = new Shortlink();
 	private Cors cors = new Cors();
 	private Qr qr = new Qr();
+	private Soporte soporte = new Soporte();
 
 	/** URL publica base con la que se construye el link que viaja en el SMS. */
 	private String publicBaseUrl;
@@ -60,5 +61,12 @@ public class AppProperties {
 	public static class Qr {
 		/** API de generacion de QR. Su valor se configura en application.yml (app.qr.base-url). */
 		private String baseUrl;
+	}
+
+	@Getter
+	@Setter
+	public static class Soporte {
+		/** Telefono al que el front muestra cuando un flujo publico no puede continuar (ej. recuperar password). */
+		private String telefono;
 	}
 }

@@ -37,6 +37,25 @@ export class AuthService {
       .pipe(map((r) => this.guardar(r.data)));
   }
 
+  /**
+   * Solicita al backend la regeneracion de la clave del paciente asociado
+   * al telefono. La respuesta es siempre generica: si el telefono esta
+   * registrado, recibe un SMS; si no, no se envia nada y se muestra el
+   * mismo mensaje. Incluye el telefono de soporte del backend
+   * (app.soporte.telefono) por si el SMS no llega.
+   *
+   * Si el caller fue bloqueado por rate-limit, el backend responde 200 con
+   * `retryAfterSeconds > 0` (politica consistente con el resto del front);
+   * el componente muestra el mensaje devuelto (incluye minutos a esperar).
+   */
+  recuperarPassword(telefono: string): Observable<RecuperarPasswordData> {
+    return this.http
+      .post<RespuestaApi<RecuperarPasswordData>>(`${this.base}/recuperar-password`, {
+        telefono,
+      })
+      .pipe(map((r) => r.data));
+  }
+
   logout(): void {
     const refreshToken = this.getRefreshToken();
     if (refreshToken) {
@@ -113,4 +132,10 @@ export class AuthService {
       return null;
     }
   }
+}
+
+export interface RecuperarPasswordData {
+  mensajeUsuario: string;
+  soporteTelefono: string;
+  retryAfterSeconds: number | null;
 }

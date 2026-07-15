@@ -9,11 +9,14 @@ import org.springframework.data.repository.query.Param;
 import pe.com.qallpatic.osteoperu.pacientes.entity.Paciente;
 import pe.com.qallpatic.osteoperu.resultados.dto.PacienteResumenProj;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface PacienteRepository extends JpaRepository<Paciente, Long> {
 
 	Optional<Paciente> findByDni(String dni);
+
+	List<Paciente> findByTelefono(String telefono);
 
 	/**
 	 * Lista los pacientes registrados (incluye los creados por Admision aunque
