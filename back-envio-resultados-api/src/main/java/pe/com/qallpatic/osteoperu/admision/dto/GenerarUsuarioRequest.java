@@ -7,5 +7,6 @@ import jakarta.validation.constraints.Size;
 public record GenerarUsuarioRequest(
 		@NotBlank @Size(max = 15) String dni,
 		@Size(max = 120) String nombre,
-		@Size(max = 20) String telefono) {
+		@Size(max = 20) String telefono,
+		Boolean enviarSms) {
 }

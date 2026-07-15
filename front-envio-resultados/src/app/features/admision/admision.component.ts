@@ -45,6 +45,8 @@ export class AdmisionComponent implements OnInit {
   genDni = '';
   genNombre = '';
   genTelefono = '';
+  /** Switch para decidir si se envia el SMS de la credencial (solo si hay telefono). */
+  enviarSms = false;
   readonly regenerando = signal(false);
   /** true = alta de un DNI nuevo (DNI editable). */
   readonly nuevoUsuario = signal(false);
@@ -100,7 +102,8 @@ export class AdmisionComponent implements OnInit {
   abrirGenerar(p: PacienteAdmision): void {
     this.genDni = p.dni;
     this.genNombre = p.nombre ?? '';
-    this.genTelefono = '';
+    this.genTelefono = p.telefono ?? '';
+    this.enviarSms = !!p.telefono;
     this.regenerando.set(p.estadoCuenta === 'ANULADO');
     this.nuevoUsuario.set(false);
     this.credencial.set(null);
@@ -112,6 +115,7 @@ export class AdmisionComponent implements OnInit {
     this.genDni = '';
     this.genNombre = '';
     this.genTelefono = '';
+    this.enviarSms = false;
     this.regenerando.set(false);
     this.nuevoUsuario.set(true);
     this.credencial.set(null);
@@ -124,6 +128,25 @@ export class AdmisionComponent implements OnInit {
 
   dniGenValido(): boolean {
     return /^\d{8,12}$/.test(this.genDni.trim());
+  }
+
+  /**
+   * Vista formateada del telefono para mostrar en el modal (input + label del
+   * checkbox). Internamente `genTelefono` se conserva solo con digitos para que
+   * el backend lo reciba limpio; el formateo es puramente cosmético.
+   */
+  get telefonoFmt(): string {
+    return this.formatearTelefono(this.genTelefono);
+  }
+  set telefonoFmt(v: string) {
+    this.genTelefono = (v ?? '').replace(/\D/g, '').slice(0, 20);
+  }
+
+  private formatearTelefono(digitos: string): string {
+    if (!digitos) {
+      return '';
+    }
+    return digitos.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   }
 
   /**
@@ -164,6 +187,7 @@ export class AdmisionComponent implements OnInit {
         dni: this.genDni,
         nombre: this.genNombre.trim() || undefined,
         telefono: this.genTelefono.trim() || undefined,
+        enviarSms: this.enviarSms,
       })
       .subscribe({
         next: (cred) => {
@@ -216,13 +240,13 @@ export class AdmisionComponent implements OnInit {
     }
     w.document.write(`
       <html><head><title>Credencial ${c.usuario}</title>
-      <style>
-        @page { size: 80mm 175mm; margin: 0; }
-        html, body { width: 80mm; height: 175mm; margin: 0; padding: 0; }
+      <style id="ticket-style">
+        @page { size: 80mm 100mm; margin: 0; }
+        html, body { width: 80mm; margin: 0; padding: 0; }
         body {
           font-family: Arial, Helvetica, sans-serif;
           color: #1f2937;
-          padding: 3mm;
+          padding: 5mm 4mm 3mm 4mm;
           box-sizing: border-box;
           display: flex;
           flex-direction: column;
@@ -230,40 +254,72 @@ export class AdmisionComponent implements OnInit {
         .header {
           text-align: center;
           flex: 0 0 auto;
-          font-size: 16px;
+          font-size: 11px;
           font-weight: 800;
-          letter-spacing: 2px;
+          letter-spacing: 0.4px;
           color: #043d36;
           padding-bottom: 2mm;
-          margin-bottom: 2mm;
+          margin-bottom: 3mm;
           border-bottom: 1px dashed #043d36;
         }
-        .datos { text-align: left; flex: 0 0 auto; }
-        .web { font-size: 10px; color: #075e54; word-break: break-all; margin-bottom: 2mm; }
-        .row { text-align: left; margin: 0.5mm 0; font-size: 11px; line-height: 1.25; }
-        .k { color: #6b7280; font-size: 8px; text-transform: uppercase; letter-spacing: 0.3px; }
-        .clave { font-size: 14px; font-weight: 700; letter-spacing: 1.5px; color: #043d36; }
+        .datos {
+          flex: 0 0 auto;
+          display: grid;
+          grid-template-columns: 24mm 1fr;
+          column-gap: 2mm;
+          row-gap: 1mm;
+          font-size: 10px;
+          line-height: 1.25;
+        }
+        .datos .k { color: #6b7280; text-transform: uppercase; font-size: 8px; }
+        .datos .v { color: #1f2937; font-weight: 700; }
         .qr-wrap {
           flex: 0 0 auto;
           display: flex;
           align-items: center;
           justify-content: center;
-          margin-top: 2mm;
+          margin-top: 6mm;
         }
         .qr-wrap img { width: 28mm; height: 28mm; display: block; }
+        .footer {
+          flex: 0 0 auto;
+          text-align: center;
+          font-size: 8.5px;
+          color: #4b5563;
+          margin-top: 4mm;
+          padding-top: 2mm;
+          border-top: 1px dashed #043d36;
+        }
       </style></head><body>
-        <div class="header">OSTEOPERU</div>
+        <div class="header">SERVICIOS MEDICOS ASOCIADOS OSTEOPERU SAC</div>
         <div class="datos">
-          <div class="web"><b>WEB:</b> ${c.portalUrl}</div>
-          <div class="row"><span class="k">Nombre</span><br>${c.nombre ?? '-'}</div>
-          <div class="row"><span class="k">Usuario</span><br>${c.usuario}</div>
-          <div class="row"><span class="k">Clave</span><br><span class="clave">${c.clave}</span></div>
+          <div class="k">WEB</div><div class="v">${c.portalUrl}</div>
+          <div class="k">Nombre</div><div class="v">${c.nombre ?? '-'}</div>
+          <div class="k">Usuario</div><div class="v">${c.usuario}</div>
+          <div class="k">Clave</div><div class="v">${c.clave}</div>
         </div>
-        <div class="qr-wrap"><img src="${c.qrUrl}" alt="QR" /></div>
+        <div class="qr-wrap"><img src="assets/qr-osteoperu.png" alt="QR" /></div>
+        <div class="footer">
+          Sus resultados estar&aacute;n disponibles durante 6 meses.<br/>
+          Aseg&uacute;rese de descargarlos dentro de este plazo.
+        </div>
       </body></html>`);
     w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 400);
+    const aplicarTamano = () => {
+      const hMm = Math.max(70, (w.document.body.scrollHeight / (96 / 25.4)) + 20);
+      w.document.documentElement.style.height = hMm + 'mm';
+      w.document.body.style.height = hMm + 'mm';
+      const styleEl = w.document.getElementById('ticket-style') as HTMLStyleElement | null;
+      if (styleEl?.textContent) {
+        styleEl.textContent = styleEl.textContent.replace(
+          /@page\s*\{[^}]*\}/,
+          `@page { size: 80mm ${hMm}mm; margin: 0; }`,
+        );
+      }
+      setTimeout(() => w.print(), 150);
+    };
+    const r = w.document.readyState === 'complete' ? 16 : 300;
+    setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(aplicarTamano)), r);
   }
 
   private msg(e: HttpErrorResponse): string {

@@ -9,6 +9,8 @@ public interface PacienteResumenProj {
 
 	String getNombre();
 
+	String getTelefono();
+
 	Long getTotalResultados();
 
 	LocalDateTime getUltimaFecha();

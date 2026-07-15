@@ -20,11 +20,13 @@ export interface GenerarUsuarioRequest {
   dni: string;
   nombre?: string;
   telefono?: string;
+  enviarSms?: boolean;
 }
 
 export interface PacienteAdmision {
   dni: string;
   nombre: string | null;
+  telefono: string | null;
   totalResultados: number;
   ultimaFecha: string | null;
   estadoCuenta: 'SIN_CUENTA' | 'ACTIVO' | 'ANULADO';

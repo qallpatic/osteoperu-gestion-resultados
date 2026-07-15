@@ -115,7 +115,10 @@
            (blur)="autocompletarNombrePorDni()" />
   </div>
   } @else {
-  <p class="modal__sub">DNI <b>{{ genDni }}</b></p>
+  <div class="field">
+    <label>Doc. identidad (DNI/CE)</label>
+    <input [(ngModel)]="genDni" maxlength="12" inputmode="numeric" readonly />
+  </div>
   }
   <div class="field">
     <label>Nombre completo
@@ -126,8 +129,14 @@
   </div>
   <div class="field">
     <label>Teléfono (para enviar la credencial por SMS)</label>
-    <input [(ngModel)]="genTelefono" maxlength="20" inputmode="numeric" placeholder="Opcional" />
+    <input [(ngModel)]="telefonoFmt" maxlength="24" inputmode="numeric" placeholder="Opcional" />
   </div>
+  @if (genTelefono.trim()) {
+    <label class="check">
+      <input type="checkbox" [(ngModel)]="enviarSms" />
+      <span>Enviar credencial por SMS al {{ telefonoFmt }}</span>
+    </label>
+  }
   <div class="modal__actions">
     <button class="btn btn--ghost" (click)="cerrarGenerar()">Cancelar</button>
     <button class="btn btn--primary" [disabled]="generando() || !dniGenValido()" (click)="generar()">
@@ -153,7 +162,7 @@
     <div class="cred__row"><span class="cred__k">Nombre</span><span>{{ c.nombre || '—' }}</span></div>
     <div class="cred__row"><span class="cred__k">Usuario</span><span>{{ c.usuario }}</span></div>
     <div class="cred__row"><span class="cred__k">Clave</span><span class="cred__clave">{{ c.clave }}</span></div>
-    <img class="cred__qr" [src]="c.qrUrl" alt="QR" width="200" height="200" />
+    <img class="cred__qr" src="assets/qr-osteoperu.png" alt="QR" width="200" height="200" />
   </div>
   <div class="modal__actions">
     <button class="btn btn--ghost" (click)="cerrarCredencial()">Cerrar</button>

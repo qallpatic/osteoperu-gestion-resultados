@@ -66,6 +66,7 @@ public class AdmisionServiceImpl implements AdmisionService {
 				.map(p -> new PacienteAdmisionResponse(
 						p.getDni(),
 						p.getNombre(),
+						p.getTelefono(),
 						p.getTotalResultados() == null ? 0 : p.getTotalResultados(),
 						p.getUltimaFecha(),
 						estadoCuenta(p.getDni())))
@@ -133,7 +134,7 @@ public class AdmisionServiceImpl implements AdmisionService {
 		String qrUrl = appProperties.getQr().getBaseUrl() + "?size=220x220&data="
 				+ URLEncoder.encode(portalUrl == null ? "" : portalUrl, StandardCharsets.UTF_8);
 
-		boolean smsEnviado = enviarCredencialSms(solicitud.telefono(), parser.completo(), dni, clave, portalUrl);
+		boolean smsEnviado = enviarCredencialSms(solicitud.telefono(), parser.completo(), dni, clave, portalUrl, solicitud.enviarSms());
 
 		log.info("Credencial generada. dni={}, reactivada={}, sms={}, por={}",
 				dni, existente != null, smsEnviado, actor);
@@ -189,7 +190,10 @@ public class AdmisionServiceImpl implements AdmisionService {
 		pacienteRepository.save(paciente);
 	}
 
-	private boolean enviarCredencialSms(String telefono, String nombre, String dni, String clave, String portalUrl) {
+	private boolean enviarCredencialSms(String telefono, String nombre, String dni, String clave, String portalUrl, Boolean enviarSms) {
+		if (!Boolean.TRUE.equals(enviarSms)) {
+			return false;
+		}
 		if (telefono == null || telefono.isBlank()) {
 			return false;
 		}

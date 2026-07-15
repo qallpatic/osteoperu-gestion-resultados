@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public record PacienteAdmisionResponse(
 		String dni,
 		String nombre,
+		String telefono,
 		long totalResultados,
 		LocalDateTime ultimaFecha,
 		String estadoCuenta) {
