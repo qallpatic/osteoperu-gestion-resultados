@@ -130,6 +130,18 @@
 
 .foot { color: var(--muted-2); font-size: 0.8rem; }
 
+.forgot {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 0.88rem;
+}
+.forgot a {
+  color: var(--brand-700);
+  text-decoration: none;
+  font-weight: 500;
+}
+.forgot a:hover { text-decoration: underline; }
+
 @keyframes enter {
   from { opacity: 0; transform: translateY(40px); }
   to   { opacity: 1; transform: translateY(0); }
