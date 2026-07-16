@@ -68,4 +68,16 @@ public class ResultadoArchivo {
 
 	@Column(name = "FECHA_CREACION", nullable = false)
 	private LocalDateTime fechaCreacion;
+
+	@Column(name = "ESTADO", nullable = false)
+	private Integer estado;
+
+	@Column(name = "FECHA_ELIMINACION")
+	private LocalDateTime fechaEliminacion;
+
+	@Column(name = "USUARIO_ELIMINACION", length = 100)
+	private String usuarioEliminacion;
+
+	@Column(name = "MOTIVO_ELIMINACION", length = 500)
+	private String motivoEliminacion;
 }

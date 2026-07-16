@@ -24,7 +24,7 @@
     <table class="tabla">
       <thead>
         <tr>
-          <th>DNI</th><th>Paciente</th><th>Teléfono</th><th>SMS</th><th>Vistas</th><th>Fecha</th><th class="acc">Detalle</th>
+          <th>DNI</th><th>Paciente</th><th>Teléfono</th><th>SMS</th><th>Vistas</th><th>Fecha</th><th class="acc">Acciones</th>
         </tr>
       </thead>
       <tbody>
@@ -43,6 +43,10 @@
               <td>{{ r.fechaHoraCarga | date:'dd/MM/yyyy HH:mm' }}</td>
               <td class="acc">
                 <button class="ico" (click)="verDetalle(r)" title="Ver detalle"><i class="fas fa-eye"></i></button>
+                <button class="ico" (click)="abrirEdicionArchivos(r)" title="Editar archivos"
+                        [disabled]="r.estado !== 1">
+                  <i class="fas fa-pen-to-square"></i>
+                </button>
               </td>
             </tr>
           }
@@ -61,7 +65,7 @@
   </div>
 </section>
 
-<!-- Detalle -->
+<!-- Detalle (edicion telefono/nombre) -->
 @if (cargandoDetalle()) {
   <div class="backdrop"></div>
   <div class="modal modal--load"><i class="fas fa-spinner fa-spin"></i> Cargando detalle...</div>
@@ -81,7 +85,7 @@
     <div class="archivos">
       <span class="archivos__label">Archivos ({{ d.archivos.length }})</span>
       @for (a of d.archivos; track a.id) {
-        <div class="arch">
+        <div class="arch" [class.arch--off]="!a.activo">
           <i class="fas"
              [class.fa-file-pdf]="a.tipoMedio === 'PDF'"
              [class.fa-file-image]="a.tipoMedio === 'IMAGEN'"
@@ -89,6 +93,9 @@
              [class.fa-file]="a.tipoMedio === 'OTRO'"></i>
           <span class="arch__name">{{ a.nombreOriginal }}</span>
           <span class="arch__type">{{ a.tipoMedio }}</span>
+          @if (!a.activo) {
+            <span class="arch__tag">Desactivado</span>
+          }
         </div>
       }
     </div>
@@ -107,4 +114,142 @@
       </button>
     </div>
   </div>
+}
+
+<!-- Edicion de archivos (modal separado) -->
+@if (editArchivosAbierto()) {
+  <div class="backdrop" (click)="cerrarEdicionArchivos()"></div>
+  <div class="modal modal--lg" role="dialog">
+    <button class="modal__x" (click)="cerrarEdicionArchivos()" [disabled]="guardandoEdicion()">
+      <i class="fas fa-xmark"></i>
+    </button>
+    <h2 class="modal__title">Editar archivos</h2>
+    <p class="modal__sub">
+      Desactiva los archivos equivocados (no se borran fisicamente) o sube archivos nuevos al mismo visor.
+    </p>
+
+    @if (toastExito(); as t) {
+      <div class="toast-ok">
+        <i class="fas fa-circle-check"></i>
+        <span>{{ t }}</span>
+        <button class="toast-ok__close" (click)="cerrarToast()" title="Cerrar"><i class="fas fa-xmark"></i></button>
+      </div>
+    }
+
+    <div class="archivos-edit">
+      <div class="archivos-edit__head">
+        <span>Archivo</span>
+        <span class="archivos-edit__col-meta">Tipo</span>
+        <span class="archivos-edit__col-meta">Peso</span>
+        <span class="archivos-edit__head-activo">Activo</span>
+      </div>
+      @for (a of editArchivosArchivos(); track a.id) {
+        <div class="archivos-edit__row" [class.is-off]="!a.marcadoActivo">
+          <div class="archivos-edit__name">
+            <i class="fas"
+               [class.fa-file-pdf]="a.tipoMedio === 'PDF'"
+               [class.fa-file-image]="a.tipoMedio === 'IMAGEN'"
+               [class.fa-file-video]="a.tipoMedio === 'VIDEO'"
+               [class.fa-file]="a.tipoMedio === 'OTRO'"></i>
+            <span>{{ a.nombreOriginal }}</span>
+            @if (a.motivoEliminacion && a.marcadoActivo === a.activo) {
+              <span class="archivos-edit__motivo" [title]="a.motivoEliminacion">
+                <i class="fas fa-circle-info"></i> {{ a.motivoEliminacion }}
+              </span>
+            }
+            @if (a.activo && !a.marcadoActivo) {
+              <div class="archivos-edit__motivo-input">
+                <input type="text"
+                       [ngModel]="motivosPorArchivo()[a.id] ?? editArchivosMotivo"
+                       (ngModelChange)="actualizarMotivoIndividual(a.id, $event)"
+                       maxlength="500"
+                       [placeholder]="'Motivo individual (opcional · hereda: ' + (editArchivosMotivo || 'sin motivo') + ')'" />
+                @if (motivoIndividualPersonalizado(a.id)) {
+                  <span class="archivos-edit__motivo-tag" title="Override del motivo general">
+                    <i class="fas fa-circle-check"></i> personalizado
+                  </span>
+                }
+              </div>
+            }
+          </div>
+          <span class="archivos-edit__type archivos-edit__col-meta">{{ a.tipoMedio }}</span>
+          <span class="archivos-edit__size archivos-edit__col-meta">{{ formatSize(a.pesoMb) }}</span>
+          <label class="switch" [title]="a.marcadoActivo ? 'Visible en el visor del paciente' : 'No se muestra al paciente'">
+            <input type="checkbox" [checked]="a.marcadoActivo" (change)="toggleArchivoActivo(a)" />
+            <span class="switch__slider"></span>
+          </label>
+        </div>
+      }
+    </div>
+
+    <div class="dropzone"
+         (dragover)="$event.preventDefault()"
+         (drop)="onArchivosNuevosDrop($event)">
+      <i class="fas fa-cloud-arrow-up"></i>
+      <p>Arrastra archivos nuevos o <label class="dropzone__browse">
+          <input type="file" multiple (change)="onArchivosNuevosBrowse($event)" hidden />
+          <span>haz clic para seleccionar</span>
+        </label>
+      </p>
+      <small>PDF, imagen o video · máx. 50 MB c/u</small>
+    </div>
+
+    @if (editArchivosNuevos().length > 0) {
+      <div class="archivos-edit nuevos">
+        <div class="archivos-edit__head archivos-edit__head--nuevos">
+          <span>Archivos a subir ({{ editArchivosNuevos().length }})</span>
+          <span></span><span></span><span class="archivos-edit__head-activo">Quitar</span>
+        </div>
+        @for (f of editArchivosNuevos(); track f.name; let i = $index) {
+          <div class="archivos-edit__row">
+            <div class="archivos-edit__name">
+              <i class="fas fa-file-circle-plus"></i>
+              <span>{{ f.name }}</span>
+            </div>
+            <span class="archivos-edit__type">{{ f.type || 'archivo' }}</span>
+            <span class="archivos-edit__size">{{ formatSize(f.size / (1024 * 1024)) }}</span>
+            <button class="ico" (click)="removerArchivoNuevo(i)" title="Quitar"><i class="fas fa-xmark"></i></button>
+          </div>
+        }
+      </div>
+    }
+
+    <label class="mf">
+      <span class="mf-label">
+        Motivo (opcional, queda en la bitácora)
+        @if (editArchivosMotivo) {
+          <span class="mf-label__hint">se conserva entre guardados · puedes editarlo</span>
+        }
+      </span>
+      <input [(ngModel)]="editArchivosMotivo" maxlength="500" placeholder="Ej: PDF del paciente equivocado" />
+    </label>
+
+    <label class="check">
+      <input type="checkbox" [(ngModel)]="editArchivosReenviar" />
+      <span>Reenviar SMS al paciente (avisa que hubo una corrección)</span>
+    </label>
+
+    <div class="modal__actions">
+      <button class="btn btn--ghost" (click)="cerrarEdicionArchivos()" [disabled]="guardandoEdicion()">
+        Cerrar
+      </button>
+      <button class="btn btn--primary" (click)="guardarEdicionArchivos()" [disabled]="guardandoEdicion()">
+        <i class="fas" [class.fa-check]="!guardandoEdicion()" [class.fa-spinner]="guardandoEdicion()" [class.fa-spin]="guardandoEdicion()"></i>
+        Guardar cambios
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Dialogo de confirmacion estilizado -->
+@if (confirmacion(); as c) {
+  <app-confirm-dialog
+    [titulo]="c.titulo"
+    [mensaje]="c.mensaje"
+    [detalle]="c.detalle ?? ''"
+    [textoCancelar]="c.textoCancelar"
+    [textoAceptar]="c.textoAceptar"
+    [variante]="c.variante"
+    (confirmar)="ejecutarConfirmacion()"
+    (cancelar)="cancelarConfirmacion()" />
 }

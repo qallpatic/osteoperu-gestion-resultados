@@ -59,6 +59,10 @@ export interface Archivo {
   extension: string | null;
   pesoMb: number;
   fechaCreacion: string;
+  activo: boolean;
+  fechaEliminacion: string | null;
+  usuarioEliminacion: string | null;
+  motivoEliminacion: string | null;
 }
 
 export interface ResultadoDetalle {
@@ -100,5 +104,16 @@ export interface LogCarga {
 export interface ActualizarResultadoRequest {
   telefono?: string;
   nombrePaciente?: string;
+  reenviarSms: boolean;
+}
+
+/** Parametros para el endpoint PUT /api/resultados/{id}/archivos. */
+export interface ActualizarArchivosPayload {
+  idsDesactivar: number[];
+  idsReactivar: number[];
+  archivosNuevos: File[];
+  motivo: string;
+  /** Override individual del motivo por archivo (id -> motivo). Opcional. */
+  motivosPorArchivo?: Record<number, string>;
   reenviarSms: boolean;
 }

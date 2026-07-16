@@ -150,6 +150,7 @@ public class ResultadoService {
 					.extension(extension)
 					.pesoMb(BigDecimal.valueOf(file.getSize()).divide(BigDecimal.valueOf(1024L * 1024L), 4, RoundingMode.HALF_UP))
 					.fechaCreacion(LocalDateTime.now())
+					.estado(1)
 					.build();
 			carga.addArchivo(archivo);
 			count++;

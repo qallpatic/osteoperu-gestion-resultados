@@ -18,6 +18,7 @@ public interface ResultadoMapper {
 	ResultadoResumenResponse toResumen(ResultadoCarga carga);
 
 	@Mapping(source = "idResultadoArchivo", target = "id")
+	@Mapping(target = "activo", expression = "java(archivo.getEstado() != null && archivo.getEstado() == 1)")
 	ArchivoResponse toArchivo(ResultadoArchivo archivo);
 
 	LogCargaResponse toLog(LogCarga log);

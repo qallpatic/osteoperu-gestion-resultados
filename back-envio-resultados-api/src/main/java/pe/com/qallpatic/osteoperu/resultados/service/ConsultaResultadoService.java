@@ -1,6 +1,7 @@
 package pe.com.qallpatic.osteoperu.resultados.service;
 
 import pe.com.qallpatic.osteoperu.compartido.respuesta.PaginaResponse;
+import pe.com.qallpatic.osteoperu.resultados.dto.ActualizarArchivosRequest;
 import pe.com.qallpatic.osteoperu.resultados.dto.LogCargaResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.PacientePendienteResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.ResultadoDetalleResponse;
@@ -24,6 +25,14 @@ public interface ConsultaResultadoService {
 	ResultadoDetalleResponse detalle(Long id);
 
 	ResultadoDetalleResponse actualizar(Long id, ResultadoUpdateRequest solicitud, String actor);
+
+	/**
+	 * Edita los archivos de una cabecera existente: desactiva los solicitados,
+	 * (opcionalmente) reactiva los desactivados, sube archivos nuevos al mismo
+	 * visor y recalcula los contadores denormalizados contando solo activos.
+	 * El SMS solo se reencola si {@code reenviarSms=true}.
+	 */
+	ResultadoDetalleResponse actualizarArchivos(Long id, ActualizarArchivosRequest solicitud, String actor);
 
 	PaginaResponse<LogCargaResponse> listarLogs(String dni, LocalDate desde, LocalDate hasta,
 			int pagina, int tamano);

@@ -78,6 +78,9 @@ public class PacientePortalServiceImpl implements PacientePortalService {
 				.filter(a -> a.getIdResultadoArchivo().equals(idArchivo))
 				.findFirst()
 				.orElseThrow(() -> new RecursoNoEncontradoException("Archivo no encontrado."));
+		if (!esAdmin && archivo.getEstado() != null && archivo.getEstado() == 0) {
+			throw new RecursoNoEncontradoException("Archivo no encontrado.");
+		}
 		return new ArchivoLocalizado(
 				archivo.getIdGenerado(),
 				archivo.getIdArchivo(),
@@ -94,6 +97,9 @@ public class PacientePortalServiceImpl implements PacientePortalService {
 				.filter(a -> a.getIdResultadoArchivo().equals(idArchivo))
 				.findFirst()
 				.orElseThrow(() -> new RecursoNoEncontradoException("Archivo no encontrado."));
+		if (!esAdmin && archivo.getEstado() != null && archivo.getEstado() == 0) {
+			throw new RecursoNoEncontradoException("Archivo no encontrado.");
+		}
 		return almacenamiento.descargar(
 				archivo.getIdGenerado(), archivo.getIdArchivo(), archivo.getExtension(),
 				carga.getDocumentoIdentidad(), carga.getFechaHoraCarga());

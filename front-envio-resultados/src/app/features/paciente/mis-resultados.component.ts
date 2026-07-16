@@ -159,4 +159,9 @@ export class MisResultadosComponent implements OnInit {
       '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
     );
   }
+
+  /** Cuenta solo archivos activos para mostrar el total real al paciente. */
+  contarArchivosActivos(d: ResultadoDetalle): number {
+    return d.archivos.filter((a) => a.activo).length;
+  }
 }

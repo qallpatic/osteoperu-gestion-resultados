@@ -5,6 +5,7 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { RespuestaApi } from '../../core/models/token-response.model';
 import {
+  ActualizarArchivosPayload,
   ActualizarResultadoRequest,
   LogCarga,
   PaginaResponse,
@@ -58,6 +59,31 @@ export class ResultadosService {
   actualizar(id: number, body: ActualizarResultadoRequest): Observable<ResultadoDetalle> {
     return this.http
       .put<RespuestaApi<ResultadoDetalle>>(`${this.base}/${id}`, body)
+      .pipe(map((r) => r.data));
+  }
+
+  /** Edita archivos de una cabecera existente (soft-delete + subida). */
+  actualizarArchivos(id: number, payload: ActualizarArchivosPayload): Observable<ResultadoDetalle> {
+    const form = new FormData();
+    for (const id of payload.idsDesactivar) {
+      form.append('idsDesactivar', String(id));
+    }
+    for (const id of payload.idsReactivar) {
+      form.append('idsReactivar', String(id));
+    }
+    for (const file of payload.archivosNuevos) {
+      form.append('archivos', file, file.name);
+    }
+    if (payload.motivo) {
+      form.append('motivo', payload.motivo);
+    }
+    if (payload.motivosPorArchivo && Object.keys(payload.motivosPorArchivo).length > 0) {
+      // El backend espera motivosPorArchivoJson como string JSON: {id: motivo}
+      form.append('motivosPorArchivoJson', JSON.stringify(payload.motivosPorArchivo));
+    }
+    form.append('reenviarSms', String(payload.reenviarSms));
+    return this.http
+      .put<RespuestaApi<ResultadoDetalle>>(`${this.base}/${id}/archivos`, form)
       .pipe(map((r) => r.data));
   }
 

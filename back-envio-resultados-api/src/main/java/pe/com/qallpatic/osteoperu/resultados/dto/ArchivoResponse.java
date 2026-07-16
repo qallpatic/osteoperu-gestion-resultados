@@ -13,5 +13,9 @@ public record ArchivoResponse(
 		String tipoMedio,
 		String extension,
 		BigDecimal pesoMb,
-		LocalDateTime fechaCreacion) {
+		LocalDateTime fechaCreacion,
+		boolean activo,
+		LocalDateTime fechaEliminacion,
+		String usuarioEliminacion,
+		String motivoEliminacion) {
 }
