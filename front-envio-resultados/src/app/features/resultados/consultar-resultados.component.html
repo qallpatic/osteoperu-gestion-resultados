@@ -159,13 +159,14 @@
             }
             @if (a.activo && !a.marcadoActivo) {
               <div class="archivos-edit__motivo-input">
+                <i class="fas fa-pen" title="Motivo individual editable"></i>
                 <input type="text"
                        [ngModel]="motivosPorArchivo()[a.id] ?? editArchivosMotivo"
                        (ngModelChange)="actualizarMotivoIndividual(a.id, $event)"
                        maxlength="500"
-                       [placeholder]="'Motivo individual (opcional · hereda: ' + (editArchivosMotivo || 'sin motivo') + ')'" />
+                       [placeholder]="(motivosPorArchivo()[a.id] ?? editArchivosMotivo) ? '' : 'Motivo individual · hereda: ' + (editArchivosMotivo || 'sin motivo')" />
                 @if (motivoIndividualPersonalizado(a.id)) {
-                  <span class="archivos-edit__motivo-tag" title="Override del motivo general">
+                  <span class="archivos-edit__motivo-tag" title="Este motivo es override del general">
                     <i class="fas fa-circle-check"></i> personalizado
                   </span>
                 }
@@ -175,7 +176,7 @@
           <span class="archivos-edit__type archivos-edit__col-meta">{{ a.tipoMedio }}</span>
           <span class="archivos-edit__size archivos-edit__col-meta">{{ formatSize(a.pesoMb) }}</span>
           <label class="switch" [title]="a.marcadoActivo ? 'Visible en el visor del paciente' : 'No se muestra al paciente'">
-            <input type="checkbox" [checked]="a.marcadoActivo" (change)="toggleArchivoActivo(a)" />
+            <input type="checkbox" [checked]="a.marcadoActivo" (change)="toggleArchivoActivo($event, a)" />
             <span class="switch__slider"></span>
           </label>
         </div>

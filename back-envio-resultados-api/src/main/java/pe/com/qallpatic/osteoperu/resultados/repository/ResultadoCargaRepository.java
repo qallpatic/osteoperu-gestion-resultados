@@ -21,6 +21,15 @@ public interface ResultadoCargaRepository
 
 	Optional<ResultadoCarga> findByIdGenerado(String idGenerado);
 
+	/**
+	 * Carga la cabecera junto con sus archivos en una sola query (evita N+1
+	 * y resuelve el problema del LAZY: despues de persistir archivos nuevos
+	 * por separado, un {@code findById} simple no los refleja en la lista).
+	 */
+	@EntityGraph(attributePaths = "archivos")
+	@Query("SELECT c FROM ResultadoCarga c WHERE c.idResultadoCarga = :id")
+	Optional<ResultadoCarga> findByIdConArchivos(@Param("id") Long id);
+
 	boolean existsByDocumentoIdentidadAndEstado(String documentoIdentidad, Integer estado);
 
 	long countByDocumentoIdentidadAndEstado(String documentoIdentidad, Integer estado);

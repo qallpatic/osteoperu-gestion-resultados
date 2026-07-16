@@ -133,31 +133,48 @@
 }
 .archivos-edit__motivo i { color: var(--brand-500); font-size: 0.7rem; }
 .archivos-edit__motivo-input {
-  display: flex; align-items: center; gap: 8px;
-  flex: 0 1 100%; margin-top: 2px;
+  display: flex; align-items: center; gap: 6px;
+  flex: 0 1 100%; margin-top: 4px;
   max-width: 100%;
-}
-.archivos-edit__motivo-input input {
-  flex: 1 1 auto; min-width: 0;
-  padding: 7px 10px;
-  border: 1.5px solid #fbbf24;
   background: #fffbeb;
+  border: 1.5px solid #fbbf24;
   border-radius: 8px;
-  font-family: inherit; font-size: 0.82rem;
+  padding: 2px 4px 2px 10px;
+  transition: border-color 0.15s, background 0.15s;
 }
-.archivos-edit__motivo-input input:focus {
-  outline: none; border-color: var(--brand-500);
+.archivos-edit__motivo-input:focus-within {
+  border-color: var(--brand-500);
   background: #fff;
   box-shadow: 0 0 0 3px rgba(7, 94, 84, 0.12);
 }
-.archivos-edit__motivo-tag {
-  display: inline-flex; align-items: center; gap: 4px;
+.archivos-edit__motivo-input i {
+  color: #b45309;
+  font-size: 0.78rem;
   flex-shrink: 0;
-  font-size: 0.68rem; color: #92400e; background: #fef3c7;
-  padding: 3px 8px; border-radius: 999px; font-weight: 600;
+}
+.archivos-edit__motivo-input input {
+  flex: 1 1 auto; min-width: 0;
+  padding: 6px 4px;
+  border: none;
+  background: transparent;
+  font-family: inherit; font-size: 0.82rem;
+  color: #78350f;
+}
+.archivos-edit__motivo-input input:focus {
+  outline: none;
+}
+.archivos-edit__motivo-input input::placeholder {
+  color: #a16207;
+  font-style: italic;
+}
+.archivos-edit__motivo-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  flex-shrink: 0;
+  font-size: 0.66rem; color: #92400e; background: #fde68a;
+  padding: 2px 7px; border-radius: 999px; font-weight: 600;
   white-space: nowrap;
 }
-.archivos-edit__motivo-tag i { font-size: 0.7rem; }
+.archivos-edit__motivo-tag i { font-size: 0.65rem; }
 .archivos-edit__type { font-size: 0.72rem; color: var(--brand-700); background: var(--brand-050); padding: 3px 10px; border-radius: 999px; text-align: center; justify-self: start; }
 .archivos-edit__size { font-size: 0.82rem; color: var(--muted-2); font-variant-numeric: tabular-nums; }
 

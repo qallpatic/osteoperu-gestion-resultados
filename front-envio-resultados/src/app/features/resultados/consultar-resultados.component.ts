@@ -210,28 +210,28 @@ export class ConsultarResultadosComponent implements OnInit {
     this.toastExito.set(null);
   }
 
-  toggleArchivoActivo(a: ArchivoEditable): void {
+  toggleArchivoActivo(event: Event, a: ArchivoEditable): void {
+    const checkbox = event.target as HTMLInputElement;
     if (!a.marcadoActivo) {
       // Reactivar no requiere confirmacion.
-      this.editArchivosArchivos.set(
-        this.editArchivosArchivos().map((x) =>
-          x.id === a.id ? { ...x, marcadoActivo: true } : x,
-        ),
-      );
-      // Limpiar override individual: vuelve a heredar el global.
-      const copia = { ...this.motivosPorArchivo() };
-      delete copia[a.id];
-      this.motivosPorArchivo.set(copia);
+      this.aplicarToggle(a, true);
+      checkbox.checked = true;
       return;
     }
+    // Validacion: debe quedar al menos 1 archivo activo.
     const restantesSiDesactivo = this.contarActivosSiDesactivo(a.id);
     if (restantesSiDesactivo <= 0) {
+      // Restaurar visualmente el switch (queda como estaba).
+      checkbox.checked = true;
       this.notice.set({
         type: 'error',
         text: 'La cabecera debe quedar con al menos un archivo activo.',
       });
       return;
     }
+    // Revertir el cambio visual inmediatamente: solo aplicamos si el operador
+    // confirma. Asi, si cancela, el checkbox sigue en ON y el model no se toca.
+    checkbox.checked = true;
     this.confirmacion.set({
       titulo: 'Desactivar archivo',
       mensaje: 'El paciente dejara de verlo en su visor.',
@@ -239,7 +239,11 @@ export class ConsultarResultadosComponent implements OnInit {
       textoAceptar: 'Si, desactivar',
       textoCancelar: 'Cancelar',
       variante: 'warn',
-      onAceptar: () => this.aplicarToggle(a, false),
+      onAceptar: () => {
+        this.aplicarToggle(a, false);
+        // Sincronizar el checkbox con el model ya confirmado.
+        checkbox.checked = false;
+      },
     });
   }
 
@@ -249,13 +253,22 @@ export class ConsultarResultadosComponent implements OnInit {
         x.id === a.id ? { ...x, marcadoActivo: nuevoEstado } : x,
       ),
     );
-    // Al desactivar, pre-llenar el motivo individual con el global
-    // para que el operador pueda ajustarlo si lo necesita.
-    if (!nuevoEstado && !this.motivosPorArchivo()[a.id]) {
-      this.motivosPorArchivo.set({
-        ...this.motivosPorArchivo(),
-        [a.id]: this.editArchivosMotivo || '',
-      });
+    if (!nuevoEstado) {
+      // Al desactivar, pre-llenar el motivo individual con el global
+      // para que el operador pueda ajustarlo si lo necesita.
+      if (!this.motivosPorArchivo()[a.id]) {
+        this.motivosPorArchivo.set({
+          ...this.motivosPorArchivo(),
+          [a.id]: this.editArchivosMotivo || '',
+        });
+      }
+    } else {
+      // Al reactivar, limpiar el override individual: vuelve a heredar el global.
+      if (this.motivosPorArchivo()[a.id] != null) {
+        const copia = { ...this.motivosPorArchivo() };
+        delete copia[a.id];
+        this.motivosPorArchivo.set(copia);
+      }
     }
   }
 

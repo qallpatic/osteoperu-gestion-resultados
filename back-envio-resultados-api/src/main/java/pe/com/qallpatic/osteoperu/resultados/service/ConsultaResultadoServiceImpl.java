@@ -159,7 +159,7 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 		carga.setUsuarioModificacion(actor);
 		ResultadoCarga guardada = resultadoCargaRepository.save(carga);
 
-		ResultadoCarga cargaFresca = resultadoCargaRepository.findById(id)
+		ResultadoCarga cargaFresca = resultadoCargaRepository.findByIdConArchivos(id)
 				.orElseThrow(() -> new RecursoNoEncontradoException("Carga no encontrada: " + id));
 		recalcularContadores(cargaFresca);
 		resultadoCargaRepository.save(cargaFresca);
