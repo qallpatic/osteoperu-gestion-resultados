@@ -13,6 +13,7 @@ import pe.com.qallpatic.osteoperu.compartido.excepcion.RecursoNoEncontradoExcept
 import pe.com.qallpatic.osteoperu.compartido.respuesta.PaginaResponse;
 import pe.com.qallpatic.osteoperu.compartido.util.UtilTelefono;
 import pe.com.qallpatic.osteoperu.config.AppProperties;
+import pe.com.qallpatic.osteoperu.config.SmsProperties;
 import pe.com.qallpatic.osteoperu.pacientes.repository.PacienteRepository;
 import pe.com.qallpatic.osteoperu.resultados.dto.ArchivoResponse;
 import pe.com.qallpatic.osteoperu.resultados.dto.LogCargaResponse;
@@ -45,6 +46,7 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 	private final SmsService smsService;
 	private final PacienteRepository pacienteRepository;
 	private final AppProperties appProperties;
+	private final SmsProperties smsProperties;
 
 	@Override
 	@Transactional(readOnly = true)
@@ -98,11 +100,9 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 		resultadoCargaRepository.save(carga);
 
 		if (solicitud.reenviarSms()) {
-			enlaceCortoRepository.findFirstByIdResultadoOrderByIdDesc(id).ifPresent(enlace -> {
-				String smsLink = trimBase() + "/s/" + enlace.getCodigoCorto();
-				smsService.enqueueResultLink(id, carga.getTelefono(), carga.getNombrePaciente(), smsLink);
-				log.info("SMS reencolado para carga {}", id);
-			});
+			String link = loginUrl();
+			smsService.enqueueResultLink(id, carga.getTelefono(), carga.getNombrePaciente(), link);
+			log.info("SMS reencolado para carga {} con link {}", id, link);
 		}
 
 		return armarDetalle(carga);
@@ -163,5 +163,11 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 	private String trimBase() {
 		String base = appProperties.getPublicBaseUrl();
 		return base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+	}
+
+	/** Link al login que viaja en el SMS (config sms.message.login-url). */
+	private String loginUrl() {
+		String url = smsProperties.getMessage().getLoginUrl();
+		return url == null ? "" : url.trim();
 	}
 }

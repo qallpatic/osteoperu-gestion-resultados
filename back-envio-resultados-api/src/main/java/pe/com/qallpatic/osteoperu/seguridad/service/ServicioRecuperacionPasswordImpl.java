@@ -96,7 +96,10 @@ public class ServicioRecuperacionPasswordImpl implements ServicioRecuperacionPas
 		}
 		String mensaje = plantilla
 				.replace("{nombre}", usuario.getNombre() == null ? "" : usuario.getNombre())
-				.replace("{clave}", clavePlana);
+				.replace("{clave}", clavePlana)
+				.replace("{link}", smsProperties.getMessage().getLoginUrl() == null
+						? "" : smsProperties.getMessage().getLoginUrl())
+				.trim();
 		try {
 			smsService.enviarTexto(telefonoNorm, mensaje);
 			return true;

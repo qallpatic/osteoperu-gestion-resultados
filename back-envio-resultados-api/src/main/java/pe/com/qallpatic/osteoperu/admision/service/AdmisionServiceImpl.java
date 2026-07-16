@@ -203,11 +203,12 @@ public class AdmisionServiceImpl implements AdmisionService {
 		}
 		try {
 			String phone = UtilTelefono.normalizar(telefono, appProperties.getPhone().getCountryCode());
+			String loginUrl = smsProperties.getMessage().getLoginUrl();
 			String mensaje = plantilla
 					.replace("{nombre}", nombre == null ? "" : nombre)
 					.replace("{usuario}", dni)
 					.replace("{clave}", clave)
-					.replace("{link}", portalUrl == null ? "" : portalUrl)
+					.replace("{link}", loginUrl == null ? "" : loginUrl)
 					.trim();
 			smsService.enviarTexto(phone, mensaje);
 			return true;

@@ -12,6 +12,7 @@ import pe.com.qallpatic.osteoperu.compartido.util.GeneradorCodigos;
 import pe.com.qallpatic.osteoperu.compartido.util.NormalizadorTexto;
 import pe.com.qallpatic.osteoperu.compartido.util.UtilTelefono;
 import pe.com.qallpatic.osteoperu.config.AppProperties;
+import pe.com.qallpatic.osteoperu.config.SmsProperties;
 import pe.com.qallpatic.osteoperu.config.StorageProperties;
 import pe.com.qallpatic.osteoperu.integracion.pdf.ValidadorPdf;
 import pe.com.qallpatic.osteoperu.integracion.reniec.ClienteReniec;
@@ -65,6 +66,7 @@ public class ResultadoService {
 	private final ClienteReniec clienteReniec;
 	private final ValidadorPdf validadorPdf;
 	private final AppProperties appProperties;
+	private final SmsProperties smsProperties;
 
 	@Transactional
 	public UploadResultadoResponse uploadResultados(String rawPhone, String rawDni, String patientName,
@@ -163,10 +165,11 @@ public class ResultadoService {
 		String viewerUrl = buildViewerUrl(carga.getTokenPublico());
 		EnlaceCorto enlace = shortLinkService.create(viewerUrl, "RESULTADO", carga.getIdResultadoCarga());
 		String smsLink = buildShortUrl(enlace.getCodigoCorto());
+		String smsSendLink = loginUrl();
 
 		String smsStatus;
 		if (tieneTelefono) {
-			smsService.enqueueResultLink(carga.getIdResultadoCarga(), phone, nombrePaciente, smsLink);
+			smsService.enqueueResultLink(carga.getIdResultadoCarga(), phone, nombrePaciente, smsSendLink);
 			smsStatus = EstadoSms.EN_COLA.name();
 		} else {
 			smsStatus = "SIN_TELEFONO";
@@ -337,6 +340,12 @@ public class ResultadoService {
 	private String trimBase() {
 		String base = appProperties.getPublicBaseUrl();
 		return base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+	}
+
+	/** Link al login que viaja en el SMS de resultados (config sms.message.login-url). */
+	private String loginUrl() {
+		String url = smsProperties.getMessage().getLoginUrl();
+		return url == null ? "" : url.trim();
 	}
 
 	private String generateUniqueToken() {

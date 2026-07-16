@@ -102,9 +102,44 @@ sms:
     api-key: ${SMS_API_KEY:576f18ae-07f5-4102-968b-57ac26f5f6dc}
     frequency-ms: ${SMS_FREQUENCY_MS:5000}
   message:
-    template: "OSTEOPERU: Hola {nombre}, tus resultados medicos ya estan disponibles. Ver aqui: {link}"
-    credencial-template: "OSTEOPERU: Hola {nombre}, ya tienes acceso a tus resultados. Usuario: {usuario} Clave: {clave} Ingresa: {link}"
-    recuperacion-template: "OSTEOPERU: Hola {nombre}, tu nueva clave de acceso es {clave}. Por seguridad te recomendamos cambiarla al ingresar."
+    # Link al login del operador (reutiliza PORTAL_URL, configurable via .env).
+    login-url: ${SMS_LOGIN_URL:${PORTAL_URL:http://localhost:6060/login}}
+    # Plantillas multi-linea (los saltos se ven como enter en el telefono).
+    # {nombre} = nombre del paciente, {link} = login-url, {usuario} {clave} = credenciales.
+    template: |
+      OSTEOPERU
+
+      Hola {nombre},
+
+      Tus resultados medicos ya estan disponibles.
+      Ingresa al portal: {link}
+
+      Servicio de atencion al paciente.
+    credencial-template: |
+      OSTEOPERU
+
+      Hola {nombre},
+
+      Ya tienes acceso a tus resultados.
+
+      Usuario: {usuario}
+      Clave: {clave}
+
+      Ingresa al portal: {link}
+
+      Servicio de atencion al paciente.
+    recuperacion-template: |
+      OSTEOPERU
+
+      Hola {nombre},
+
+      Tu nueva clave de acceso es:
+
+      {clave}
+
+      Ingresa al portal: {link}
+
+      Servicio de atencion al paciente.
 
 # ------------------------------------------------------------
 #  Seguridad JWT y semilla del usuario ADMIN inicial
