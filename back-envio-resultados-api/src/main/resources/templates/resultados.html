@@ -92,23 +92,23 @@
 
 		<!-- Imagen -->
 		<div class="media" th:if="${file.image}">
-			<img th:src="@{${file.url}}" th:alt="${file.name}" loading="lazy"/>
+			<img th:src="${file.url}" th:alt="${file.name}" loading="lazy"/>
 		</div>
 
 		<!-- Video -->
 		<div class="media" th:if="${file.video}">
 			<video controls preload="metadata">
-				<source th:src="@{${file.url}}"/>
+				<source th:src="${file.url}"/>
 				Tu navegador no soporta la reproducción de video.
 			</video>
 		</div>
 
 		<!-- PDF -->
-		<iframe th:if="${file.pdf}" class="pdf-frame" th:src="@{${file.url}}" title="Documento PDF"></iframe>
+		<iframe th:if="${file.pdf}" class="pdf-frame" th:src="${file.url}" title="Documento PDF"></iframe>
 
 		<div class="actions">
-			<a class="btn btn-primary" th:href="@{${file.url}}" target="_blank" rel="noopener">Ver</a>
-			<a class="btn btn-outline" th:href="@{${file.downloadUrl}}">Descargar</a>
+			<a class="btn btn-primary" th:href="${file.url}" target="_blank" rel="noopener">Ver</a>
+			<a class="btn btn-outline" th:href="${file.downloadUrl}">Descargar</a>
 		</div>
 	</div>
 </div>

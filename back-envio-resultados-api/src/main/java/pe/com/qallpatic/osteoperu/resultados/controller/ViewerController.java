@@ -47,8 +47,8 @@ public class ViewerController {
 				.map(a -> new FileViewItem(
 						a.getIdResultadoArchivo(),
 						a.getNombreOriginal(),
-						"/r/" + token + "/archivo/" + a.getIdResultadoArchivo(),
-						"/r/" + token + "/descargar/" + a.getIdResultadoArchivo(),
+						token + "/archivo/" + a.getIdResultadoArchivo(),
+						token + "/descargar/" + a.getIdResultadoArchivo(),
 						a.getTipoMedio(),
 						humanSizeMb(a.getPesoMb())))
 				.toList();
