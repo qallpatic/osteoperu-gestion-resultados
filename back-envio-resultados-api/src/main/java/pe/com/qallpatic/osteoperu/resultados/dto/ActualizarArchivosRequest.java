@@ -7,20 +7,14 @@ import java.util.Map;
 
 /**
  * Solicitud de edicion de archivos de una cabecera existente.
- * <p>El controller desempaca el multipart y construye este objeto antes de
- * delegar al service. Mantenerlo como record cohesivo evita firmas largas
- * y facilita la prueba del service en aislado.
- *
- * <p>Motivos por archivo: si {@code motivosPorArchivo} tiene una entrada
- * para un id de {@code idsADesactivar}, ese motivo individual se aplica
- * SOLO a ese archivo. Si no, se usa {@code motivo} como general para todos
- * los desactivados en esta operacion.
+ * <p>El motivo se captura por archivo en el dialog de confirmacion del frontend
+ * y se envia en {@code motivosPorArchivo} como map {idArchivo: motivo}. No hay
+ * motivo general: cada archivo desactivado tiene su propio texto en la bitacora.
  */
 public record ActualizarArchivosRequest(
 		List<Long> idsADesactivar,
 		List<Long> idsAReactivar,
 		List<MultipartFile> archivosNuevos,
-		String motivo,
 		Map<Long, String> motivosPorArchivo,
 		boolean reenviarSms) {
 }

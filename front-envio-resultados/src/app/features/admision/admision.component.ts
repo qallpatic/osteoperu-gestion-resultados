@@ -39,6 +39,25 @@ export class AdmisionComponent implements OnInit {
   fdni = '';
   readonly notice = signal<{ type: 'ok' | 'error'; text: string } | null>(null);
 
+  /** Orden: null = default backend (fechaCreacion desc). */
+  readonly ordenarPor = signal<string | null>(null);
+  readonly direccion = signal<'asc' | 'desc' | null>(null);
+
+  /** Cicla null -> asc -> desc -> null para una columna. */
+  ordenar(campo: string): void {
+    if (this.ordenarPor() !== campo) {
+      this.ordenarPor.set(campo);
+      this.direccion.set('asc');
+    } else if (this.direccion() === 'asc') {
+      this.direccion.set('desc');
+    } else {
+      this.ordenarPor.set(null);
+      this.direccion.set(null);
+    }
+    this.pagina.set(0);
+    this.cargar();
+  }
+
   // Modal generar
   readonly genOpen = signal(false);
   readonly generando = signal(false);
@@ -71,7 +90,13 @@ export class AdmisionComponent implements OnInit {
 
   cargar(): void {
     this.cargando.set(true);
-    this.srv.listarPacientes({ dni: this.fdni.trim() || undefined, pagina: this.pagina(), tamano: this.tamano }).subscribe({
+    this.srv.listarPacientes({
+      dni: this.fdni.trim() || undefined,
+      pagina: this.pagina(),
+      tamano: this.tamano,
+      ordenarPor: this.ordenarPor() ?? undefined,
+      direccion: this.direccion() ?? undefined,
+    }).subscribe({
       next: (p) => {
         this.pacientes.set(p.contenido);
         this.totalPaginas.set(p.totalPaginas);

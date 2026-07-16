@@ -38,10 +38,22 @@ export class AdmisionService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiBaseUrl}/api/admision`;
 
-  listarPacientes(p: { dni?: string; pagina: number; tamano: number }): Observable<PaginaResponse<PacienteAdmision>> {
+  listarPacientes(p: {
+    dni?: string;
+    pagina: number;
+    tamano: number;
+    ordenarPor?: string;
+    direccion?: string;
+  }): Observable<PaginaResponse<PacienteAdmision>> {
     let params = new HttpParams().set('pagina', p.pagina).set('tamano', p.tamano);
     if (p.dni) {
       params = params.set('dni', p.dni);
+    }
+    if (p.ordenarPor) {
+      params = params.set('ordenarPor', p.ordenarPor);
+    }
+    if (p.direccion) {
+      params = params.set('direccion', p.direccion);
     }
     return this.http
       .get<RespuestaApi<PaginaResponse<PacienteAdmision>>>(`${this.base}/pacientes`, { params })

@@ -8,7 +8,6 @@ import { Archivo, ResultadoDetalle, ResultadoResumen } from './resultados.models
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
 
 interface ArchivoEditable extends Archivo {
-  /** Estado local pendiente de guardar (true = sigue activo). */
   marcadoActivo: boolean;
 }
 
@@ -19,7 +18,12 @@ interface ConfirmacionPendiente {
   textoAceptar: string;
   textoCancelar: string;
   variante: 'warn' | 'danger';
-  onAceptar: () => void;
+  /** Si true, el dialog muestra un input de texto y emite su valor en (confirmar). */
+  conMotivo?: boolean;
+  motivoPlaceholder?: string;
+  motivoInicial?: string;
+  /** Recibe el motivo tipeado (o undefined si no hay input). */
+  onAceptar: (motivo?: string) => void;
 }
 
 @Component({
@@ -43,9 +47,27 @@ export class ConsultarResultadosComponent implements OnInit {
   fdesde = '';
   fhasta = '';
 
+  /** Orden: null = default backend (fechaHoraCarga desc). */
+  readonly ordenarPor = signal<string | null>(null);
+  readonly direccion = signal<'asc' | 'desc' | null>(null);
+
+  /** Cicla null -> asc -> desc -> null para una columna. */
+  ordenar(campo: string): void {
+    if (this.ordenarPor() !== campo) {
+      this.ordenarPor.set(campo);
+      this.direccion.set('asc');
+    } else if (this.direccion() === 'asc') {
+      this.direccion.set('desc');
+    } else {
+      this.ordenarPor.set(null);
+      this.direccion.set(null);
+    }
+    this.pagina.set(0);
+    this.cargar();
+  }
+
   readonly notice = signal<{ type: 'ok' | 'error'; text: string } | null>(null);
 
-  // Detalle / edicion de telefono y nombre
   readonly detalle = signal<ResultadoDetalle | null>(null);
   readonly cargandoDetalle = signal(false);
   readonly guardando = signal(false);
@@ -53,22 +75,19 @@ export class ConsultarResultadosComponent implements OnInit {
   editNombre = '';
   reenviar = false;
 
-  // Edicion de archivos (modal separado)
+  // Edicion de archivos
   readonly editArchivosAbierto = signal(false);
   readonly editArchivosIdResultado = signal<number | null>(null);
   readonly editArchivosArchivos = signal<ArchivoEditable[]>([]);
   readonly editArchivosNuevos = signal<File[]>([]);
-  /** Override individual del motivo por archivo (id -> motivo). Opcional. */
   readonly motivosPorArchivo = signal<Record<number, string>>({});
-  editArchivosMotivo = '';
   editArchivosReenviar = false;
   readonly guardandoEdicion = signal(false);
   readonly toastExito = signal<string | null>(null);
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Ultimo motivo persistido (sobrevive entre guardados para no reescribirlo). */
+  /** Ultimo motivo persistido: pre-rellena el siguiente dialog para evitar re-tipear. */
   private ultimoMotivoUsado = '';
 
-  // Confirmacion estilizada (reemplaza window.confirm)
   readonly confirmacion = signal<ConfirmacionPendiente | null>(null);
 
   readonly rangoDesde = computed(() =>
@@ -92,6 +111,8 @@ export class ConsultarResultadosComponent implements OnInit {
         hasta: this.fhasta || undefined,
         pagina: this.pagina(),
         tamano: this.tamano,
+        ordenarPor: this.ordenarPor() ?? undefined,
+        direccion: this.direccion() ?? undefined,
       })
       .subscribe({
         next: (p) => {
@@ -184,11 +205,6 @@ export class ConsultarResultadosComponent implements OnInit {
         );
         this.editArchivosNuevos.set([]);
         this.motivosPorArchivo.set({});
-        // Si el operador ya uso un motivo en esta sesion, lo mantenemos.
-        // Si no, lo inicializamos con el ultimo motivo persistido en la cabecera
-        // (para ver el contexto historico de por que se desactivo algo).
-        const motivoExistente = d.archivos.find((a) => a.motivoEliminacion)?.motivoEliminacion;
-        this.editArchivosMotivo = this.ultimoMotivoUsado || motivoExistente || '';
         this.editArchivosReenviar = false;
         this.editArchivosAbierto.set(true);
         this.toastExito.set(null);
@@ -218,10 +234,8 @@ export class ConsultarResultadosComponent implements OnInit {
       checkbox.checked = true;
       return;
     }
-    // Validacion: debe quedar al menos 1 archivo activo.
     const restantesSiDesactivo = this.contarActivosSiDesactivo(a.id);
     if (restantesSiDesactivo <= 0) {
-      // Restaurar visualmente el switch (queda como estaba).
       checkbox.checked = true;
       this.notice.set({
         type: 'error',
@@ -229,8 +243,7 @@ export class ConsultarResultadosComponent implements OnInit {
       });
       return;
     }
-    // Revertir el cambio visual inmediatamente: solo aplicamos si el operador
-    // confirma. Asi, si cancela, el checkbox sigue en ON y el model no se toca.
+    // Revertir cambio visual hasta confirmar
     checkbox.checked = true;
     this.confirmacion.set({
       titulo: 'Desactivar archivo',
@@ -239,10 +252,16 @@ export class ConsultarResultadosComponent implements OnInit {
       textoAceptar: 'Si, desactivar',
       textoCancelar: 'Cancelar',
       variante: 'warn',
-      onAceptar: () => {
+      conMotivo: true,
+      motivoPlaceholder: 'Motivo (opcional · queda en la bitacora)',
+      motivoInicial: this.ultimoMotivoUsado,
+      onAceptar: (motivo) => {
         this.aplicarToggle(a, false);
-        // Sincronizar el checkbox con el model ya confirmado.
         checkbox.checked = false;
+        if (motivo) {
+          this.motivosPorArchivo.set({ ...this.motivosPorArchivo(), [a.id]: motivo });
+          this.ultimoMotivoUsado = motivo;
+        }
       },
     });
   }
@@ -253,34 +272,11 @@ export class ConsultarResultadosComponent implements OnInit {
         x.id === a.id ? { ...x, marcadoActivo: nuevoEstado } : x,
       ),
     );
-    if (!nuevoEstado) {
-      // Al desactivar, pre-llenar el motivo individual con el global
-      // para que el operador pueda ajustarlo si lo necesita.
-      if (!this.motivosPorArchivo()[a.id]) {
-        this.motivosPorArchivo.set({
-          ...this.motivosPorArchivo(),
-          [a.id]: this.editArchivosMotivo || '',
-        });
-      }
-    } else {
-      // Al reactivar, limpiar el override individual: vuelve a heredar el global.
-      if (this.motivosPorArchivo()[a.id] != null) {
-        const copia = { ...this.motivosPorArchivo() };
-        delete copia[a.id];
-        this.motivosPorArchivo.set(copia);
-      }
+    if (nuevoEstado && this.motivosPorArchivo()[a.id] != null) {
+      const copia = { ...this.motivosPorArchivo() };
+      delete copia[a.id];
+      this.motivosPorArchivo.set(copia);
     }
-  }
-
-  /** Actualiza el motivo individual de un archivo marcado para desactivar. */
-  actualizarMotivoIndividual(idArchivo: number, motivo: string): void {
-    this.motivosPorArchivo.set({ ...this.motivosPorArchivo(), [idArchivo]: motivo });
-  }
-
-  /** True si el operador personalizo el motivo individual (override del global). */
-  motivoIndividualPersonalizado(idArchivo: number): boolean {
-    const m = this.motivosPorArchivo()[idArchivo];
-    return m != null && m !== this.editArchivosMotivo;
   }
 
   private contarActivosSiDesactivo(idExcluir: number): number {
@@ -341,78 +337,57 @@ export class ConsultarResultadosComponent implements OnInit {
       return;
     }
 
-const idResultado = this.editArchivosIdResultado();
+    const idResultado = this.editArchivosIdResultado();
     if (!idResultado) {
       this.notice.set({ type: 'error', text: 'No se puede guardar: no hay cabecera seleccionada.' });
       return;
     }
 
-    // Solo enviar los overrides individuales para los IDs efectivamente a desactivar.
-    // Si el motivo individual coincide con el global, NO se envia (es redundante).
+    // Filtrar motivosPorArchivo: solo los que correspondan a IDs efectivamente a desactivar.
     const motivosPorArchivo: Record<number, string> = {};
     for (const id of idsDesactivar) {
       const m = this.motivosPorArchivo()[id];
-      if (m != null && m.trim() !== '' && m.trim() !== this.editArchivosMotivo.trim()) {
+      if (m != null && m.trim() !== '') {
         motivosPorArchivo[id] = m.trim();
       }
     }
 
-    const ejecutarGuardado = () => {
-      this.guardandoEdicion.set(true);
-      this.toastExito.set(null);
-      this.srv
-        .actualizarArchivos(idResultado, {
-          idsDesactivar,
-          idsReactivar,
-          archivosNuevos: nuevos,
-          motivo: this.editArchivosMotivo,
-          motivosPorArchivo: Object.keys(motivosPorArchivo).length ? motivosPorArchivo : undefined,
-          reenviarSms: this.editArchivosReenviar,
-        })
-        .subscribe({
-          next: (res) => {
-            this.guardandoEdicion.set(false);
-            // Refrescar el signal del modal con la respuesta del backend
-            // (incluye los archivos nuevos con sus IDs y el motivo persistido).
-            // NO limpiamos motivo: queda visible/editables para una segunda pasada.
-            // NO limpiamos los switches: vuelven a su estado real persistido.
-            this.editArchivosArchivos.set(
-              res.archivos.map((a) => ({ ...a, marcadoActivo: a.activo })),
-            );
-            this.editArchivosNuevos.set([]);
-            this.motivosPorArchivo.set({});
-            this.editArchivosMotivo = res.archivos.find((a) => a.motivoEliminacion)
-              ? (this.editArchivosMotivo || this.ultimoMotivoUsado)
-              : this.editArchivosMotivo;
-            this.ultimoMotivoUsado = res.archivos.find((a) => a.motivoEliminacion)?.motivoEliminacion
-              ?? this.ultimoMotivoUsado;
-            this.detalle.set(res);
-            this.cargar();
-            this.mostrarToastExito(
-              this.editArchivosReenviar
-                ? 'Archivos actualizados y SMS reencolado.'
-                : 'Archivos actualizados correctamente.',
-            );
-          },
-          error: (e: HttpErrorResponse) => {
-            this.guardandoEdicion.set(false);
-            this.notice.set({ type: 'error', text: this.msg(e) });
-          },
-        });
-    };
-
-    if (idsDesactivar.length) {
-      this.confirmacion.set({
-        titulo: `Desactivar ${idsDesactivar.length} archivo(s)`,
-        mensaje: 'El paciente dejara de verlos en su visor. El motivo quedara registrado en la bitacora.',
-        textoAceptar: 'Si, desactivar',
-        textoCancelar: 'Cancelar',
-        variante: 'warn',
-        onAceptar: () => ejecutarGuardado(),
+    this.guardandoEdicion.set(true);
+    this.toastExito.set(null);
+    this.srv
+      .actualizarArchivos(idResultado, {
+        idsDesactivar,
+        idsReactivar,
+        archivosNuevos: nuevos,
+        motivosPorArchivo: Object.keys(motivosPorArchivo).length ? motivosPorArchivo : undefined,
+        reenviarSms: this.editArchivosReenviar,
+      })
+      .subscribe({
+        next: (res) => {
+          this.guardandoEdicion.set(false);
+          this.editArchivosArchivos.set(
+            res.archivos.map((a) => ({ ...a, marcadoActivo: a.activo })),
+          );
+          this.editArchivosNuevos.set([]);
+          this.motivosPorArchivo.set({});
+          // Recordar el ultimo motivo persistido para la proxima sesion
+          const ultMotivo = res.archivos.find((a) => a.motivoEliminacion)?.motivoEliminacion;
+          if (ultMotivo) {
+            this.ultimoMotivoUsado = ultMotivo;
+          }
+          this.detalle.set(res);
+          this.cargar();
+          this.mostrarToastExito(
+            this.editArchivosReenviar
+              ? 'Archivos actualizados y SMS reencolado.'
+              : 'Archivos actualizados correctamente.',
+          );
+        },
+        error: (e: HttpErrorResponse) => {
+          this.guardandoEdicion.set(false);
+          this.notice.set({ type: 'error', text: this.msg(e) });
+        },
       });
-    } else {
-      ejecutarGuardado();
-    }
   }
 
   private mostrarToastExito(texto: string): void {
@@ -431,13 +406,13 @@ const idResultado = this.editArchivosIdResultado();
     this.toastExito.set(null);
   }
 
-  ejecutarConfirmacion(): void {
+  ejecutarConfirmacion(motivo?: string): void {
     const c = this.confirmacion();
     if (!c) {
       return;
     }
     this.confirmacion.set(null);
-    c.onAceptar();
+    c.onAceptar(motivo);
   }
 
   cancelarConfirmacion(): void {

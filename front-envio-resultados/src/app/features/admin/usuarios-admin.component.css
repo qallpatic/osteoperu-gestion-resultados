@@ -53,6 +53,12 @@
 .tabla thead th { position: sticky; top: 0; z-index: 2; background: var(--brand-050); color: var(--brand-700); font-weight: 600; white-space: nowrap; }
 .tabla tbody tr { border-top: 1px solid var(--border); }
 .tabla tbody tr:hover { background: #fafcfb; }
+.tabla th.sortable { cursor: pointer; user-select: none; transition: background 0.15s; }
+.tabla th.sortable:hover { background: #d6e5e2; }
+.tabla th .sort-ico { margin-left: 6px; opacity: 0.45; font-size: 0.78rem; transition: opacity 0.15s; }
+.tabla th.sortable:hover .sort-ico { opacity: 0.85; }
+.tabla th.sort-active { color: var(--brand-900); }
+.tabla th.sort-active .sort-ico { opacity: 1; color: var(--brand-700); }
 .mono { font-weight: 600; color: var(--brand-900); }
 .celda-nombre { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vacia { text-align: center; color: var(--muted); padding: 28px; }

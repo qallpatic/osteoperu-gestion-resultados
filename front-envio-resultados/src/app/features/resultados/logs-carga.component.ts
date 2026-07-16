@@ -26,6 +26,25 @@ export class LogsCargaComponent implements OnInit {
   fdesde = '';
   fhasta = '';
 
+  /** Orden: null = default backend (fechaCreacion desc). */
+  readonly ordenarPor = signal<string | null>(null);
+  readonly direccion = signal<'asc' | 'desc' | null>(null);
+
+  /** Cicla null -> asc -> desc -> null para una columna. */
+  ordenar(campo: string): void {
+    if (this.ordenarPor() !== campo) {
+      this.ordenarPor.set(campo);
+      this.direccion.set('asc');
+    } else if (this.direccion() === 'asc') {
+      this.direccion.set('desc');
+    } else {
+      this.ordenarPor.set(null);
+      this.direccion.set(null);
+    }
+    this.pagina.set(0);
+    this.cargar();
+  }
+
   readonly notice = signal<string>('');
 
   readonly rangoDesde = computed(() =>
@@ -48,6 +67,8 @@ export class LogsCargaComponent implements OnInit {
         hasta: this.fhasta || undefined,
         pagina: this.pagina(),
         tamano: this.tamano,
+        ordenarPor: this.ordenarPor() ?? undefined,
+        direccion: this.direccion() ?? undefined,
       })
       .subscribe({
         next: (p) => {

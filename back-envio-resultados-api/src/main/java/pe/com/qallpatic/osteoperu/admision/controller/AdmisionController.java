@@ -34,13 +34,16 @@ public class AdmisionController {
 	private final AdmisionService admisionService;
 
 	@Operation(summary = "Listar pacientes con resultados",
-			description = "Muestra los pacientes (por DNI) y el estado de su cuenta de acceso.")
+			description = "Muestra los pacientes (por DNI) y el estado de su cuenta de acceso (paginado, ordenable).")
 	@GetMapping("/pacientes")
 	public ResponseEntity<RespuestaApi<PaginaResponse<PacienteAdmisionResponse>>> listarPacientes(
 			@RequestParam(required = false) String dni,
 			@RequestParam(defaultValue = "0") int pagina,
-			@RequestParam(defaultValue = "10") int tamano) {
-		return ResponseEntity.ok(RespuestaApi.ok(admisionService.listarPacientes(dni, pagina, tamano)));
+			@RequestParam(defaultValue = "10") int tamano,
+			@RequestParam(required = false) String ordenarPor,
+			@RequestParam(required = false) String direccion) {
+		return ResponseEntity.ok(RespuestaApi.ok(
+				admisionService.listarPacientes(dni, pagina, tamano, ordenarPor, direccion)));
 	}
 
 	@Operation(summary = "Generar usuario del paciente",

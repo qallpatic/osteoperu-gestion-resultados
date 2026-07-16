@@ -20,7 +20,8 @@ public interface ConsultaResultadoService {
 	long contarPendientes();
 
 	PaginaResponse<ResultadoResumenResponse> listar(String dni, String nombre,
-			LocalDate desde, LocalDate hasta, int pagina, int tamano);
+			LocalDate desde, LocalDate hasta, int pagina, int tamano,
+			String ordenarPor, String direccion);
 
 	ResultadoDetalleResponse detalle(Long id);
 
@@ -35,5 +36,5 @@ public interface ConsultaResultadoService {
 	ResultadoDetalleResponse actualizarArchivos(Long id, ActualizarArchivosRequest solicitud, String actor);
 
 	PaginaResponse<LogCargaResponse> listarLogs(String dni, LocalDate desde, LocalDate hasta,
-			int pagina, int tamano);
+			int pagina, int tamano, String ordenarPor, String direccion);
 }

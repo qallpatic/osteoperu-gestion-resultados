@@ -43,12 +43,47 @@
     <table class="tabla">
       <thead>
         <tr>
-          <th>Usuario</th>
-          <th>Nombre</th>
-          <th>Correo</th>
-          <th>DNI</th>
+          <th class="sortable"
+              [class.sort-active]="ordenarPor() === 'usuario'"
+              (click)="ordenar('usuario')">
+            Usuario<i class="fas sort-ico"
+              [class.fa-sort]="ordenarPor() !== 'usuario'"
+              [class.fa-sort-up]="ordenarPor() === 'usuario' && direccion() === 'asc'"
+              [class.fa-sort-down]="ordenarPor() === 'usuario' && direccion() === 'desc'"></i>
+          </th>
+          <th class="sortable"
+              [class.sort-active]="ordenarPor() === 'nombre'"
+              (click)="ordenar('nombre')">
+            Nombre<i class="fas sort-ico"
+              [class.fa-sort]="ordenarPor() !== 'nombre'"
+              [class.fa-sort-up]="ordenarPor() === 'nombre' && direccion() === 'asc'"
+              [class.fa-sort-down]="ordenarPor() === 'nombre' && direccion() === 'desc'"></i>
+          </th>
+          <th class="sortable"
+              [class.sort-active]="ordenarPor() === 'correo'"
+              (click)="ordenar('correo')">
+            Correo<i class="fas sort-ico"
+              [class.fa-sort]="ordenarPor() !== 'correo'"
+              [class.fa-sort-up]="ordenarPor() === 'correo' && direccion() === 'asc'"
+              [class.fa-sort-down]="ordenarPor() === 'correo' && direccion() === 'desc'"></i>
+          </th>
+          <th class="sortable"
+              [class.sort-active]="ordenarPor() === 'dni'"
+              (click)="ordenar('dni')">
+            DNI<i class="fas sort-ico"
+              [class.fa-sort]="ordenarPor() !== 'dni'"
+              [class.fa-sort-up]="ordenarPor() === 'dni' && direccion() === 'asc'"
+              [class.fa-sort-down]="ordenarPor() === 'dni' && direccion() === 'desc'"></i>
+          </th>
           <th>Roles</th>
-          <th>Estado</th>
+          <th class="sortable"
+              [class.sort-active]="ordenarPor() === 'estado'"
+              (click)="ordenar('estado')">
+            Estado<i class="fas sort-ico"
+              [class.fa-sort]="ordenarPor() !== 'estado'"
+              [class.fa-sort-up]="ordenarPor() === 'estado' && direccion() === 'asc'"
+              [class.fa-sort-down]="ordenarPor() === 'estado' && direccion() === 'desc'"></i>
+          </th>
           <th class="acc">Acciones</th>
         </tr>
       </thead>

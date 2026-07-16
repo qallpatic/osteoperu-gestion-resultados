@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +16,7 @@ import pe.com.qallpatic.osteoperu.admision.dto.PacienteAdmisionResponse;
 import pe.com.qallpatic.osteoperu.compartido.excepcion.RecursoNoEncontradoException;
 import pe.com.qallpatic.osteoperu.compartido.respuesta.PaginaResponse;
 import pe.com.qallpatic.osteoperu.compartido.util.GeneradorCodigos;
+import pe.com.qallpatic.osteoperu.compartido.util.OrdenamientoUtil;
 import pe.com.qallpatic.osteoperu.compartido.util.NombreParser;
 import pe.com.qallpatic.osteoperu.compartido.util.UtilTelefono;
 import pe.com.qallpatic.osteoperu.config.AppProperties;
@@ -34,6 +36,8 @@ import pe.com.qallpatic.osteoperu.usuarios.exception.UsuarioYaExisteException;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.Set;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -54,10 +58,16 @@ public class AdmisionServiceImpl implements AdmisionService {
 	private final SmsProperties smsProperties;
 	private final AppProperties appProperties;
 
+	private static final Set<String> CAMPOS_PACIENTE_ADMISION = Set.of(
+			"dni", "nombre", "telefono", "fechaCreacion");
+
 	@Override
 	@Transactional(readOnly = true)
-	public PaginaResponse<PacienteAdmisionResponse> listarPacientes(String dni, int pagina, int tamano) {
-		Pageable pageable = PageRequest.of(Math.max(pagina, 0), tamano <= 0 ? 10 : tamano);
+	public PaginaResponse<PacienteAdmisionResponse> listarPacientes(String dni, int pagina, int tamano,
+			String ordenarPor, String direccion) {
+		Sort sort = OrdenamientoUtil.resolver(ordenarPor, direccion,
+				Map.of(), CAMPOS_PACIENTE_ADMISION, "fechaCreacion");
+		Pageable pageable = PageRequest.of(Math.max(pagina, 0), tamano <= 0 ? 10 : tamano, sort);
 		// Desde PACIENTE: incluye a los creados por Admision aunque aun no tengan resultados.
 		Page<PacienteResumenProj> page = pacienteRepository.resumenDesdePacientes(
 				(dni == null || dni.isBlank()) ? null : dni.trim(), pageable);

@@ -49,7 +49,7 @@ public class ConsultaResultadoController {
 
 	private final ConsultaResultadoService consultaService;
 
-	@Operation(summary = "Listar resultados", description = "Filtra por DNI, nombre y rango de fechas (paginado).")
+	@Operation(summary = "Listar resultados", description = "Filtra por DNI, nombre y rango de fechas (paginado, ordenable).")
 	@GetMapping
 	public ResponseEntity<RespuestaApi<PaginaResponse<ResultadoResumenResponse>>> listar(
 			@RequestParam(required = false) String dni,
@@ -57,21 +57,26 @@ public class ConsultaResultadoController {
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
 			@RequestParam(defaultValue = "0") int pagina,
-			@RequestParam(defaultValue = "10") int tamano) {
+			@RequestParam(defaultValue = "10") int tamano,
+			@RequestParam(required = false) String ordenarPor,
+			@RequestParam(required = false) String direccion) {
 		return ResponseEntity.ok(RespuestaApi.ok(
-				consultaService.listar(dni, nombre, desde, hasta, pagina, tamano)));
+				consultaService.listar(dni, nombre, desde, hasta, pagina, tamano, ordenarPor, direccion)));
 	}
 
-	@Operation(summary = "Consultar logs de carga", description = "Bitacora filtrable por DNI y rango de fechas.")
+	@Operation(summary = "Consultar logs de carga",
+			description = "Bitacora filtrable por DNI y rango de fechas (paginado, ordenable).")
 	@GetMapping("/logs")
 	public ResponseEntity<RespuestaApi<PaginaResponse<LogCargaResponse>>> logs(
 			@RequestParam(required = false) String dni,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
 			@RequestParam(defaultValue = "0") int pagina,
-			@RequestParam(defaultValue = "10") int tamano) {
+			@RequestParam(defaultValue = "10") int tamano,
+			@RequestParam(required = false) String ordenarPor,
+			@RequestParam(required = false) String direccion) {
 		return ResponseEntity.ok(RespuestaApi.ok(
-				consultaService.listarLogs(dni, desde, hasta, pagina, tamano)));
+				consultaService.listarLogs(dni, desde, hasta, pagina, tamano, ordenarPor, direccion)));
 	}
 
 	@Operation(summary = "Pacientes pendientes de subir resultados",
@@ -110,8 +115,7 @@ public class ConsultaResultadoController {
 					+ "arrepiente y subir archivos nuevos al mismo visor (/r/{token}). "
 					+ "Soft-delete: los archivos desactivados no se borran fisicamente y el visor "
 					+ "deja de mostrarlos. El SMS solo se reencola si reenviarSms=true. "
-					+ "motivosPorArchivoJson es opcional: JSON con {idArchivo: motivoIndividual} "
-					+ "para overrides del motivo general.")
+					+ "motivosPorArchivoJson es JSON {idArchivo: motivoIndividual} (opcional, sin motivo general).")
 	@PutMapping(value = "/{id}/archivos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<RespuestaApi<ResultadoDetalleResponse>> actualizarArchivos(
 			@PathVariable Long id,
@@ -123,10 +127,7 @@ public class ConsultaResultadoController {
 					mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
 					schema = @Schema(type = "array", format = "binary")))
 			@RequestParam(value = "archivos", required = false) List<MultipartFile> archivos,
-			@Parameter(description = "Motivo general documentado (se aplica a todos los desactivados "
-					+ "que no tengan motivo individual en motivosPorArchivoJson)")
-			@RequestParam(value = "motivo", required = false) String motivo,
-			@Parameter(description = "JSON {idArchivo: motivoIndividual} opcional para overrides del motivo general")
+			@Parameter(description = "JSON {idArchivo: motivoIndividual} opcional por archivo desactivado")
 			@RequestParam(value = "motivosPorArchivoJson", required = false) String motivosPorArchivoJson,
 			@Parameter(description = "Si true, reencola el SMS con el mismo link")
 			@RequestParam(value = "reenviarSms", defaultValue = "false") boolean reenviarSms,
@@ -134,7 +135,7 @@ public class ConsultaResultadoController {
 		String actor = auth != null ? auth.getName() : "SISTEMA";
 		Map<Long, String> motivosPorArchivo = parsearMotivosPorArchivo(motivosPorArchivoJson);
 		ActualizarArchivosRequest solicitud = new ActualizarArchivosRequest(
-				idsDesactivar, idsReactivar, archivos, motivo, motivosPorArchivo, reenviarSms);
+				idsDesactivar, idsReactivar, archivos, motivosPorArchivo, reenviarSms);
 		return ResponseEntity.ok(RespuestaApi.ok("Archivos actualizados.",
 				consultaService.actualizarArchivos(id, solicitud, actor)));
 	}

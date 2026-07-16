@@ -44,6 +44,8 @@ export class ResultadosService {
     hasta?: string;
     pagina: number;
     tamano: number;
+    ordenarPor?: string;
+    direccion?: string;
   }): Observable<PaginaResponse<ResultadoResumen>> {
     return this.http
       .get<RespuestaApi<PaginaResponse<ResultadoResumen>>>(this.base, { params: this.armarParams(p) })
@@ -74,9 +76,6 @@ export class ResultadosService {
     for (const file of payload.archivosNuevos) {
       form.append('archivos', file, file.name);
     }
-    if (payload.motivo) {
-      form.append('motivo', payload.motivo);
-    }
     if (payload.motivosPorArchivo && Object.keys(payload.motivosPorArchivo).length > 0) {
       // El backend espera motivosPorArchivoJson como string JSON: {id: motivo}
       form.append('motivosPorArchivoJson', JSON.stringify(payload.motivosPorArchivo));
@@ -93,6 +92,8 @@ export class ResultadosService {
     hasta?: string;
     pagina: number;
     tamano: number;
+    ordenarPor?: string;
+    direccion?: string;
   }): Observable<PaginaResponse<LogCarga>> {
     return this.http
       .get<RespuestaApi<PaginaResponse<LogCarga>>>(`${this.base}/logs`, { params: this.armarParams(p) })

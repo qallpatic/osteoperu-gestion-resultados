@@ -112,8 +112,7 @@ export interface ActualizarArchivosPayload {
   idsDesactivar: number[];
   idsReactivar: number[];
   archivosNuevos: File[];
-  motivo: string;
-  /** Override individual del motivo por archivo (id -> motivo). Opcional. */
+  /** Motivo individual por archivo desactivado (id -> motivo). Opcional. */
   motivosPorArchivo?: Record<number, string>;
   reenviarSms: boolean;
 }

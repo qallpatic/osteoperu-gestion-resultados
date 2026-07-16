@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 import pe.com.qallpatic.osteoperu.compartido.excepcion.RecursoNoEncontradoException;
 import pe.com.qallpatic.osteoperu.compartido.excepcion.SolicitudInvalidaException;
 import pe.com.qallpatic.osteoperu.compartido.respuesta.PaginaResponse;
+import pe.com.qallpatic.osteoperu.compartido.util.OrdenamientoUtil;
 import pe.com.qallpatic.osteoperu.compartido.util.UtilTelefono;
 import pe.com.qallpatic.osteoperu.config.AppProperties;
 import pe.com.qallpatic.osteoperu.config.SmsProperties;
@@ -47,6 +48,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+import java.util.Set;
 
 @Service
 @Slf4j
@@ -81,12 +83,21 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 		return pacienteRepository.countByPendienteResultadosTrue();
 	}
 
+	private static final Map<String, String> ALIAS_RESULTADO = Map.of(
+			"dni", "documentoIdentidad",
+			"paciente", "nombrePaciente");
+	private static final Set<String> CAMPOS_RESULTADO = Set.of(
+			"documentoIdentidad", "nombrePaciente", "telefono",
+			"estadoSms", "contadorVistas", "fechaHoraCarga");
+
 	@Override
 	@Transactional(readOnly = true)
 	public PaginaResponse<ResultadoResumenResponse> listar(String dni, String nombre,
-			LocalDate desde, LocalDate hasta, int pagina, int tamano) {
-		Pageable pageable = PageRequest.of(Math.max(pagina, 0), tamano <= 0 ? 10 : tamano,
-				Sort.by(Sort.Direction.DESC, "fechaHoraCarga"));
+			LocalDate desde, LocalDate hasta, int pagina, int tamano,
+			String ordenarPor, String direccion) {
+		Sort sort = OrdenamientoUtil.resolver(ordenarPor, direccion,
+				ALIAS_RESULTADO, CAMPOS_RESULTADO, "fechaHoraCarga");
+		Pageable pageable = PageRequest.of(Math.max(pagina, 0), tamano <= 0 ? 10 : tamano, sort);
 		Page<ResultadoResumenResponse> page = resultadoCargaRepository
 				.findAll(ResultadoCargaSpecs.filtro(dni, nombre, null, inicioDia(desde), finDia(hasta)), pageable)
 				.map(resultadoMapper::toResumen);
@@ -146,8 +157,7 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 
 		LocalDateTime ahora = LocalDateTime.now();
 
-		int desactivados = aplicarDesactivaciones(carga, desactivar, solicitud.motivo(),
-				solicitud.motivosPorArchivo(), actor, ahora);
+		int desactivados = aplicarDesactivaciones(carga, desactivar, solicitud.motivosPorArchivo(), actor, ahora);
 		int reactivados = aplicarReactivaciones(carga, reactivar, actor, ahora);
 
 		// Los archivos nuevos se persisten via repository directo para evitar
@@ -183,12 +193,17 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 		return armarDetalle(cargaFresca);
 	}
 
+	private static final Set<String> CAMPOS_LOG = Set.of(
+			"estado", "dni", "usuarioCarga", "nombreReniec", "nombrePdf",
+			"coincideNombre", "fechaCreacion");
+
 	@Override
 	@Transactional(readOnly = true)
 	public PaginaResponse<LogCargaResponse> listarLogs(String dni, LocalDate desde, LocalDate hasta,
-			int pagina, int tamano) {
-		Pageable pageable = PageRequest.of(Math.max(pagina, 0), tamano <= 0 ? 10 : tamano,
-				Sort.by(Sort.Direction.DESC, "fechaCreacion"));
+			int pagina, int tamano, String ordenarPor, String direccion) {
+		Sort sort = OrdenamientoUtil.resolver(ordenarPor, direccion,
+				Map.of(), CAMPOS_LOG, "fechaCreacion");
+		Pageable pageable = PageRequest.of(Math.max(pagina, 0), tamano <= 0 ? 10 : tamano, sort);
 		Page<LogCargaResponse> page = logCargaRepository
 				.findAll(LogCargaSpecs.filtro(dni, inicioDia(desde), finDia(hasta)), pageable)
 				.map(resultadoMapper::toLog);
@@ -200,11 +215,11 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 	 * pasaron de activo a inactivo. Lanza 400 si la operacion dejaria la cabecera
 	 * sin archivos activos.
 	 *
-	 * <p>Si {@code motivosPorArchivo} tiene una entrada para el id del archivo, ese
-	 * motivo individual se aplica SOLO a ese archivo (override). Si no, se usa
-	 * {@code motivoGeneral} para todos.
+	 * <p>Cada archivo desactivado lleva su motivo individual capturado en el
+	 * dialog de confirmacion (frontend). Si el operador lo dejo vacio, se
+	 * persiste como null (motivo opcional, no obligatorio).
 	 */
-	private int aplicarDesactivaciones(ResultadoCarga carga, List<Long> ids, String motivoGeneral,
+	private int aplicarDesactivaciones(ResultadoCarga carga, List<Long> ids,
 			Map<Long, String> motivosPorArchivo, String actor, LocalDateTime ahora) {
 		if (ids.isEmpty()) {
 			return 0;
@@ -221,7 +236,7 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 				String motivoIndividual = motivosPorArchivo == null ? null : motivosPorArchivo.get(a.getIdResultadoArchivo());
 				String motivoFinal = motivoIndividual != null && !motivoIndividual.isBlank()
 						? motivoIndividual.trim()
-						: (motivoGeneral != null && !motivoGeneral.isBlank() ? motivoGeneral.trim() : null);
+						: null;
 				a.setEstado(0);
 				a.setFechaEliminacion(ahora);
 				a.setUsuarioEliminacion(actor);

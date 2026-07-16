@@ -11,7 +11,40 @@
     <table class="tabla">
       <thead>
         <tr>
-          <th>DNI</th><th>Paciente</th><th>Teléfono</th><th>Registrado</th><th>Estado</th><th class="acc">Acción</th>
+          <th class="sortable"
+              [class.sort-active]="ordenarPor() === 'dni'"
+              (click)="ordenar('dni')">
+            DNI<i class="fas sort-ico"
+              [class.fa-sort]="ordenarPor() !== 'dni'"
+              [class.fa-sort-up]="ordenarPor() === 'dni' && direccion() === 'asc'"
+              [class.fa-sort-down]="ordenarPor() === 'dni' && direccion() === 'desc'"></i>
+          </th>
+          <th class="sortable"
+              [class.sort-active]="ordenarPor() === 'nombre'"
+              (click)="ordenar('nombre')">
+            Paciente<i class="fas sort-ico"
+              [class.fa-sort]="ordenarPor() !== 'nombre'"
+              [class.fa-sort-up]="ordenarPor() === 'nombre' && direccion() === 'asc'"
+              [class.fa-sort-down]="ordenarPor() === 'nombre' && direccion() === 'desc'"></i>
+          </th>
+          <th class="sortable"
+              [class.sort-active]="ordenarPor() === 'telefono'"
+              (click)="ordenar('telefono')">
+            Teléfono<i class="fas sort-ico"
+              [class.fa-sort]="ordenarPor() !== 'telefono'"
+              [class.fa-sort-up]="ordenarPor() === 'telefono' && direccion() === 'asc'"
+              [class.fa-sort-down]="ordenarPor() === 'telefono' && direccion() === 'desc'"></i>
+          </th>
+          <th class="sortable"
+              [class.sort-active]="ordenarPor() === 'fechaRegistro'"
+              (click)="ordenar('fechaRegistro')">
+            Registrado<i class="fas sort-ico"
+              [class.fa-sort]="ordenarPor() !== 'fechaRegistro'"
+              [class.fa-sort-up]="ordenarPor() === 'fechaRegistro' && direccion() === 'asc'"
+              [class.fa-sort-down]="ordenarPor() === 'fechaRegistro' && direccion() === 'desc'"></i>
+          </th>
+          <th>Estado</th>
+          <th class="acc">Acción</th>
         </tr>
       </thead>
       <tbody>

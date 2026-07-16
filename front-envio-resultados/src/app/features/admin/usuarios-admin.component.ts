@@ -30,6 +30,25 @@ export class UsuariosAdminComponent implements OnInit {
   filtroRol = '';
   filtroEstado = ''; // '', 'true', 'false'
 
+  /** Orden: null = default backend (id asc), 'asc', 'desc'. */
+  readonly ordenarPor = signal<string | null>(null);
+  readonly direccion = signal<'asc' | 'desc' | null>(null);
+
+  /** Cicla null -> asc -> desc -> null para una columna. */
+  ordenar(campo: string): void {
+    if (this.ordenarPor() !== campo) {
+      this.ordenarPor.set(campo);
+      this.direccion.set('asc');
+    } else if (this.direccion() === 'asc') {
+      this.direccion.set('desc');
+    } else {
+      this.ordenarPor.set(null);
+      this.direccion.set(null);
+    }
+    this.pagina.set(0);
+    this.cargar();
+  }
+
   readonly roles = signal<RolResponse[]>([]);
   readonly notice = signal<{ type: 'ok' | 'error'; text: string } | null>(null);
 
@@ -67,6 +86,8 @@ export class UsuariosAdminComponent implements OnInit {
         buscar: this.buscar.trim() || undefined,
         rol: this.filtroRol || undefined,
         estado: this.filtroEstado === '' ? undefined : this.filtroEstado === 'true',
+        ordenarPor: this.ordenarPor() ?? undefined,
+        direccion: this.direccion() ?? undefined,
       })
       .subscribe({
         next: (p) => {
