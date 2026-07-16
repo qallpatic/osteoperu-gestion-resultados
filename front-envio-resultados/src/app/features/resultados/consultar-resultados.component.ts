@@ -5,6 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 
 import { ResultadosService } from './resultados.service';
 import { Archivo, ResultadoDetalle, ResultadoResumen } from './resultados.models';
+import { TiposArchivoSoportados, esTipoSoportado } from './tipos-archivo';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
 
 interface ArchivoEditable extends Archivo {
@@ -84,7 +85,10 @@ export class ConsultarResultadosComponent implements OnInit {
   editArchivosReenviar = false;
   readonly guardandoEdicion = signal(false);
   readonly toastExito = signal<string | null>(null);
+  /** Errores que deben verse aunque el modal este abierto (no quedan tapados por el backdrop). */
+  readonly errorModalEdicion = signal<string | null>(null);
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
+  private errorModalTimer: ReturnType<typeof setTimeout> | null = null;
   /** Ultimo motivo persistido: pre-rellena el siguiente dialog para evitar re-tipear. */
   private ultimoMotivoUsado = '';
 
@@ -224,6 +228,11 @@ export class ConsultarResultadosComponent implements OnInit {
     this.editArchivosNuevos.set([]);
     this.motivosPorArchivo.set({});
     this.toastExito.set(null);
+    this.errorModalEdicion.set(null);
+    if (this.errorModalTimer) {
+      clearTimeout(this.errorModalTimer);
+      this.errorModalTimer = null;
+    }
   }
 
   toggleArchivoActivo(event: Event, a: ArchivoEditable): void {
@@ -304,7 +313,9 @@ export class ConsultarResultadosComponent implements OnInit {
     const aceptados: File[] = [];
     const rechazados: string[] = [];
     for (const file of Array.from(list)) {
-      if (file.size > 50 * 1024 * 1024) {
+      if (!TiposArchivoSoportados.esSoportado(file)) {
+        rechazados.push(`${file.name}: formato no permitido (solo PDF, imagen o video)`);
+      } else if (file.size > 50 * 1024 * 1024) {
         rechazados.push(`${file.name}: supera 50 MB`);
       } else {
         aceptados.push(file);
@@ -314,7 +325,13 @@ export class ConsultarResultadosComponent implements OnInit {
       this.editArchivosNuevos.set([...this.editArchivosNuevos(), ...aceptados]);
     }
     if (rechazados.length) {
-      this.notice.set({ type: 'error', text: rechazados.join(' · ') });
+      const texto = rechazados.join(' · ');
+      this.notice.set({ type: 'error', text: texto });
+      this.errorModalEdicion.set(texto);
+      if (this.errorModalTimer) {
+        clearTimeout(this.errorModalTimer);
+      }
+      this.errorModalTimer = setTimeout(() => this.errorModalEdicion.set(null), 6000);
     }
   }
 
@@ -404,6 +421,14 @@ export class ConsultarResultadosComponent implements OnInit {
       this.toastTimer = null;
     }
     this.toastExito.set(null);
+  }
+
+  cerrarErrorModal(): void {
+    if (this.errorModalTimer) {
+      clearTimeout(this.errorModalTimer);
+      this.errorModalTimer = null;
+    }
+    this.errorModalEdicion.set(null);
   }
 
   ejecutarConfirmacion(motivo?: string): void {

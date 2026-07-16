@@ -186,6 +186,14 @@
           <button class="toast-ok__close" (click)="cerrarToast()" title="Cerrar"><i class="fas fa-xmark"></i></button>
         </div>
       }
+
+      @if (errorModalEdicion(); as e) {
+        <div class="toast-warn" role="alert">
+          <i class="fas fa-triangle-exclamation"></i>
+          <span>{{ e }}</span>
+          <button class="toast-warn__close" (click)="cerrarErrorModal()" title="Cerrar"><i class="fas fa-xmark"></i></button>
+        </div>
+      }
     </header>
 
     <div class="modal__body">
