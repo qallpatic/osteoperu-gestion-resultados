@@ -120,7 +120,7 @@
 }
 @if (detalle(); as d) {
   <div class="backdrop" (click)="cerrarDetalle()"></div>
-  <div class="modal" role="dialog">
+  <div class="modal modal--detalle" role="dialog">
     <button class="modal__x" (click)="cerrarDetalle()"><i class="fas fa-xmark"></i></button>
     <h2 class="modal__title">Resultado #{{ d.id }}</h2>
     <p class="modal__sub">DNI {{ d.dni }} · {{ d.contadorVistas }} vista(s)</p>
