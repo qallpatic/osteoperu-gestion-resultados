@@ -23,7 +23,7 @@ import pe.com.qallpatic.osteoperu.admision.service.AdmisionService;
 import pe.com.qallpatic.osteoperu.compartido.respuesta.PaginaResponse;
 import pe.com.qallpatic.osteoperu.compartido.respuesta.RespuestaApi;
 
-/** Admision: alta y baja de la cuenta de acceso del paciente. Roles: ADMIN, ADMISION. */
+/** Admision: alta y baja de la cuenta de acceso del paciente. Roles: ADMIN, ADMISION, RESULTADOS. */
 @RestController
 @RequestMapping("/api/admision")
 @RequiredArgsConstructor

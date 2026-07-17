@@ -24,10 +24,12 @@ export class AdmisionComponent implements OnInit {
   private ultimoDniReniec = '';
 
   /**
-   * Solo ADMIN/ADMISION pueden generar o anular cuentas del paciente.
-   * RESULTADOS ve la lista pero no puede ejecutar acciones de escritura.
+   * Genera o anula el acceso de los pacientes. Habilitado para ADMIN, ADMISION y RESULTADOS.
+   * El resto de los roles ven la lista pero no pueden ejecutar acciones de escritura.
    */
-  readonly puedeEditarCuenta = computed(() => this.auth.tieneAlgunRol(['ADMIN', 'ADMISION']));
+  readonly puedeEditarCuenta = computed(() =>
+    this.auth.tieneAlgunRol(['ADMIN', 'ADMISION', 'RESULTADOS']),
+  );
 
   readonly pacientes = signal<PacienteAdmision[]>([]);
   readonly cargando = signal(false);
