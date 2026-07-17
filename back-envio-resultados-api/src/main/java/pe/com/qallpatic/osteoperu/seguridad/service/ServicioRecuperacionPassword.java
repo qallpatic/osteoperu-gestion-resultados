@@ -15,8 +15,8 @@ public interface ServicioRecuperacionPassword {
 	 * se supera, lanza una excepcion que el controller convierte a 429.
 	 *
 	 * @param ip            IP del cliente (header X-Forwarded-For si hay proxy).
-	 * @param telefono      Telefono en crudo (9 digitos). Validado y normalizado.
-	 * @return respuesta generica + telefono de soporte + retryAfter si fue bloqueado.
+	 * @param documento     DNI (8 digitos) o CE (9-12 digitos) del paciente.
+	 * @return respuesta generica + telefono ofuscado + telefono de soporte + retryAfter si fue bloqueado.
 	 */
-	RecuperarPasswordResponse solicitar(String ip, String telefono);
+	RecuperarPasswordResponse solicitar(String ip, String documento);
 }

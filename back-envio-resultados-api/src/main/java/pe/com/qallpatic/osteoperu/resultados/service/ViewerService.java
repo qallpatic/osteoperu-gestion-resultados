@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import pe.com.qallpatic.osteoperu.compartido.excepcion.RecursoNoEncontradoException;
+import pe.com.qallpatic.osteoperu.compartido.excepcion.ResultadoCaducadoException;
 import pe.com.qallpatic.osteoperu.resultados.entity.EventoVista;
 import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoArchivo;
 import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoCarga;
@@ -43,6 +44,9 @@ public class ViewerService {
 		if (carga.getEstado() == null || carga.getEstado() != 1) {
 			throw new RecursoNoEncontradoException("Resultados no encontrados.");
 		}
+		if (carga.getFechaVigenciaHasta() != null && carga.getFechaVigenciaHasta().isBefore(LocalDateTime.now())) {
+			throw new ResultadoCaducadoException("Resultados caducados.", carga.getDocumentoIdentidad());
+		}
 
 		LocalDateTime now = LocalDateTime.now();
 		carga.setContadorVistas(carga.getContadorVistas() + 1);
@@ -70,6 +74,9 @@ public class ViewerService {
 				.orElseThrow(() -> new RecursoNoEncontradoException("Resultados no encontrados."));
 		if (carga.getEstado() == null || carga.getEstado() != 1) {
 			throw new RecursoNoEncontradoException("Resultados no encontrados.");
+		}
+		if (carga.getFechaVigenciaHasta() != null && carga.getFechaVigenciaHasta().isBefore(LocalDateTime.now())) {
+			throw new ResultadoCaducadoException("Resultados caducados.", carga.getDocumentoIdentidad());
 		}
 		return carga;
 	}

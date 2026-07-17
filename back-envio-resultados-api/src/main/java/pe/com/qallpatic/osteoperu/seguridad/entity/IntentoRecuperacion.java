@@ -36,8 +36,12 @@ public class IntentoRecuperacion {
 	@Column(name = "IP_ADDRESS", nullable = false, length = 45)
 	private String ipAddress;
 
-	@Column(name = "TELEFONO_NORM", nullable = false, length = 20)
-	private String telefonoNorm;
+	/**
+	 * DNI/CE normalizado (8-12 digitos) del documento con el que se intento
+	 * recuperar. La busqueda del paciente se hace por DNI, no por telefono.
+	 */
+	@Column(name = "DOCUMENTO_NORM", nullable = false, length = 15)
+	private String documentoNorm;
 
 	@Column(name = "BLOQUEADO", nullable = false)
 	private boolean bloqueado;

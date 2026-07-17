@@ -74,6 +74,7 @@ public class PacientePortalServiceImpl implements PacientePortalService {
 	@Transactional(readOnly = true)
 	public ArchivoLocalizado localizarArchivo(String username, boolean esAdmin, Long idResultadoCarga, Long idArchivo) {
 		ResultadoCarga carga = obtenerPorId(idResultadoCarga, username, esAdmin);
+		verificarVigencia(carga, esAdmin);
 		ResultadoArchivo archivo = carga.getArchivos().stream()
 				.filter(a -> a.getIdResultadoArchivo().equals(idArchivo))
 				.findFirst()
@@ -93,6 +94,7 @@ public class PacientePortalServiceImpl implements PacientePortalService {
 	@Transactional(readOnly = true)
 	public ArchivoDescargable descargarArchivo(String username, boolean esAdmin, Long idResultadoCarga, Long idArchivo) {
 		ResultadoCarga carga = obtenerPorId(idResultadoCarga, username, esAdmin);
+		verificarVigencia(carga, esAdmin);
 		ResultadoArchivo archivo = carga.getArchivos().stream()
 				.filter(a -> a.getIdResultadoArchivo().equals(idArchivo))
 				.findFirst()
@@ -177,9 +179,21 @@ public class PacientePortalServiceImpl implements PacientePortalService {
 				c.getCantidadArchivos() == null ? 0 : c.getCantidadArchivos(),
 				c.getPesoTotalMb(),
 				c.getFechaHoraCarga(),
+				c.getFechaVigenciaHasta(),
 				c.getFechaPrimeraVista(),
 				c.getFechaUltimaVista(),
+				appProperties.getSoporte().getTelefono(),
 				archivos);
+	}
+
+	/** Bloquea el acceso a archivos cuando el resultado vencio (solo aplica a pacientes, no admin). */
+	private void verificarVigencia(ResultadoCarga carga, boolean esAdmin) {
+		if (!esAdmin && carga.getFechaVigenciaHasta() != null
+				&& carga.getFechaVigenciaHasta().isBefore(LocalDateTime.now())) {
+			throw new pe.com.qallpatic.osteoperu.compartido.excepcion.ResultadoCaducadoException(
+					"Los resultados ya no estan disponibles. Comuniquese con el centro para solicitarlos nuevamente.",
+					carga.getDocumentoIdentidad());
+		}
 	}
 
 	private LocalDateTime inicioDia(LocalDate d) {

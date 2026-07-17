@@ -20,17 +20,28 @@ import pe.com.qallpatic.osteoperu.seguridad.entity.Usuario;
 import pe.com.qallpatic.osteoperu.seguridad.repository.UsuarioRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Implementacion del flujo de recuperacion de password.
  *
- * Seguridad y comportamiento:
+ * Flujo:
+ * <ol>
+ *   <li>El front envia el DNI/CE del paciente.</li>
+ *   <li>El back busca el paciente por DNI, recupera su telefono.</li>
+ *   <li>Regenera una clave temporal, la hashea con BCrypt y envia SMS al
+ *       telefono del paciente.</li>
+ *   <li>Devuelve un mensaje generico + el telefono ofuscado (ultimos 4
+ *       digitos) para que el usuario verifique sin comprometer la info.</li>
+ * </ol>
+ *
+ * Seguridad:
  * <ul>
- *   <li>La respuesta siempre es generica para evitar filtrar si el telefono
- *       esta registrado (anti-enumeracion).</li>
+ *   <li>La respuesta es siempre generica (anti-enumeracion).</li>
  *   <li>El rate-limit se evalua antes de tocar BD (insert + 3 counts).</li>
- *   <li>La clave se regenera y hashea con BCrypt; el hasheado previo se pierde.</li>
- *   <li>El SMS se encola en {@link SmsService} (no bloquea el hilo del request).</li>
+ *   <li>El telefono se ofusca SIEMPRE: si no hay paciente, se ofusca el DNI
+ *       tipeado (mismo formato) para no filtrar la longitud/estructura.</li>
+ *   <li>El SMS se encola en {@link SmsService} (no bloquea el request).</li>
  * </ul>
  */
 @Service
@@ -52,36 +63,50 @@ public class ServicioRecuperacionPasswordImpl implements ServicioRecuperacionPas
 
 	@Override
 	@Transactional
-	public RecuperarPasswordResponse solicitar(String ip, String telefono) {
-		String telefonoNorm = UtilTelefono.normalizar(telefono, appProperties.getPhone().getCountryCode());
+	public RecuperarPasswordResponse solicitar(String ip, String documento) {
+		String documentoNorm = UtilTelefono.validarDocumentoIdentidad(documento);
+		String telefonoOfuscado = ofuscar(documentoNorm);
 
 		try {
-			tasaLimit.evaluar(ip, telefonoNorm);
+			tasaLimit.evaluar(ip, documentoNorm);
 		} catch (LimiteIntentosSuperadoException e) {
 			long retry = tasaLimit.retryAfterSegundos(ip);
 			return new RecuperarPasswordResponse(
 					e.getMessage(),
 					soporteTelefono(),
+					telefonoOfuscado,
 					retry);
 		}
 
-		boolean procesado = regenerarClaveSiAplica(telefonoNorm);
-		log.info("[RECUPERACION] ip={} telefono=**** procesado={}", ip, procesado);
-		return new RecuperarPasswordResponse(MENSAJE_GENERICO, soporteTelefono(), null);
+		Optional<String> telefonoParaSms = regenerarClaveSiAplica(documentoNorm);
+		if (telefonoParaSms.isPresent()) {
+			telefonoOfuscado = ofuscar(telefonoParaSms.get());
+		}
+		log.info("[RECUPERACION] ip={} documento=**** procesado={}", ip, telefonoParaSms.isPresent());
+		return new RecuperarPasswordResponse(MENSAJE_GENERICO, soporteTelefono(), telefonoOfuscado, null);
 	}
 
 	/**
-	 * Busca el paciente por telefono, deriva su USUARIO, genera una clave
-	 * temporal, la hashea y encola el SMS. Devuelve true si se encolo el envio.
+	 * Busca el paciente por DNI, deriva su USUARIO, genera una clave
+	 * temporal, la hashea y encola el SMS. Devuelve el telefono normalizado
+	 * (con prefijo 51) si el SMS fue encolado, o vacio si no.
 	 */
-	private boolean regenerarClaveSiAplica(String telefonoNorm) {
-		Paciente paciente = buscarPacientePorTelefono(telefonoNorm);
+	private Optional<String> regenerarClaveSiAplica(String documentoNorm) {
+		List<Paciente> pacientes = pacienteRepository.findAllByDni(documentoNorm);
+		if (pacientes.isEmpty()) {
+			return Optional.empty();
+		}
+		Paciente paciente = pickActivo(pacientes);
 		if (paciente == null || paciente.getIdUsuario() == null || !paciente.isEstado()) {
-			return false;
+			return Optional.empty();
 		}
 		Usuario usuario = usuarioRepository.findById(paciente.getIdUsuario()).orElse(null);
 		if (usuario == null || !usuario.isEstado()) {
-			return false;
+			return Optional.empty();
+		}
+		if (paciente.getTelefono() == null || paciente.getTelefono().isBlank()) {
+			log.info("[RECUPERACION] paciente sin telefono (dni={}); no se envia SMS", documentoNorm);
+			return Optional.empty();
 		}
 
 		String clavePlana = generarClaveSinAmbiguos(recuperacionProperties.getLongitudClave());
@@ -91,22 +116,34 @@ public class ServicioRecuperacionPasswordImpl implements ServicioRecuperacionPas
 
 		String plantilla = smsProperties.getMessage().getRecuperacionTemplate();
 		if (plantilla == null || plantilla.isBlank()) {
-			log.warn("sms.message.recuperacion-template no configurada; no se envia SMS para {}", telefonoNorm);
-			return false;
+			log.warn("sms.message.recuperacion-template no configurada; no se envia SMS para {}", documentoNorm);
+			return Optional.empty();
 		}
+		String telefonoNorm = UtilTelefono.normalizar(paciente.getTelefono(),
+				appProperties.getPhone().getCountryCode());
 		String mensaje = plantilla
 				.replace("{nombre}", usuario.getNombre() == null ? "" : usuario.getNombre())
+				.replace("{dni}", usuario.getDni() == null ? documentoNorm : usuario.getDni())
 				.replace("{clave}", clavePlana)
 				.replace("{link}", smsProperties.getMessage().getLoginUrl() == null
 						? "" : smsProperties.getMessage().getLoginUrl())
 				.trim();
 		try {
 			smsService.enviarTexto(telefonoNorm, mensaje);
-			return true;
+			return Optional.of(telefonoNorm);
 		} catch (Exception e) {
 			log.warn("No se pudo encolar SMS de recuperacion para {}: {}", telefonoNorm, e.getMessage());
-			return false;
+			return Optional.empty();
 		}
+	}
+
+	private Paciente pickActivo(List<Paciente> pacientes) {
+		for (Paciente p : pacientes) {
+			if (p.isEstado() && p.getIdUsuario() != null) {
+				return p;
+			}
+		}
+		return pacientes.get(0);
 	}
 
 	/**
@@ -124,38 +161,18 @@ public class ServicioRecuperacionPasswordImpl implements ServicioRecuperacionPas
 	}
 
 	/**
-	 * Tolerante al formato guardado: PACIENTE.TELEFONO historicamente se
-	 * almaceno sin prefijo pais (ej. "980348748"), mientras que
-	 * RESULTADO_CARGA.TELEFONO ya esta normalizado ("51980348748"). Probamos
-	 * ambas variantes para no devolver 404 implicito en pacientes existentes.
-	 *
-	 * Si hay multiples pacientes con el mismo telefono (caso real, gente que
-	 * comparte numero), elegimos el primero cuyo USUARIO este activo y asi
-	 * regeneramos solo una cuenta; si ninguno califica, no se regenera clave.
+	 * Devuelve los ultimos 4 digitos enmascarados con 5 bullets. Acepta
+	 * documentos de 4+ digitos; si son menos, devuelve solo bullets.
 	 */
-	private Paciente buscarPacientePorTelefono(String telefonoNorm) {
-		List<Paciente> conPrefijo = pacienteRepository.findByTelefono(telefonoNorm);
-		Paciente candidato = pickActivo(conPrefijo);
-		if (candidato != null) {
-			return candidato;
+	static String ofuscar(String doc) {
+		if (doc == null) {
+			return "•••••";
 		}
-		String sinPrefijo = telefonoNorm.length() > 9 && telefonoNorm.startsWith("51")
-				? telefonoNorm.substring(2)
-				: telefonoNorm;
-		List<Paciente> sinPrefijoLista = pacienteRepository.findByTelefono(sinPrefijo);
-		return pickActivo(sinPrefijoLista);
-	}
-
-	private Paciente pickActivo(List<Paciente> pacientes) {
-		if (pacientes == null || pacientes.isEmpty()) {
-			return null;
+		String limpio = doc.replaceAll("\\D", "");
+		if (limpio.length() < 4) {
+			return "•••••" + limpio;
 		}
-		for (Paciente p : pacientes) {
-			if (p.isEstado() && p.getIdUsuario() != null) {
-				return p;
-			}
-		}
-		return pacientes.get(0);
+		return "•••••" + limpio.substring(limpio.length() - 4);
 	}
 
 	private String soporteTelefono() {

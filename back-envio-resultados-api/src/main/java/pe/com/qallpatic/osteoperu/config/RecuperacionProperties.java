@@ -15,7 +15,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class RecuperacionProperties {
 
 	/** Longitud de la clave temporal generada (sin ambiguos 0/O/1/I). */
-	private int longitudClave = 10;
+	private int longitudClave = 6;
 
 	/** Maximo de intentos por IP en la ventana. */
 	private int maxIntentosIp = 3;

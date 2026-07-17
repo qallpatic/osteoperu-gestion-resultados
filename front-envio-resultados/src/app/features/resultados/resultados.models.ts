@@ -46,6 +46,7 @@ export interface ResultadoResumen {
   pesoTotalMb: number;
   estado: number;
   fechaHoraCarga: string;
+  fechaVigenciaHasta: string | null;
   fechaPrimeraVista: string | null;
 }
 
@@ -83,8 +84,10 @@ export interface ResultadoDetalle {
   cantidadArchivos: number;
   pesoTotalMb: number;
   fechaHoraCarga: string;
+  fechaVigenciaHasta: string | null;
   fechaPrimeraVista: string | null;
   fechaUltimaVista: string | null;
+  soporteTelefono: string | null;
   archivos: Archivo[];
 }
 

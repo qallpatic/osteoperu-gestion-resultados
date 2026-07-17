@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	<meta name="robots" content="noindex, nofollow"/>
+	<title>Resultados caducados — OSTEOPERU</title>
+	<style>
+		:root {
+			--verde-osc: #115e59;
+			--bg: #f1f5f4;
+			--card: #ffffff;
+			--texto: #1f2937;
+			--muted: #6b7280;
+			--peligro: #b91c1c;
+			--peligro-bg: #fef2f2;
+		}
+		* { box-sizing: border-box; margin: 0; padding: 0; }
+		body {
+			font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+			background: var(--bg);
+			color: var(--texto);
+			line-height: 1.5;
+		}
+		header {
+			background: linear-gradient(90deg, var(--verde-osc), #0f766e);
+			color: #fff;
+			padding: 18px 20px;
+			text-align: center;
+			font-weight: 700;
+			font-size: 1.15rem;
+			letter-spacing: .5px;
+		}
+		.container { max-width: 640px; margin: 0 auto; padding: 48px 16px 60px; }
+		.card {
+			background: var(--card);
+			border-radius: 16px;
+			box-shadow: 0 8px 24px rgba(15,118,110,.08);
+			padding: 40px 28px;
+			text-align: center;
+		}
+		.icono {
+			width: 80px; height: 80px; margin: 0 auto 18px;
+			border-radius: 50%;
+			background: var(--peligro-bg);
+			color: var(--peligro);
+			display: grid; place-items: center;
+			font-size: 2.4rem; font-weight: 700;
+		}
+		h1 { color: var(--verde-osc); font-size: 1.4rem; margin-bottom: 10px; }
+		p { color: var(--muted); margin-bottom: 14px; font-size: .98rem; }
+		.dni { color: var(--texto); font-weight: 700; }
+		.soporte {
+			margin-top: 22px;
+			padding: 16px;
+			background: #f8fafc;
+			border-radius: 12px;
+			border: 1px solid #e5e7eb;
+		}
+		.soporte__label { font-size: .8rem; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 4px; }
+		.soporte__tel { color: var(--verde-osc); font-size: 1.25rem; font-weight: 700; text-decoration: none; }
+		.soporte__tel:hover { text-decoration: underline; }
+		footer { text-align: center; color: var(--muted); font-size: .8rem; padding: 24px 0; }
+	</style>
+</head>
+<body>
+<header>OSTEOPERU · Resultados del paciente</header>
+
+<div class="container">
+	<div class="card">
+		<div class="icono" aria-hidden="true">&#128274;</div>
+		<h1>Resultados caducados</h1>
+		<p>
+			Los resultados asociados al documento de identidad <span class="dni" th:text="${dni}">00000000</span>
+			ya no están disponibles para descarga en línea. La vigencia del visor es de 6 meses desde la fecha de carga.
+		</p>
+		<p>
+			Si necesitás consultarlos nuevamente, comunicate con el área de resultados:
+		</p>
+		<div class="soporte">
+			<div class="soporte__label">Teléfono de contacto</div>
+			<a class="soporte__tel" th:if="${soporteTelefono != null and !soporteTelefono.isBlank()}"
+			   th:href="@{'tel:' + ${soporteTelefono}}" th:text="${soporteTelefono}">+51 999 999 999</a>
+			<span class="soporte__tel" th:if="${soporteTelefono == null or soporteTelefono.isBlank()}">
+				Comunicate con el centro para solicitar el número de contacto.
+			</span>
+		</div>
+	</div>
+</div>
+
+<footer>QALLPATIC © 2026 — Sistema de resultados</footer>
+</body>
+</html>

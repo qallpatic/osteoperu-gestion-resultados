@@ -103,6 +103,10 @@ public class ResultadoCarga extends EntidadAuditable {
 	@Column(name = "FECHA_HORA_CARGA", nullable = false)
 	private LocalDateTime fechaHoraCarga;
 
+	/** Hasta cuando el resultado esta vigente para el paciente (FECHA_HORA_CARGA + 180 dias). */
+	@Column(name = "FECHA_VIGENCIA_HASTA", nullable = false)
+	private LocalDateTime fechaVigenciaHasta;
+
 	@OneToMany(mappedBy = "resultadoCarga", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
 	@Builder.Default
 	private List<ResultadoArchivo> archivos = new ArrayList<>();

@@ -33,19 +33,35 @@ public class ServicioAutenticacionImpl implements ServicioAutenticacion {
 	private final TokenRefrescoRepository tokenRefrescoRepository;
 	private final UsuarioRepository usuarioRepository;
 	private final SeguridadProperties propiedades;
+	private final TasaLimitLoginService tasaLimitLogin;
 
 	@Override
 	@Transactional
-	public TokenResponse login(LoginRequest solicitud) {
-		Authentication autenticacion = authenticationManager.authenticate(
-				new UsernamePasswordAuthenticationToken(solicitud.usuario(), solicitud.contrasena()));
+	public TokenResponse login(LoginRequest solicitud, String ip) {
+		String usuario = solicitud.usuario() == null ? "" : solicitud.usuario().trim();
+
+		// Rate-limit ANTES de delegar a Spring Security. Si la dupla
+		// ip+usuario esta bloqueada, devolvemos 429 sin enumerar usuarios.
+		tasaLimitLogin.evaluar(ip, usuario);
+
+		Authentication autenticacion;
+		try {
+			autenticacion = authenticationManager.authenticate(
+					new UsernamePasswordAuthenticationToken(usuario, solicitud.contrasena()));
+		} catch (Exception e) {
+			// El intento ya quedo registrado en TasaLimitLogin.evaluar
+			// (no bloqueado), por lo que fuerza bruta se sigue contando.
+			log.info("Login fallido. usuario={}, ip={}", usuario, ip);
+			throw e;
+		}
 
 		UsuarioAutenticado principal = (UsuarioAutenticado) autenticacion.getPrincipal();
-		Usuario usuario = usuarioRepository.findByUsuario(principal.getUsername())
+		Usuario user = usuarioRepository.findByUsuario(principal.getUsername())
 				.orElseThrow(() -> new SolicitudInvalidaException("Usuario no encontrado."));
 
-		log.info("Login exitoso. usuario={}, roles={}", principal.getUsername(), principal.getRoles());
-		return construirRespuesta(principal, usuario);
+		log.info("Login exitoso. usuario={}, ip={}, roles={}",
+				principal.getUsername(), ip, principal.getRoles());
+		return construirRespuesta(principal, user);
 	}
 
 	@Override

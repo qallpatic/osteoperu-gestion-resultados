@@ -28,14 +28,29 @@
   } @else {
     <div class="cards">
       @for (r of resultados(); track r.id) {
-        <article class="card">
-          <div class="card__icon"><i class="fas fa-file-medical"></i></div>
+        <article class="card" [class.card--vencido]="esVencido(r.fechaVigenciaHasta)">
+          <div class="card__icon"><i class="fas" [class.fa-file-medical]="!esVencido(r.fechaVigenciaHasta)" [class.fa-file-circle-xmark]="esVencido(r.fechaVigenciaHasta)"></i></div>
           <div class="card__body">
-            <span class="card__title">Resultado del {{ r.fechaHoraCarga | date:'dd/MM/yyyy' }}</span>
+            <span class="card__title">
+              Resultado del {{ r.fechaHoraCarga | date:'dd/MM/yyyy HH:mm' }}
+              @if (vigenciaInfo(r.fechaVigenciaHasta).estado !== 'sin-fecha') {
+                <span class="vigencia"
+                  [class.vigencia--ok]="vigenciaInfo(r.fechaVigenciaHasta).estado === 'ok'"
+                  [class.vigencia--warn]="vigenciaInfo(r.fechaVigenciaHasta).estado === 'warn'"
+                  [class.vigencia--alert]="vigenciaInfo(r.fechaVigenciaHasta).estado === 'alert'"
+                  [class.vigencia--vencido]="vigenciaInfo(r.fechaVigenciaHasta).estado === 'vencido'">
+                  <i class="fas" [class.fa-circle-check]="vigenciaInfo(r.fechaVigenciaHasta).estado === 'ok'"
+                     [class.fa-clock]="vigenciaInfo(r.fechaVigenciaHasta).estado === 'warn' || vigenciaInfo(r.fechaVigenciaHasta).estado === 'alert'"
+                     [class.fa-lock]="vigenciaInfo(r.fechaVigenciaHasta).estado === 'vencido'"></i>
+                  {{ vigenciaInfo(r.fechaVigenciaHasta).texto }}
+                </span>
+              }
+            </span>
             <span class="card__meta">{{ r.nombrePaciente || 'Paciente' }} · Documento de Identidad {{ r.dni }}</span>
           </div>
           <button class="btn btn--ghost" (click)="abrirDetalle(r)">
-            <i class="fas fa-folder-open"></i> Ver archivos
+            <i class="fas" [class.fa-folder-open]="!esVencido(r.fechaVigenciaHasta)" [class.fa-eye]="esVencido(r.fechaVigenciaHasta)"></i>
+            {{ esVencido(r.fechaVigenciaHasta) ? 'Ver detalle' : 'Ver archivos' }}
           </button>
         </article>
       }
@@ -60,7 +75,21 @@
   <div class="backdrop" (click)="cerrarDetalle()"></div>
   <div class="modal" role="dialog">
     <button class="modal__x" (click)="cerrarDetalle()"><i class="fas fa-xmark"></i></button>
-    <h2 class="modal__title">Resultado del {{ d.fechaHoraCarga | date:'dd/MM/yyyy' }}</h2>
+    <h2 class="modal__title">
+      Resultado del {{ d.fechaHoraCarga | date:'dd/MM/yyyy HH:mm' }}
+      @if (vigenciaInfo(d.fechaVigenciaHasta).estado !== 'sin-fecha') {
+        <span class="vigencia"
+          [class.vigencia--ok]="vigenciaInfo(d.fechaVigenciaHasta).estado === 'ok'"
+          [class.vigencia--warn]="vigenciaInfo(d.fechaVigenciaHasta).estado === 'warn'"
+          [class.vigencia--alert]="vigenciaInfo(d.fechaVigenciaHasta).estado === 'alert'"
+          [class.vigencia--vencido]="vigenciaInfo(d.fechaVigenciaHasta).estado === 'vencido'">
+          <i class="fas" [class.fa-circle-check]="vigenciaInfo(d.fechaVigenciaHasta).estado === 'ok'"
+             [class.fa-clock]="vigenciaInfo(d.fechaVigenciaHasta).estado === 'warn' || vigenciaInfo(d.fechaVigenciaHasta).estado === 'alert'"
+             [class.fa-lock]="vigenciaInfo(d.fechaVigenciaHasta).estado === 'vencido'"></i>
+          {{ vigenciaInfo(d.fechaVigenciaHasta).texto }}
+        </span>
+      }
+    </h2>
     <p class="modal__sub">{{ contarArchivosActivos(d) }} archivo(s) disponible(s)</p>
 
     @if (d.mensaje) {
@@ -70,7 +99,23 @@
       </div>
     }
 
-    @if (contarArchivosActivos(d) === 0) {
+    @if (esVencido(d.fechaVigenciaHasta)) {
+      <div class="caducado-msg">
+        <i class="fas fa-lock"></i>
+        <p class="caducado-msg__titulo">Resultados caducados</p>
+        <p class="caducado-msg__cuerpo">
+          Estos resultados ya no están disponibles para descarga en línea.
+          Si necesitás consultarlos nuevamente, comunicate con el área de resultados:
+        </p>
+        @if (d.soporteTelefono) {
+          <a class="caducado-msg__tel" [href]="'tel:' + d.soporteTelefono">
+            <i class="fas fa-phone"></i> {{ d.soporteTelefono }}
+          </a>
+        } @else {
+          <span class="caducado-msg__tel">Comunicate con el centro para solicitar el número de contacto.</span>
+        }
+      </div>
+    } @else if (contarArchivosActivos(d) === 0) {
       <div class="archivos-vacio">
         <i class="fas fa-folder-open"></i>
         <p>No hay archivos disponibles para mostrar.</p>

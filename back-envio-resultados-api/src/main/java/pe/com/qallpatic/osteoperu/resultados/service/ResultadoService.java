@@ -115,6 +115,7 @@ public class ResultadoService {
 				.cantidadArchivos(0)
 				.pesoTotalMb(BigDecimal.ZERO)
 				.fechaHoraCarga(ahora)
+				.fechaVigenciaHasta(ahora.plusDays(180))
 				.archivos(new ArrayList<>())
 				.build();
 		carga.setUsuarioCreacion(createdBy);

@@ -23,7 +23,9 @@ public record ResultadoDetalleResponse(
 		int cantidadArchivos,
 		BigDecimal pesoTotalMb,
 		LocalDateTime fechaHoraCarga,
+		LocalDateTime fechaVigenciaHasta,
 		LocalDateTime fechaPrimeraVista,
 		LocalDateTime fechaUltimaVista,
+		String soporteTelefono,
 		List<ArchivoResponse> archivos) {
 }

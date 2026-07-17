@@ -403,8 +403,10 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 				c.getCantidadArchivos() == null ? 0 : c.getCantidadArchivos(),
 				c.getPesoTotalMb(),
 				c.getFechaHoraCarga(),
+				c.getFechaVigenciaHasta(),
 				c.getFechaPrimeraVista(),
 				c.getFechaUltimaVista(),
+				null,
 				archivos);
 	}
 

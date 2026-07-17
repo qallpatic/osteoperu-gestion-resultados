@@ -18,7 +18,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 import pe.com.qallpatic.osteoperu.compartido.excepcion.RecursoNoEncontradoException;
+import pe.com.qallpatic.osteoperu.compartido.excepcion.ResultadoCaducadoException;
 import pe.com.qallpatic.osteoperu.compartido.util.UtilInfoCliente;
+import pe.com.qallpatic.osteoperu.config.AppProperties;
 import pe.com.qallpatic.osteoperu.resultados.dto.FileViewItem;
 import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoArchivo;
 import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoCarga;
@@ -36,6 +38,7 @@ public class ViewerController {
 
 	private final ViewerService viewerService;
 	private final AlmacenamientoArchivos almacenamiento;
+	private final AppProperties appProperties;
 
 	@GetMapping("/r/{token}")
 	public String viewResults(@PathVariable String token, HttpServletRequest request, Model model) {
@@ -105,6 +108,14 @@ public class ViewerController {
 	public String handleNotFound(RecursoNoEncontradoException ex, Model model) {
 		model.addAttribute("mensaje", ex.getMessage());
 		return "error";
+	}
+
+	@ExceptionHandler(ResultadoCaducadoException.class)
+	@ResponseStatus(HttpStatus.GONE)
+	public String handleCaducado(ResultadoCaducadoException ex, Model model) {
+		model.addAttribute("dni", ex.getDni());
+		model.addAttribute("soporteTelefono", appProperties.getSoporte().getTelefono());
+		return "resultados-caducado";
 	}
 
 	private static String humanSizeMb(java.math.BigDecimal pesoMb) {

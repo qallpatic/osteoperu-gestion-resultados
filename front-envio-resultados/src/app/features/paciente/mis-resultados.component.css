@@ -34,14 +34,54 @@
   background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px;
   box-shadow: 0 4px 16px rgba(7, 94, 84, 0.06);
 }
+.card--vencido { background: #f8fafc; border-color: #cbd5e1; }
+.card--vencido .card__icon {
+  background: linear-gradient(135deg, #94a3b8, #64748b);
+}
 .card__icon {
   flex: none; width: 50px; height: 50px; display: grid; place-items: center;
   border-radius: 14px; font-size: 1.3rem; color: #fff;
   background: linear-gradient(135deg, var(--brand-700), var(--brand-500));
 }
 .card__body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.card__title { font-weight: 600; color: var(--brand-900); }
+.card__title { font-weight: 600; color: var(--brand-900); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .card__meta { font-size: 0.85rem; color: var(--muted); }
+
+.vigencia {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.3px;
+  padding: 3px 9px; border-radius: 999px;
+  text-transform: none;
+}
+.vigencia i { font-size: 0.7rem; }
+.vigencia--ok { background: #dcfce7; color: #166534; }
+.vigencia--warn { background: #fef3c7; color: #92400e; }
+.vigencia--alert { background: #fee2e2; color: #991b1b; }
+.vigencia--vencido { background: #e2e8f0; color: #475569; }
+.vigencia--sin-fecha { display: none; }
+
+.caducado-msg {
+  text-align: center; padding: 20px 16px;
+  background: #f1f5f9; border-radius: 12px;
+  border: 1px dashed #94a3b8;
+  margin-top: 8px;
+}
+.caducado-msg > i {
+  font-size: 2rem; color: #64748b; display: block; margin-bottom: 8px;
+}
+.caducado-msg__titulo {
+  font-weight: 700; color: var(--brand-900); margin-bottom: 6px;
+}
+.caducado-msg__cuerpo {
+  color: var(--muted); font-size: 0.88rem; margin-bottom: 14px;
+}
+.caducado-msg__tel {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: #fff; padding: 10px 16px; border-radius: 10px;
+  color: var(--brand-700); font-weight: 700; font-size: 1.05rem;
+  text-decoration: none; border: 1px solid var(--border);
+}
+.caducado-msg__tel:hover { background: #f8fafc; border-color: var(--brand-300); }
 
 .paginacion { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
 .paginacion__info { color: var(--muted); font-size: 0.85rem; }

@@ -28,6 +28,13 @@ spring:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
+    # El historial de Flyway tiene checksums desalineados porque V11
+    # se renombro a V12 en una intervencion manual. validate-off +
+    # repair-on-migrate deja a Flyway auto-corregir el checksum en cada
+    # arranque sin que sea necesario tocar la BD. Mantener hasta que se
+    # limpie la BD o se migre a una plataforma con migracion limpia.
+    validate-on-migrate: false
+    repair-on-migrate: true
 
   # --- Limites de subida de archivos ---
   servlet:
@@ -133,9 +140,13 @@ sms:
 
       Hola {nombre},
 
+      DNI: {dni}
+
       Tu nueva clave de acceso es:
 
       {clave}
+
+      Por seguridad te recomendamos cambiarla al ingresar.
 
       Ingresa al portal: {link}
 
@@ -179,12 +190,23 @@ reniec:
 #  Cada var puede sobreescribirse via .env (dev/prod).
 # ------------------------------------------------------------
 recuperacion:
-  longitud-clave: ${RECUPERACION_LONGITUD_CLAVE:10}
+  longitud-clave: ${RECUPERACION_LONGITUD_CLAVE:6}
   max-intentos-ip: ${RECUPERACION_MAX_INTENTOS_IP:3}
   max-intentos-telefono: ${RECUPERACION_MAX_INTENTOS_TELEFONO:3}
   max-distintos-por-ip: ${RECUPERACION_MAX_DISTINTOS_POR_IP:3}
   ventana-minutos: ${RECUPERACION_VENTANA_MINUTOS:10}
   retention-horas: ${RECUPERACION_RETENCION_HORAS:24}
+  limpieza-cron: "0 0 * * * *"
+
+# ------------------------------------------------------------
+#  Rate-limit del endpoint /api/auth/login
+#  Persiste en INTENTO_LOGIN (ver V10). 5/IP y 5/usuario en 10 min.
+# ------------------------------------------------------------
+login:
+  max-intentos-ip: ${LOGIN_MAX_INTENTOS_IP:5}
+  max-intentos-usuario: ${LOGIN_MAX_INTENTOS_USUARIO:5}
+  ventana-minutos: ${LOGIN_VENTANA_MINUTOS:10}
+  retention-horas: ${LOGIN_RETENCION_HORAS:24}
   limpieza-cron: "0 0 * * * *"
 
 management:

@@ -32,54 +32,54 @@ public class TasaLimitRecuperacionService {
 	private final RecuperacionProperties propiedades;
 
 	/**
-	 * Evalua si la dupla ip+telefono puede continuar. Inserta siempre un
+	 * Evalua si la dupla ip+documento puede continuar. Inserta siempre un
 	 * registro (exitoso o bloqueado) para mantener la auditoria consistente.
 	 *
 	 * @return segundos a esperar si fue bloqueado; 0 si pasa.
 	 * @throws LimiteIntentosSuperadoException si se excede algun umbral.
 	 */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
-	public long evaluar(String ip, String telefonoNorm) {
+	public long evaluar(String ip, String documentoNorm) {
 		LocalDateTime desde = LocalDateTime.now().minusMinutes(propiedades.getVentanaMinutos());
 
 		long intentosIp = intentoRepository.contarPorIp(ip, desde);
 		if (intentosIp >= propiedades.getMaxIntentosIp()) {
-			registrarBloqueado(ip, telefonoNorm, "ip");
+			registrarBloqueado(ip, documentoNorm, "ip");
 			throw limite("Se supero el limite de intentos desde esta IP. "
 					+ "Intenta nuevamente en algunos minutos.");
 		}
 
-		long intentosTel = intentoRepository.contarPorTelefono(telefonoNorm, desde);
-		if (intentosTel >= propiedades.getMaxIntentosTelefono()) {
-			registrarBloqueado(ip, telefonoNorm, "telefono");
-			throw limite("Se supero el limite de intentos para este telefono. "
+		long intentosDoc = intentoRepository.contarPorDocumento(documentoNorm, desde);
+		if (intentosDoc >= propiedades.getMaxIntentosTelefono()) {
+			registrarBloqueado(ip, documentoNorm, "documento");
+			throw limite("Se supero el limite de intentos para este documento. "
 					+ "Intenta nuevamente en algunos minutos.");
 		}
 
 		long distintosIp = intentoRepository.contarDistintosPorIp(ip, desde);
 		if (distintosIp >= propiedades.getMaxDistintosPorIp()) {
-			registrarBloqueado(ip, telefonoNorm, "distintos");
-			throw limite("Se supero el limite de telefonos consultados desde esta IP. "
+			registrarBloqueado(ip, documentoNorm, "distintos");
+			throw limite("Se supero el limite de documentos consultados desde esta IP. "
 					+ "Intenta nuevamente en algunos minutos.");
 		}
 
-		registrarExitoso(ip, telefonoNorm);
+		registrarExitoso(ip, documentoNorm);
 		return 0L;
 	}
 
-	private void registrarExitoso(String ip, String telefonoNorm) {
-		persistir(ip, telefonoNorm, false);
+	private void registrarExitoso(String ip, String documentoNorm) {
+		persistir(ip, documentoNorm, false);
 	}
 
-	private void registrarBloqueado(String ip, String telefonoNorm, String motivo) {
+	private void registrarBloqueado(String ip, String documentoNorm, String motivo) {
 		log.warn("[RECUPERACION] Bloqueado por '{}'. ip={}", motivo, ip);
-		persistir(ip, telefonoNorm, true);
+		persistir(ip, documentoNorm, true);
 	}
 
-	private void persistir(String ip, String telefonoNorm, boolean bloqueado) {
+	private void persistir(String ip, String documentoNorm, boolean bloqueado) {
 		IntentoRecuperacion intento = IntentoRecuperacion.builder()
 				.ipAddress(ip == null ? "desconocida" : ip)
-				.telefonoNorm(telefonoNorm)
+				.documentoNorm(documentoNorm == null ? "" : documentoNorm)
 				.bloqueado(bloqueado)
 				.fechaRegistro(LocalDateTime.now())
 				.build();

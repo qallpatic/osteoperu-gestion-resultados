@@ -6,9 +6,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../../core/auth/auth.service';
 
 /**
- * Vista publica para que un paciente solicite su clave por SMS. Por seguridad
- * la respuesta es siempre generica y aparece el telefono de soporte (cuando
- * llega del backend) para que el usuario sepa a quien llamar si el SMS no llega.
+ * Vista publica para que un paciente solicite su clave por SMS. Pide el
+ * documento (DNI o CE) y al recibir la respuesta del back muestra el
+ * telefono ofuscado al que supuestamente se envio el SMS (para que el
+ * usuario verifique visualmente). Mensaje siempre generico para no
+ * filtrar si el documento existe o no.
  */
 @Component({
   selector: 'app-recuperar-password',
@@ -19,15 +21,16 @@ import { AuthService } from '../../../core/auth/auth.service';
 export class RecuperarPasswordComponent {
   private readonly auth = inject(AuthService);
 
-  telefono = '';
+  documento = '';
   cargando = signal(false);
-  /** Resultado devuelto por el backend (mensaje generico + soporte). */
-  resultado = signal<{ mensajeUsuario: string; soporteTelefono: string; retryAfterSeconds: number | null } | null>(null);
+  /** Resultado devuelto por el backend (mensaje generico + telefono ofuscado). */
+  resultado = signal<{ mensajeUsuario: string; soporteTelefono: string; telefonoOfuscado: string; retryAfterSeconds: number | null } | null>(null);
   /** Errores de cliente (formato invalido, http). */
   error = signal('');
 
-  telefonoValido(): boolean {
-    return /^9\d{8}$/.test(this.telefono.trim());
+  /** DNI (8 digitos) o CE (9-12 digitos). */
+  documentoValido(): boolean {
+    return /^\d{8,12}$/.test(this.documento.trim());
   }
 
   enviar(): void {
@@ -37,14 +40,14 @@ export class RecuperarPasswordComponent {
     this.error.set('');
     this.resultado.set(null);
 
-    const tel = this.telefono.trim();
-    if (!this.telefonoValido()) {
-      this.error.set('Ingresa un telefono valido de 9 digitos (Peru).');
+    const doc = this.documento.trim();
+    if (!this.documentoValido()) {
+      this.error.set('Ingresa un documento valido (DNI 8 digitos o CE 9-12).');
       return;
     }
 
     this.cargando.set(true);
-    this.auth.recuperarPassword(tel).subscribe({
+    this.auth.recuperarPassword(doc).subscribe({
       next: (data) => {
         this.cargando.set(false);
         this.resultado.set(data);
@@ -56,16 +59,16 @@ export class RecuperarPasswordComponent {
     });
   }
 
+  /** Vuelve al formulario limpio (para intentar con otro documento). */
+  intentarDeNuevo(): void {
+    this.resultado.set(null);
+    this.error.set('');
+  }
+
   /** Convierte retryAfterSeconds a minutos redondeados hacia arriba. */
   minutosRestantes(): number {
     const s = this.resultado()?.retryAfterSeconds ?? 0;
     return Math.max(1, Math.ceil(s / 60));
-  }
-
-  /** Vuelve al formulario limpio (para intentar de nuevo). */
-  intentarDeNuevo(): void {
-    this.resultado.set(null);
-    this.error.set('');
   }
 
   private mensajeError(err: HttpErrorResponse): string {
@@ -73,7 +76,7 @@ export class RecuperarPasswordComponent {
       return 'No se pudo conectar con el servidor. Verifica tu conexion.';
     }
     if (err.status === 400) {
-      return 'Telefono invalido. Verifica el formato.';
+      return 'Documento invalido. Verifica el formato.';
     }
     return err.error?.message ?? 'Ocurrio un error. Intenta nuevamente.';
   }

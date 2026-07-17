@@ -16,13 +16,13 @@ public interface IntentoRecuperacionRepository extends JpaRepository<IntentoRecu
 			+ "WHERE i.ipAddress = :ip AND i.fechaRegistro >= :desde")
 	long contarPorIp(@Param("ip") String ip, @Param("desde") LocalDateTime desde);
 
-	/** Cantidad de intentos asociados al telefono normalizado en la ventana. */
+	/** Cantidad de intentos asociados al DNI/CE normalizado en la ventana. */
 	@Query("SELECT COUNT(i) FROM IntentoRecuperacion i "
-			+ "WHERE i.telefonoNorm = :telefono AND i.fechaRegistro >= :desde")
-	long contarPorTelefono(@Param("telefono") String telefono, @Param("desde") LocalDateTime desde);
+			+ "WHERE i.documentoNorm = :documento AND i.fechaRegistro >= :desde")
+	long contarPorDocumento(@Param("documento") String documento, @Param("desde") LocalDateTime desde);
 
-	/** Cantidad de telefonos distintos solicitados por la IP en la ventana. */
-	@Query("SELECT COUNT(DISTINCT i.telefonoNorm) FROM IntentoRecuperacion i "
+	/** Cantidad de DNIs distintos solicitados por la IP en la ventana. */
+	@Query("SELECT COUNT(DISTINCT i.documentoNorm) FROM IntentoRecuperacion i "
 			+ "WHERE i.ipAddress = :ip AND i.fechaRegistro >= :desde")
 	long contarDistintosPorIp(@Param("ip") String ip, @Param("desde") LocalDateTime desde);
 

@@ -164,4 +164,46 @@ export class MisResultadosComponent implements OnInit {
   contarArchivosActivos(d: ResultadoDetalle): number {
     return d.archivos.filter((a) => a.activo).length;
   }
+
+  /**
+   * Calcula la vigencia del resultado contra la fecha actual.
+   * Devuelve uno de cuatro estados segun los dias restantes:
+   *  - 'ok'       (>30 dias): vigente
+   *  - 'warn'     (8-30 dias): por vencer (ambar)
+   *  - 'alert'    (1-7 dias): proximo a vencer (rojo)
+   *  - 'vencido'  (<=0 dias): caducado
+   */
+  vigenciaInfo(fechaVigencia: string | null | undefined): {
+    estado: 'ok' | 'warn' | 'alert' | 'vencido' | 'sin-fecha';
+    texto: string;
+    dias: number | null;
+  } {
+    if (!fechaVigencia) {
+      return { estado: 'sin-fecha', texto: '', dias: null };
+    }
+    const hasta = new Date(fechaVigencia);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    hasta.setHours(0, 0, 0, 0);
+    const diffMs = hasta.getTime() - hoy.getTime();
+    const dias = Math.round(diffMs / 86400000);
+
+    if (dias > 30) {
+      return { estado: 'ok', texto: `Vigente · ${dias} días`, dias };
+    }
+    if (dias > 7) {
+      return { estado: 'warn', texto: `Vence en ${dias} días`, dias };
+    }
+    if (dias > 0) {
+      return { estado: 'alert', texto: `Vence en ${dias} ${dias === 1 ? 'día' : 'días'}`, dias };
+    }
+    if (dias === 0) {
+      return { estado: 'alert', texto: 'Vence hoy', dias: 0 };
+    }
+    return { estado: 'vencido', texto: `Caducado hace ${Math.abs(dias)} ${Math.abs(dias) === 1 ? 'día' : 'días'}`, dias };
+  }
+
+  esVencido(fechaVigencia: string | null | undefined): boolean {
+    return this.vigenciaInfo(fechaVigencia).estado === 'vencido';
+  }
 }

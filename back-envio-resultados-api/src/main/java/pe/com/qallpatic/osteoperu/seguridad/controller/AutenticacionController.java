@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import pe.com.qallpatic.osteoperu.compartido.excepcion.LimiteIntentosSuperadoException;
 import pe.com.qallpatic.osteoperu.compartido.respuesta.RespuestaApi;
+import pe.com.qallpatic.osteoperu.compartido.util.ClienteIpHelper;
 import pe.com.qallpatic.osteoperu.seguridad.dto.LoginRequest;
 import pe.com.qallpatic.osteoperu.seguridad.dto.RecuperarPasswordRequest;
 import pe.com.qallpatic.osteoperu.seguridad.dto.RecuperarPasswordResponse;
@@ -34,10 +34,13 @@ public class AutenticacionController {
 	private final ServicioAutenticacion servicioAutenticacion;
 	private final ServicioRecuperacionPassword servicioRecuperacion;
 
-	@Operation(summary = "Iniciar sesion", description = "Valida credenciales y devuelve access + refresh token.")
+	@Operation(summary = "Iniciar sesion", description = "Valida credenciales y devuelve access + refresh token. "
+			+ "Aplica rate-limit por IP y por usuario (config login.*).")
 	@PostMapping("/login")
-	public ResponseEntity<RespuestaApi<TokenResponse>> login(@Valid @RequestBody LoginRequest solicitud) {
-		TokenResponse token = servicioAutenticacion.login(solicitud);
+	public ResponseEntity<RespuestaApi<TokenResponse>> login(@Valid @RequestBody LoginRequest solicitud,
+			HttpServletRequest request) {
+		String ip = ClienteIpHelper.resolver(request);
+		TokenResponse token = servicioAutenticacion.login(solicitud, ip);
 		return ResponseEntity.ok(RespuestaApi.ok("Autenticacion exitosa.", token));
 	}
 
@@ -55,36 +58,20 @@ public class AutenticacionController {
 		return ResponseEntity.ok(RespuestaApi.mensaje("Sesion cerrada correctamente."));
 	}
 
-	@Operation(summary = "Recuperar contrasena por telefono",
-			description = "Genera una clave temporal, la guarda hasheada y envia un SMS al paciente. "
-					+ "La respuesta es siempre generica para no filtrar si el telefono esta registrado. "
-					+ "Aplica rate-limit por IP, por telefono y por cantidad de telefonos distintos por IP.")
+	@Operation(summary = "Recuperar contrasena por documento",
+			description = "Recibe el DNI/CE del paciente, regenera la clave y envia un SMS al telefono "
+					+ "asociado. La respuesta es siempre generica e incluye el telefono ofuscado "
+					+ "(ultimos 4 digitos) para que el usuario verifique sin comprometer la informacion. "
+					+ "Aplica rate-limit por IP, por documento y por cantidad de documentos distintos por IP.")
 	@PostMapping("/recuperar-password")
 	public ResponseEntity<RespuestaApi<RecuperarPasswordResponse>> recuperarPassword(
 			@Valid @RequestBody RecuperarPasswordRequest solicitud, HttpServletRequest request) {
-		String ip = resolverIp(request);
-		RecuperarPasswordResponse respuesta = servicioRecuperacion.solicitar(ip, solicitud.telefono());
+		String ip = ClienteIpHelper.resolver(request);
+		RecuperarPasswordResponse respuesta = servicioRecuperacion.solicitar(ip, solicitud.documento());
 		ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
 		if (respuesta.retryAfterSeconds() != null && respuesta.retryAfterSeconds() > 0) {
 			builder.header(HttpHeaders.RETRY_AFTER, String.valueOf(respuesta.retryAfterSeconds()));
 		}
 		return builder.body(RespuestaApi.ok(respuesta.mensajeUsuario(), respuesta));
-	}
-
-	/**
-	 * Spring resuelve la IP a partir de X-Forwarded-For cuando
-	 * {@code server.forward-headers-strategy=framework}, por lo que
-	 * {@code request.getRemoteAddr()} ya devuelve la IP publica correcta
-	 * en ambientes con proxy (Nginx). Si no hay header, devuelve la IP
-	 * directa del socket (loopback, etc.).
-	 */
-	private String resolverIp(HttpServletRequest request) {
-		String forwarded = request.getHeader("X-Forwarded-For");
-		if (forwarded != null && !forwarded.isBlank()) {
-			int coma = forwarded.indexOf(',');
-			return (coma > 0 ? forwarded.substring(0, coma) : forwarded).trim();
-		}
-		String ip = request.getRemoteAddr();
-		return ip == null || ip.isBlank() ? "desconocida" : ip;
 	}
 }

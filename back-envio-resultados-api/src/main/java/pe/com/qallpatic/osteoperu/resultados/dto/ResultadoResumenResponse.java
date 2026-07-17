@@ -16,5 +16,6 @@ public record ResultadoResumenResponse(
 		BigDecimal pesoTotalMb,
 		Integer estado,
 		LocalDateTime fechaHoraCarga,
+		LocalDateTime fechaVigenciaHasta,
 		LocalDateTime fechaPrimeraVista) {
 }
