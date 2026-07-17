@@ -46,7 +46,7 @@ server:
   port: ${SERVER_PORT:7090}
   servlet:
     context-path: ${CONTEXT_PATH:/back-envio-resultados-api}
-  forward-headers-strategy: framework
+  forward-headers-strategy: native
 
 # ------------------------------------------------------------
 #  Parametros de negocio (sin hardcodear en el codigo)
@@ -200,7 +200,7 @@ recuperacion:
 
 # ------------------------------------------------------------
 #  Rate-limit del endpoint /api/auth/login
-#  Persiste en INTENTO_LOGIN (ver V10). 5/IP y 5/usuario en 10 min.
+#  Persiste en INTENTO_LOGIN (ver V10). 5/IP+usuario y 5/usuario en 10 min.
 # ------------------------------------------------------------
 login:
   max-intentos-ip: ${LOGIN_MAX_INTENTOS_IP:5}

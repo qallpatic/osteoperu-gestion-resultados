@@ -15,7 +15,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * Auditoria de los intentos de login (exitosos o bloqueados por rate-limit).
+ * Auditoria de intentos de login fallidos admitidos o bloqueados por rate-limit.
  * Aplica a /api/auth/login. La limpieza la hace
  * {@code LimpiezaIntentosLoginService}.
  */

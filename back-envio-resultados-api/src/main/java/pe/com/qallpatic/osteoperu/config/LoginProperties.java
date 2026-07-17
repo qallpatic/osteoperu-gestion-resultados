@@ -14,7 +14,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "login")
 public class LoginProperties {
 
-	/** Maximo de intentos por IP en la ventana. */
+	/** Maximo de intentos fallidos por dupla IP y usuario en la ventana. */
 	private int maxIntentosIp = 5;
 
 	/** Maximo de intentos por usuario en la ventana. */

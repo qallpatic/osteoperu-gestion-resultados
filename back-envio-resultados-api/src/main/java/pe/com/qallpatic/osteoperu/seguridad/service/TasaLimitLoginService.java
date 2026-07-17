@@ -13,16 +13,6 @@ import pe.com.qallpatic.osteoperu.seguridad.repository.IntentoLoginRepository;
 
 import java.time.LocalDateTime;
 
-/**
- * Rate-limit del endpoint publico /api/auth/login. Aplica reglas por IP y
- * por usuario, persistidas en BD para que el limite sea compartido entre
- * reinicios y replicas.
- *
- * La verificacion se hace ANTES de invocar el AuthenticationManager: si la
- * dupla ip+usuario esta bloqueada, devolvemos 429 sin delegar a Spring
- * Security (que devolveria 401 con el mismo delay para todos y permitiria
- * fuerza bruta con respuesta de tiempo constante).
- */
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -31,27 +21,24 @@ public class TasaLimitLoginService {
 	private final IntentoLoginRepository intentoRepository;
 	private final LoginProperties propiedades;
 
-	/**
-	 * Inserta el intento y verifica si la dupla ip+usuario esta dentro de los
-	 * limites. Si se supera algun umbral, lanza 429; en caso contrario el
-	 * intento queda registrado como "no bloqueado".
-	 */
-	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	@Transactional(propagation = Propagation.REQUIRES_NEW,
+			noRollbackFor = LimiteIntentosSuperadoException.class)
 	public void evaluar(String ip, String usuario) {
 		LocalDateTime desde = LocalDateTime.now().minusMinutes(propiedades.getVentanaMinutos());
 		String ipKey = ip == null ? "desconocida" : ip;
 		String usuarioKey = usuario == null ? "" : usuario.trim();
 
-		long intentosIp = intentoRepository.contarPorIp(ipKey, desde);
-		if (intentosIp >= propiedades.getMaxIntentosIp()) {
+		long intentosIpUsuario = intentoRepository.contarFallidosPorIpYUsuario(ipKey, usuarioKey, desde);
+		if (intentosIpUsuario >= propiedades.getMaxIntentosIp()) {
 			persistir(ipKey, usuarioKey, true);
-			log.warn("[LOGIN] Bloqueado por IP. ip={}, intentos={}", ipKey, intentosIp);
+			log.warn("[LOGIN] Bloqueado por IP y usuario. ip={}, usuario={}, intentos={}",
+					ipKey, usuarioKey, intentosIpUsuario);
 			throw new LimiteIntentosSuperadoException(
-					"Se supero el limite de intentos desde esta IP. "
+					"Se supero el limite de intentos para este usuario desde esta IP. "
 							+ "Intenta nuevamente en algunos minutos.");
 		}
 
-		long intentosUsuario = intentoRepository.contarPorUsuario(usuarioKey, desde);
+		long intentosUsuario = intentoRepository.contarFallidosPorUsuario(usuarioKey, desde);
 		if (intentosUsuario >= propiedades.getMaxIntentosUsuario()) {
 			persistir(ipKey, usuarioKey, true);
 			log.warn("[LOGIN] Bloqueado por usuario. usuario={}, intentos={}", usuarioKey, intentosUsuario);
@@ -59,19 +46,20 @@ public class TasaLimitLoginService {
 					"Se supero el limite de intentos para este usuario. "
 							+ "Intenta nuevamente en algunos minutos.");
 		}
-
-		persistir(ipKey, usuarioKey, false);
 	}
 
-	/**
-	 * Segundos a esperar para que la ventana deslizante libere al menos un
-	 * cupo, en base al intento mas reciente de la IP.
-	 */
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public void registrarFallo(String ip, String usuario) {
+		persistir(ip == null ? "desconocida" : ip, usuario == null ? "" : usuario.trim(), false);
+	}
+
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public long retryAfterSegundos(String ip) {
+	public long retryAfterSegundos(String ip, String usuario) {
 		LocalDateTime desde = LocalDateTime.now().minusMinutes(propiedades.getVentanaMinutos());
-		LocalDateTime masReciente = intentoRepository.masRecientePorIp(
-				ip == null ? "desconocida" : ip, desde);
+		LocalDateTime masReciente = intentoRepository.masRecienteFallidoPorIpYUsuario(
+				ip == null ? "desconocida" : ip,
+				usuario == null ? "" : usuario.trim(),
+				desde);
 		if (masReciente == null) {
 			return 0L;
 		}

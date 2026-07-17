@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,9 +49,8 @@ public class ServicioAutenticacionImpl implements ServicioAutenticacion {
 		try {
 			autenticacion = authenticationManager.authenticate(
 					new UsernamePasswordAuthenticationToken(usuario, solicitud.contrasena()));
-		} catch (Exception e) {
-			// El intento ya quedo registrado en TasaLimitLogin.evaluar
-			// (no bloqueado), por lo que fuerza bruta se sigue contando.
+		} catch (AuthenticationException e) {
+			tasaLimitLogin.registrarFallo(ip, usuario);
 			log.info("Login fallido. usuario={}, ip={}", usuario, ip);
 			throw e;
 		}

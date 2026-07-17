@@ -11,20 +11,21 @@ import java.time.LocalDateTime;
 
 public interface IntentoLoginRepository extends JpaRepository<IntentoLogin, Long> {
 
-	/** Cantidad de intentos (exitosos o bloqueados) de la IP en la ventana. */
 	@Query("SELECT COUNT(i) FROM IntentoLogin i "
-			+ "WHERE i.ipAddress = :ip AND i.fechaRegistro >= :desde")
-	long contarPorIp(@Param("ip") String ip, @Param("desde") LocalDateTime desde);
+			+ "WHERE i.ipAddress = :ip AND i.usuario = :usuario "
+			+ "AND i.bloqueado = false AND i.fechaRegistro >= :desde")
+	long contarFallidosPorIpYUsuario(@Param("ip") String ip, @Param("usuario") String usuario,
+			@Param("desde") LocalDateTime desde);
 
-	/** Cantidad de intentos del usuario en la ventana. */
 	@Query("SELECT COUNT(i) FROM IntentoLogin i "
-			+ "WHERE i.usuario = :usuario AND i.fechaRegistro >= :desde")
-	long contarPorUsuario(@Param("usuario") String usuario, @Param("desde") LocalDateTime desde);
+			+ "WHERE i.usuario = :usuario AND i.bloqueado = false AND i.fechaRegistro >= :desde")
+	long contarFallidosPorUsuario(@Param("usuario") String usuario, @Param("desde") LocalDateTime desde);
 
-	/** Fecha del intento mas reciente de la IP (para calcular retryAfter). */
 	@Query("SELECT MAX(i.fechaRegistro) FROM IntentoLogin i "
-			+ "WHERE i.ipAddress = :ip AND i.fechaRegistro >= :desde")
-	LocalDateTime masRecientePorIp(@Param("ip") String ip, @Param("desde") LocalDateTime desde);
+			+ "WHERE i.ipAddress = :ip AND i.usuario = :usuario "
+			+ "AND i.bloqueado = false AND i.fechaRegistro >= :desde")
+	LocalDateTime masRecienteFallidoPorIpYUsuario(@Param("ip") String ip, @Param("usuario") String usuario,
+			@Param("desde") LocalDateTime desde);
 
 	/** Purga de intentos anteriores al corte (housekeeping). */
 	@Modifying
