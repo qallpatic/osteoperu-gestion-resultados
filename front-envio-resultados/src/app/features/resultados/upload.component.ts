@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { ResultadosService } from './resultados.service';
+import { sanitizarDocumento } from '../../core/utils/util-documento';
 
 interface PickedFile {
   file: File;
@@ -97,6 +98,13 @@ export class UploadComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     this.phone = this.normalizarTelefono(input.value);
     input.value = this.formatPhoneDisplay(this.phone);
+  }
+
+  /** Handler de input para el DNI: permite solo digitos y limita a 12 caracteres. */
+  onDniInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.dni = sanitizarDocumento(input.value, 12);
+    input.value = this.dni;
   }
 
   phoneValid(): boolean {

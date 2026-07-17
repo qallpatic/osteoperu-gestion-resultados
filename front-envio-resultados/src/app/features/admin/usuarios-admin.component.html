@@ -162,8 +162,8 @@
           </label>
           <label class="mf">
             <span>DNI</span>
-            <input name="dni" [(ngModel)]="form.dni" maxlength="8" inputmode="numeric" placeholder="8 dígitos"
-                   (blur)="autocompletarNombrePorDni()" />
+            <input name="dni" type="text" [(ngModel)]="form.dni" maxlength="8" inputmode="numeric" placeholder="8 dígitos"
+                   (input)="onDniInput($event)" (blur)="autocompletarNombrePorDni()" />
           </label>
           <label class="mf mf--full">
             <span>Nombre completo

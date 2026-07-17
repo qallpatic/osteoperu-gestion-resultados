@@ -6,10 +6,13 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { AdmisionService, CredencialResponse, PacienteAdmision } from './admision.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ReniecService } from '../../core/services/reniec.service';
+import { TelefonoPipe } from '../../core/pipes/telefono.pipe';
+import { sanitizarDocumento } from '../../core/utils/util-documento';
+import { formatearTelefono } from '../../core/utils/util-telefono';
 
 @Component({
   selector: 'app-admision',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, TelefonoPipe],
   templateUrl: './admision.component.html',
   styleUrl: './admision.component.css',
 })
@@ -163,17 +166,10 @@ export class AdmisionComponent implements OnInit {
    * el backend lo reciba limpio; el formateo es puramente cosmético.
    */
   get telefonoFmt(): string {
-    return this.formatearTelefono(this.genTelefono);
+    return formatearTelefono(this.genTelefono);
   }
   set telefonoFmt(v: string) {
     this.genTelefono = (v ?? '').replace(/\D/g, '').slice(0, 20);
-  }
-
-  private formatearTelefono(digitos: string): string {
-    if (!digitos) {
-      return '';
-    }
-    return digitos.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   }
 
   /**
@@ -198,6 +194,20 @@ export class AdmisionComponent implements OnInit {
       },
       error: () => this.consultandoReniec.set(false),
     });
+  }
+
+  /** Handler de input para el DNI del paciente generado en admisión: max 12 dígitos. */
+  onGenDniInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.genDni = sanitizarDocumento(input.value, 12);
+    input.value = this.genDni;
+  }
+
+  /** Handler de input para el filtro de DNI en admisión: max 12 dígitos. */
+  onFiltroDniInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.fdni = sanitizarDocumento(input.value, 12);
+    input.value = this.fdni;
   }
 
   generar(): void {

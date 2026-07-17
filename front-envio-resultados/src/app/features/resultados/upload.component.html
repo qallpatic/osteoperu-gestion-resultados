@@ -16,8 +16,8 @@
       <div class="field">
         <label for="dni"><i class="fas fa-id-card"></i> Doc. identidad (DNI/CE) <b class="req">*</b></label>
         <div class="control">
-          <input id="dni" name="dni" type="number" inputmode="numeric" maxlength="12" placeholder="8-12 dígitos"
-            [(ngModel)]="dni" (blur)="autocompletarNombre()" />
+          <input id="dni" name="dni" type="text" inputmode="numeric" maxlength="12" placeholder="8-12 dígitos"
+            [(ngModel)]="dni" (input)="onDniInput($event)" (blur)="autocompletarNombre()" />
         </div>
         @if (dni && !dniValid()) {
         <small class="hint">Ingresa entre 8 y 12 dígitos.</small>

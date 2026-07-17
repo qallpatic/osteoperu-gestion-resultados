@@ -32,7 +32,7 @@
 .search input:focus { outline: none; border-color: var(--brand-700); box-shadow: 0 0 0 3px rgba(7, 94, 84, 0.12); }
 
 .tabla-wrap { overflow: auto; max-height: calc(100dvh - 240px); background: #fff; border: 1px solid var(--border); border-radius: 14px; }
-.tabla { width: 100%; border-collapse: collapse; min-width: 720px; }
+.tabla { width: 100%; border-collapse: collapse; min-width: 860px; }
 .tabla th, .tabla td { padding: 12px 16px; text-align: left; font-size: 0.9rem; }
 .tabla thead th { position: sticky; top: 0; z-index: 2; background: var(--brand-050); color: var(--brand-700); font-weight: 600; white-space: nowrap; }
 .tabla tbody tr { border-top: 1px solid var(--border); }
@@ -44,6 +44,7 @@
 .tabla th.sort-active { color: var(--brand-900); }
 .tabla th.sort-active .sort-ico { opacity: 1; color: var(--brand-700); }
 .mono { font-weight: 600; color: var(--brand-900); }
+.telefono { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .vacia { text-align: center; color: var(--muted); padding: 28px; }
 .acc { text-align: right; white-space: nowrap; }
 

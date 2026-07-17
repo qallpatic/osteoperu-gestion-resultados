@@ -5,6 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 
 import { ResultadosService } from './resultados.service';
 import { LogCarga } from './resultados.models';
+import { sanitizarDocumento } from '../../core/utils/util-documento';
 
 @Component({
   selector: 'app-resultados-logs',
@@ -43,6 +44,13 @@ export class LogsCargaComponent implements OnInit {
     }
     this.pagina.set(0);
     this.cargar();
+  }
+
+  /** Handler de input para el filtro de DNI: max 12 dígitos. */
+  onDniInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.fdni = sanitizarDocumento(input.value, 12);
+    input.value = this.fdni;
   }
 
   readonly notice = signal<string>('');

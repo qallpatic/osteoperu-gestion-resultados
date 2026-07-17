@@ -23,7 +23,7 @@
   <div class="toolbar">
     <div class="search">
       <i class="fas fa-magnifying-glass"></i>
-      <input type="text" placeholder="Buscar por DNI" [(ngModel)]="fdni" (keyup.enter)="aplicar()" maxlength="15" />
+      <input type="text" placeholder="Buscar por DNI" [(ngModel)]="fdni" (input)="onFiltroDniInput($event)" (keyup.enter)="aplicar()" maxlength="12" />
     </div>
     <button class="btn btn--primary" (click)="aplicar()"><i class="fas fa-magnifying-glass"></i> Buscar</button>
     @if (puedeEditarCuenta()) {
@@ -53,6 +53,14 @@
               [class.fa-sort-up]="ordenarPor() === 'nombre' && direccion() === 'asc'"
               [class.fa-sort-down]="ordenarPor() === 'nombre' && direccion() === 'desc'"></i>
           </th>
+          <th class="sortable"
+              [class.sort-active]="ordenarPor() === 'telefono'"
+              (click)="ordenar('telefono')">
+            Teléfono asociado<i class="fas sort-ico"
+              [class.fa-sort]="ordenarPor() !== 'telefono'"
+              [class.fa-sort-up]="ordenarPor() === 'telefono' && direccion() === 'asc'"
+              [class.fa-sort-down]="ordenarPor() === 'telefono' && direccion() === 'desc'"></i>
+          </th>
           <th>Resultados</th>
           <th>Últ. Generación</th>
           <th>Estado</th>
@@ -62,17 +70,18 @@
       <tbody>
         @if (cargando()) {
         <tr>
-          <td colspan="6" class="vacia"><i class="fas fa-spinner fa-spin"></i> Cargando...</td>
+          <td colspan="7" class="vacia"><i class="fas fa-spinner fa-spin"></i> Cargando...</td>
         </tr>
         } @else if (pacientes().length === 0) {
         <tr>
-          <td colspan="6" class="vacia">No hay pacientes con resultados cargados.</td>
+          <td colspan="7" class="vacia">No hay pacientes con resultados cargados.</td>
         </tr>
         } @else {
         @for (p of pacientes(); track p.dni) {
         <tr>
           <td class="mono">{{ p.dni }}</td>
           <td>{{ p.nombre || '—' }}</td>
+          <td class="telefono">{{ (p.telefono | telefono) || '—' }}</td>
           <td>{{ p.totalResultados }}</td>
           <td>{{ p.ultimaFecha | date:'dd/MM/yyyy HH:mm' }}</td>
           <td>
@@ -125,13 +134,13 @@
   @if (nuevoUsuario()) {
   <div class="field">
     <label>Doc. identidad (DNI/CE) <b class="req">*</b></label>
-    <input [(ngModel)]="genDni" maxlength="12" inputmode="numeric" placeholder="8-12 dígitos"
-      (blur)="autocompletarNombrePorDni()" />
+    <input type="text" [(ngModel)]="genDni" maxlength="12" inputmode="numeric" placeholder="8-12 dígitos"
+      (input)="onGenDniInput($event)" (blur)="autocompletarNombrePorDni()" />
   </div>
   } @else {
   <div class="field">
     <label>Doc. identidad (DNI/CE)</label>
-    <input [(ngModel)]="genDni" maxlength="12" inputmode="numeric" readonly />
+    <input type="text" [(ngModel)]="genDni" maxlength="12" inputmode="numeric" readonly />
   </div>
   }
   <div class="field">

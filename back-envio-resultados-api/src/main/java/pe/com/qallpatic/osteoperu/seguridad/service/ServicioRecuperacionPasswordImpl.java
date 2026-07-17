@@ -65,7 +65,11 @@ public class ServicioRecuperacionPasswordImpl implements ServicioRecuperacionPas
 	@Transactional
 	public RecuperarPasswordResponse solicitar(String ip, String documento) {
 		String documentoNorm = UtilTelefono.validarDocumentoIdentidad(documento);
-		String telefonoOfuscado = ofuscar(documentoNorm);
+		// telefonoOfuscado queda en null hasta que se confirme que el SMS se
+		// encolo contra un telefono real. Asi el front no muestra una seccion
+		// de telefono cuando el paciente/telefono no existen (defensa
+		// anti-enumeracion: el DNI tipeado no debe mostrarse como telefono).
+		String telefonoOfuscado = null;
 
 		try {
 			tasaLimit.evaluar(ip, documentoNorm);
@@ -74,7 +78,7 @@ public class ServicioRecuperacionPasswordImpl implements ServicioRecuperacionPas
 			return new RecuperarPasswordResponse(
 					e.getMessage(),
 					soporteTelefono(),
-					telefonoOfuscado,
+					null,
 					retry);
 		}
 

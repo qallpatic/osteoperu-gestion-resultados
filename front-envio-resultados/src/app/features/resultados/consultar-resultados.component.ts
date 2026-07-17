@@ -5,6 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 
 import { ResultadosService } from './resultados.service';
 import { Archivo, ResultadoDetalle, ResultadoResumen } from './resultados.models';
+import { sanitizarDocumento } from '../../core/utils/util-documento';
 import { TiposArchivoSoportados, esTipoSoportado } from './tipos-archivo';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
 
@@ -65,6 +66,13 @@ export class ConsultarResultadosComponent implements OnInit {
     }
     this.pagina.set(0);
     this.cargar();
+  }
+
+  /** Handler de input para el filtro de DNI: max 12 dígitos. */
+  onDniInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.fdni = sanitizarDocumento(input.value, 12);
+    input.value = this.fdni;
   }
 
   readonly notice = signal<{ type: 'ok' | 'error'; text: string } | null>(null);

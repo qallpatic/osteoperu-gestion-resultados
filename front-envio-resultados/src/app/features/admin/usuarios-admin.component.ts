@@ -5,6 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { UsuariosAdminService } from './usuarios-admin.service';
 import { ReniecService } from '../../core/services/reniec.service';
 import { RolResponse, UsuarioResponse } from './admin.models';
+import { sanitizarDocumento } from '../../core/utils/util-documento';
 
 type Modal = 'crear' | 'editar' | 'roles' | 'password' | 'eliminar' | null;
 
@@ -288,6 +289,13 @@ export class UsuariosAdminComponent implements OnInit {
       },
       error: () => this.consultandoReniec.set(false),
     });
+  }
+
+  /** Handler de input para el DNI del usuario (operador): permite solo 8 dígitos. */
+  onDniInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.form.dni = sanitizarDocumento(input.value, 8);
+    input.value = this.form.dni;
   }
 
   private exito(texto: string): void {

@@ -9,7 +9,7 @@
   }
 
   <div class="toolbar">
-    <input class="in" type="text" placeholder="DNI/CE" [(ngModel)]="fdni" (keyup.enter)="aplicar()" maxlength="12" />
+    <input class="in" type="text" placeholder="DNI/CE" [(ngModel)]="fdni" (input)="onDniInput($event)" (keyup.enter)="aplicar()" maxlength="12" />
     <label class="fecha">Desde <input type="date" [(ngModel)]="fdesde" /></label>
     <label class="fecha">Hasta <input type="date" [(ngModel)]="fhasta" /></label>
     <button class="btn btn--primary" (click)="aplicar()"><i class="fas fa-magnifying-glass"></i> Buscar</button>
