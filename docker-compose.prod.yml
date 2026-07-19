@@ -1,29 +1,104 @@
 # ============================================================
-#  Override de PRODUCCION
+#  OSTEOPERU - Resultados  |  PRODUCCION (standalone)
 #  ------------------------------------------------------------
-#  Uso:
-#    docker compose -f docker-compose.yml -f docker-compose.prod.yml \
-#      --env-file .env.prod up -d --build
-#  (envoltorio: ./scripts/prod-up.sh)
+#  Stack PROD NUEVO que convive con DEV en el mismo servidor.
+#  Levanta directamente (no es override del compose base):
+#    docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 #
-#  Diferencias vs el compose base:
-#    - Carga .env.prod en lugar de .env.dev
-#    - Quita el mapeo del puerto 7090 del backend al host (solo accesible
-#      via osteoperu-frontend dentro de la red Docker).
-#    - Quita el mapeo del puerto 6060 del frontend (NPM hace de proxy publico).
+#  Diferencias vs el setup original DEV/PROD:
+#    - container_name con sufijo -prd (osteoperu-resultados-{back,front}-prd)
+#      para no colisionar con osteoperu-backend / osteoperu-frontend del DEV.
+#    - Puertos parametrizados via .env.prod: BACKEND_PORT / FRONTEND_PORT.
+#    - Dominio publico: osteoperu.qallpatic.com/resultados/ (NPM hace de proxy).
+#    - Carga .env.prod directamente (ya no depende de docker-compose.yml).
+#
+#  Notas operativas:
+#    - Este archivo esta pensado para cargarse MANUALMENTE en el server.
+#    - Si el server tiene Docker Compose v2 y la red 'proxy-network' externa
+#      ya creada por NPM, este compose se conecta a ella para que el proxy
+#      publico pueda resolver el frontend por container_name.
+#    - Como DEV y PROD usan el mismo nombre de red 'osteoperu-net', Docker
+#      Compose las aísla prefijandolas con el nombre del proyecto:
+#      app-osteoperu-resultados_osteoperu-net (DEV) vs <prd>_osteoperu-net (PROD).
+#      Si querés un nombre de proyecto estable para PROD:
+#        docker compose -p osteoperu-prd -f docker-compose.prod.yml \
+#          --env-file .env.prod up -d --build
 # ============================================================
 
 services:
-  backend:
+  backend:    
+    image: harbor.qallpatic.com/osteoperu/osteoperu-resultados-back:56a16d8
+    container_name: osteoperu-resultados-back-prd
+    restart: unless-stopped
+    # Puerto del host para este stack PROD (parametrizado en .env.prod).
+    # DEV usa 7090; PROD usa BACKEND_PORT (default 7091 si la variable no existe).
+    ports:
+      - "${BACKEND_PORT:-7091}:7090"
     env_file:
       - .env.prod
-    # Quita el puerto 7090 del host; solo accesible desde la red interna.
-    # En override de Compose, las listas se reemplazan (no se mergean), asi
-    # que `ports: []` deja al backend sin puertos publicados al host.
-    ports: []
+    environment:
+      # Zona horaria del JVM: America/Lima (UTC-5, Peru). Sobre-escribible con
+      # la variable TZ en .env.prod.
+      TZ: ${TZ:-America/Lima}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-server}
+      CONTEXT_PATH: ${CONTEXT_PATH:-/osteoperu-api-resultados}
+      STORAGE_BASE_PATH: /app/uploads
+      SERVER_PORT: 7090
+    volumes:
+      - ${UPLOADS_PATH:-./uploads}:/app/uploads
+    # Limites de recursos para PROD (soporta trafico real). El host tiene 32 GB
+    # y convive con DEV + NPM: 2 backends x 3 GB = 6 GB techo en JVMs, JVM
+    # calcula su heap como ~25% del limit (≈768 MB). Suficiente para la app.
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 3G
+        reservations:
+          cpus: '1'
+          memory: 1.5G
+    networks:
+      - osteoperu-net
+      - proxy-network
 
   frontend:
-    env_file:
-      - .env.prod
-    # Quita el puerto 6060 del host; solo accesible via Nginx Proxy Manager.
-    ports: []
+    # Se compila desde el codigo fuente directo del repo (no requiere
+    # staging previo en el host: el Dockerfile del front hace el npm install
+    # y el ng build dentro de su propio multi-stage).
+    image: harbor.qallpatic.com/osteoperu/osteoperu-resultados-front:56a16d8
+    container_name: osteoperu-resultados-front-prd
+    restart: unless-stopped
+    # Acceso directo (sin NPM, solo para smoke-test): http://localhost:6061/resultados/
+    # Acceso por subdominio: https://osteoperu.qallpatic.com/resultados/ (via NPM).
+    ports:
+      - "${FRONTEND_PORT:-6061}:80"
+    depends_on:
+      - backend
+    # Nginx sirviendo estaticos + proxy al backend: 384 MB es holgado para
+    # buffering de uploads grandes. CPU acotada para que un pico no monopolice.
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
+        reservations:
+          cpus: '0.25'
+          memory: 96M
+    networks:
+      - osteoperu-net
+      - proxy-network
+
+networks:
+  osteoperu-net:
+    driver: bridge
+    # Subnet explicita: el pool default de Docker (172.17-172.31/16 y
+    # 192.168.0-240/20) esta agotado en este server (15+16 stacks).
+    # Usamos 172.32.0.0/24, primer rango libre fuera de los pools default.
+    # Si en el futuro se agrega otro stack, eleji otra subred /24 fuera de
+    # 172.17-172.31 y 192.168.0.0/16.
+    ipam:
+      config:
+        - subnet: 172.32.0.0/24
+  proxy-network:
+    external: true
+    name: proxy-network

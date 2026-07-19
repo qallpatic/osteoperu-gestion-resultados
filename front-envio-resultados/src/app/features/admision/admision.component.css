@@ -86,9 +86,9 @@
 
 .sms-ok { display: flex; align-items: center; gap: 8px; background: #e6f7ee; color: #0f7a43; padding: 9px 13px; border-radius: 10px; font-size: 0.85rem; margin-bottom: 14px; }
 
-.credencial { background: var(--brand-050); border-radius: 14px; padding: 20px; text-align: center; }
+.credencial { background: var(--brand-050); border-radius: 14px; padding: 20px; }
 .cred__web { font-size: 0.76rem; color: var(--brand-700); word-break: break-all; margin-bottom: 14px; }
-.cred__row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--border); text-align: left; }
-.cred__k { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted-2); }
+.cred__row { display: grid; grid-template-columns: 92px 1fr; column-gap: 18px; padding: 8px 0; border-bottom: 1px dashed var(--border); text-align: left; align-items: start; }
+.cred__k { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted-2); text-align: right; padding-top: 1px; }
 .cred__clave { font-weight: 700; letter-spacing: 2px; color: var(--brand-900); }
 .cred__qr { margin: 16px auto 0; display: block; border-radius: 8px; background: #fff; padding: 6px; }

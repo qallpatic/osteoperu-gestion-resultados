@@ -35,6 +35,17 @@ services:
       SERVER_PORT: 7090
     volumes:
       - ${UPLOADS_PATH:-./uploads}:/app/uploads
+    # Limites de recursos para DEV (sin trafico real). Mitad aprox del PROD
+    # (3G/2cpus) para que convivan sin pelearse en el host de 32 GB.
+    # JVM calcula heap como ~25% del limit (~384 MB), alcanza para dev.
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1.5G
+        reservations:
+          cpus: '0.5'
+          memory: 768M
     networks:
       - osteoperu-net
       - proxy-network
@@ -53,6 +64,16 @@ services:
       - "${FRONTEND_PORT:-6060}:80"
     depends_on:
       - backend
+    # Nginx sirviendo estaticos + proxy al backend: 192 MB es mas que suficiente
+    # para dev (mitad del PROD). CPU acotada para no robar al backend.
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 192M
+        reservations:
+          cpus: '0.1'
+          memory: 48M
     networks:
       - osteoperu-net
       - proxy-network

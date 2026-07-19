@@ -283,7 +283,7 @@ export class AdmisionComponent implements OnInit {
         body {
           font-family: Arial, Helvetica, sans-serif;
           color: #1f2937;
-          padding: 5mm 4mm 3mm 4mm;
+          padding: 5mm 2mm 3mm 2mm;
           box-sizing: border-box;
           display: flex;
           flex-direction: column;
@@ -302,7 +302,7 @@ export class AdmisionComponent implements OnInit {
         .datos {
           flex: 0 0 auto;
           display: grid;
-          grid-template-columns: 24mm 1fr;
+          grid-template-columns: 18mm 1fr;
           column-gap: 2mm;
           row-gap: 1mm;
           font-size: 10px;
