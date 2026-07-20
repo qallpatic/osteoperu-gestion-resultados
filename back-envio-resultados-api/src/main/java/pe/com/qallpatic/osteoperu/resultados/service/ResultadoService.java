@@ -231,21 +231,20 @@ public class ResultadoService {
 		return nombre.substring(dot + 1).toLowerCase(java.util.Locale.ROOT);
 	}
 
-	/** Compara el nombre oficial (RENIEC) con el texto del primer PDF adjunto. */
+	/** Compara el nombre oficial (RENIEC o PACIENTE local) con el texto del primer PDF adjunto. */
 	private ValidacionNombre validarNombre(String dni, List<MultipartFile> files) {
-		Optional<DatosReniec> datos = clienteReniec.consultar(dni);
-		if (datos.isEmpty()) {
+		String nombreOficial = resolverNombreOficial(dni);
+		if (nombreOficial == null) {
 			return ValidacionNombre.noVerificado();
 		}
-		String nombreReniec = datos.get().nombreCompleto();
 
 		byte[] pdf = primerPdf(files);
 		if (pdf == null) {
-			return new ValidacionNombre(false, true, nombreReniec, null);
+			return new ValidacionNombre(false, true, nombreOficial, null);
 		}
 
 		String texto = NormalizadorTexto.normalizar(validadorPdf.extraerTexto(pdf));
-		String[] tokens = NormalizadorTexto.normalizar(nombreReniec).split(" ");
+		String[] tokens = NormalizadorTexto.normalizar(nombreOficial).split(" ");
 
 		long total = Arrays.stream(tokens).filter(t -> t.length() >= 3).count();
 		long encontrados = Arrays.stream(tokens)
@@ -253,8 +252,25 @@ public class ResultadoService {
 				.count();
 		boolean coincide = total > 0 && ((double) encontrados / total) >= UMBRAL_COINCIDENCIA;
 
-		String nombrePdf = coincide ? nombreReniec : tokensEncontrados(tokens, texto);
-		return new ValidacionNombre(true, coincide, nombreReniec, nombrePdf);
+		String nombrePdf = coincide ? nombreOficial : tokensEncontrados(tokens, texto);
+		return new ValidacionNombre(true, coincide, nombreOficial, nombrePdf);
+	}
+
+	/**
+	 * Resuelve el nombre canonico del paciente: prioriza lo que el operador
+	 * guardo en PACIENTE (vía Gestion de usuarios / Admisión), porque puede
+	 * tener correcciones o sufijos que RENIEC no conoce (ej: "_TEST").
+	 * Solo si PACIENTE no tiene nombre cae a RENIEC.
+	 */
+	private String resolverNombreOficial(String dni) {
+		String nombrePaciente = pacienteRepository.findByDni(dni)
+				.map(Paciente::getNombre)
+				.filter(n -> n != null && !n.isBlank())
+				.orElse(null);
+		if (nombrePaciente != null) {
+			return nombrePaciente;
+		}
+		return clienteReniec.consultar(dni).map(DatosReniec::nombreCompleto).orElse(null);
 	}
 
 	private String tokensEncontrados(String[] tokens, String texto) {

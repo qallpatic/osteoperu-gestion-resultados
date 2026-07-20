@@ -107,6 +107,16 @@ export class ResultadosService {
     );
   }
 
+  /** Datos basicos del paciente registrado (nombre + telefono) para autocompletar la carga.
+   * Devuelve nombre=null y telefono=null si el DNI no existe en PACIENTE. */
+  buscarPaciente(dni: string): Observable<{ dni: string; nombre: string | null; telefono: string | null }> {
+    return this.http
+      .get<RespuestaApi<{ dni: string; nombre: string | null; telefono: string | null }>>(
+        `${environment.apiBaseUrl}/api/pacientes/buscar/${encodeURIComponent(dni)}`,
+      )
+      .pipe(map((r) => r.data));
+  }
+
   private armarParams(p: Record<string, string | number | undefined>): HttpParams {
     let params = new HttpParams();
     for (const [k, v] of Object.entries(p)) {

@@ -51,10 +51,11 @@ public class ResultadoController {
 			@RequestParam(value = "patientName", required = false) String patientName,
 			@Parameter(description = "Mensaje del agente (opcional, maximo 500 caracteres)")
 			@RequestParam(value = "mensaje", required = false) @Size(max = 500) String mensaje,
-			@Parameter(description = "Archivos de resultados",
+			@Parameter(description = "Archivos de resultados (opcional). Si se omite, el paciente "
+					+ "recibe solo el link en el mensaje del SMS.",
 					content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
 							schema = @Schema(type = "array", format = "binary")))
-			@RequestParam("files") List<MultipartFile> files,
+			@RequestParam(value = "files", required = false) List<MultipartFile> files,
 			@Parameter(description = "Confirmar la carga aunque el nombre del PDF no coincida con RENIEC")
 			@RequestParam(value = "confirmarNombre", defaultValue = "false") boolean confirmarNombre,
 			Authentication authentication) {

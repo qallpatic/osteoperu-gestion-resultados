@@ -59,6 +59,10 @@ export class UploadComponent implements OnInit {
   /** Autocompletado de nombre por RENIEC. */
   buscandoNombre = signal(false);
   private ultimoDniConsultado = '';
+  /** DNI con el que se abrio el formulario (prefill del campanita). Sirve para
+   *  no pisar los datos que ya llegaron del prefill mientras el operador no
+   *  cambie el DNI. */
+  private dniPrefill: string | null = null;
 
   /** Datos del diálogo de confirmación cuando el nombre del PDF no coincide con RENIEC. */
   pendiente = signal<Confirmacion | null>(null);
@@ -69,6 +73,7 @@ export class UploadComponent implements OnInit {
       this.patientName = this.prefill.nombre ?? '';
       this.phone = this.normalizarTelefono(this.prefill.telefono);
       this.ultimoDniConsultado = this.dni; // evita re-consultar RENIEC de inmediato
+      this.dniPrefill = this.dni;
     }
   }
 
@@ -128,21 +133,61 @@ export class UploadComponent implements OnInit {
   }
 
   /**
-   * Al completar el DNI, trae el nombre desde RENIEC y autocompleta el campo.
-   * Solo consulta si es exactamente 8 digitos (DNI): CE (>8) no existe en RENIEC,
-   * asi evitamos gastar una llamada al proveedor.
+   * Al completar el DNI, intenta autocompletar nombre y telefono con lo que
+   * el operador ya guardo en PACIENTE (via Gestion de usuarios / Admisión).
+   * Si PACIENTE tiene nombre, ese manda (puede tener sufijos o correcciones
+   * que RENIEC no conoce, ej: "_TEST"). Solo si PACIENTE no tiene nombre cae
+   * a RENIEC para recuperar el nombre oficial.
+   *
+   * Reglas:
+   *  - Si el DNI tipeado coincide con el del prefill inicial, no consulta:
+   *    los datos ya estan en el form.
+   *  - Si el DNI ya fue consultado antes en esta sesion, tampoco consulta
+   *    (asi respetamos ediciones manuales del operador sobre el resultado).
+   *  - Si es un DNI nuevo (distinto del prefill y del ultimo consultado),
+   *    consulta y sobrescribe nombre/telefono con lo encontrado.
    */
   autocompletarNombre(): void {
-    if (!this.dniValid() || this.dni.length !== 8 || this.dni === this.ultimoDniConsultado) {
+    if (!this.dniValid()) {
+      return;
+    }
+    if (this.dni === this.dniPrefill) {
+      this.ultimoDniConsultado = this.dni;
+      return;
+    }
+    if (this.dni === this.ultimoDniConsultado) {
       return;
     }
     this.ultimoDniConsultado = this.dni;
     this.buscandoNombre.set(true);
-    this.resultados.consultarReniec(this.dni).subscribe({
-      next: (r) => {
+    this.resultados.buscarPaciente(this.dni).subscribe({
+      next: (p) => {
+        if (this.dni !== this.ultimoDniConsultado) {
+          this.buscandoNombre.set(false);
+          return;
+        }
+        let nombreResuelto: string | null = p.nombre;
+        if (!nombreResuelto && this.dni.length === 8) {
+          this.resultados.consultarReniec(this.dni).subscribe({
+            next: (r) => {
+              this.buscandoNombre.set(false);
+              if (r.nombre) {
+                this.patientName = r.nombre;
+              }
+              if (p.telefono) {
+                this.phone = this.normalizarTelefono(p.telefono);
+              }
+            },
+            error: () => this.buscandoNombre.set(false),
+          });
+          return;
+        }
         this.buscandoNombre.set(false);
-        if (r.nombre) {
-          this.patientName = r.nombre;
+        if (nombreResuelto) {
+          this.patientName = nombreResuelto;
+        }
+        if (p.telefono) {
+          this.phone = this.normalizarTelefono(p.telefono);
         }
       },
       error: () => this.buscandoNombre.set(false),

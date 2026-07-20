@@ -84,6 +84,9 @@ public class SecurityConfig {
 						// escritura (generar/anular cuenta) restringida a ADMIN/ADMISION.
 						.requestMatchers(HttpMethod.GET, "/api/admision/pacientes").hasAnyRole("ADMIN", "RESULTADOS", "ADMISION")
 						.requestMatchers("/api/admision/**").hasAnyRole("ADMIN", "ADMISION", "RESULTADOS")
+						// Lookup de paciente por DNI (autocompletar nombre/telefono en carga de resultados).
+						// Mismos roles que RENIEC: lo usan resultados, admin y admision.
+						.requestMatchers("/api/pacientes/**").hasAnyRole("ADMIN", "RESULTADOS", "ADMISION")
 						.requestMatchers("/api/paciente/**").hasAnyRole("ADMIN", "PACIENTE")
 						.requestMatchers("/api/callcenter/**").hasAnyRole("ADMIN", "CALLCENTER")
 						.anyRequest().authenticated())
