@@ -209,6 +209,22 @@ login:
   retention-horas: ${LOGIN_RETENCION_HORAS:24}
   limpieza-cron: "0 0 * * * *"
 
+# ------------------------------------------------------------
+#  Google reCAPTCHA v3 - proteccion contra bots en /api/auth/login
+#  enabled=false  -> el endpoint sigue funcionando como antes (sin captcha)
+#  enabled=true   -> el front carga el script y envia recaptchaToken; el back
+#                    valida con siteverify y rechaza si score < minScore o si
+#                    no llega token (HTTP 403).
+#  Las claves se sobreescriben via .env: RECAPTCHA_ENABLED / RECAPTCHA_SITE_KEY / RECAPTCHA_SECRET_KEY
+# ------------------------------------------------------------
+recaptcha:
+  enabled: ${RECAPTCHA_ENABLED:false}
+  site-key: ${RECAPTCHA_SITE_KEY:}
+  secret-key: ${RECAPTCHA_SECRET_KEY:}
+  verify-url: "https://www.google.com/recaptcha/api/siteverify"
+  min-score: ${RECAPTCHA_MIN_SCORE:0.5}
+  timeout-ms: ${RECAPTCHA_TIMEOUT_MS:3000}
+
 management:
   endpoints:
     web:

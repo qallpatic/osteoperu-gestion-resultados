@@ -71,9 +71,16 @@ export class AuthService implements OnDestroy {
     window.addEventListener('storage', this.storageListener);
   }
 
-  login(usuario: string, contrasena: string): Observable<void> {
+  login(usuario: string, contrasena: string, recaptchaToken: string | null = null): Observable<void> {
+    const body: { usuario: string; contrasena: string; recaptchaToken?: string } = {
+      usuario,
+      contrasena,
+    };
+    if (recaptchaToken) {
+      body.recaptchaToken = recaptchaToken;
+    }
     return this.http
-      .post<RespuestaApi<TokenResponse>>(`${this.base}/login`, { usuario, contrasena })
+      .post<RespuestaApi<TokenResponse>>(`${this.base}/login`, body)
       .pipe(
         map((r) => {
           this.guardar(r.data);

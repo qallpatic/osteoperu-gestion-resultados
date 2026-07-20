@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import pe.com.qallpatic.osteoperu.compartido.respuesta.RespuestaApi;
 import pe.com.qallpatic.osteoperu.compartido.util.ClienteIpHelper;
+import pe.com.qallpatic.osteoperu.config.RecaptchaProperties;
+import pe.com.qallpatic.osteoperu.seguridad.dto.CaptchaConfigResponse;
 import pe.com.qallpatic.osteoperu.seguridad.dto.LoginRequest;
 import pe.com.qallpatic.osteoperu.seguridad.dto.RecuperarPasswordRequest;
 import pe.com.qallpatic.osteoperu.seguridad.dto.RecuperarPasswordResponse;
@@ -33,8 +36,22 @@ public class AutenticacionController {
 
 	private final ServicioAutenticacion servicioAutenticacion;
 	private final ServicioRecuperacionPassword servicioRecuperacion;
+	private final RecaptchaProperties recaptchaProperties;
+
+	@Operation(summary = "Configuracion publica de reCAPTCHA",
+			description = "Devuelve si el CAPTCHA esta habilitado y la site key publica. "
+					+ "El frontend la consulta al cargar la pantalla de login para saber si debe "
+					+ "cargar el script de Google reCAPTCHA v3 y emitir un token.")
+	@GetMapping("/captcha-config")
+	public ResponseEntity<RespuestaApi<CaptchaConfigResponse>> captchaConfig() {
+		boolean enabled = recaptchaProperties.isEnabled();
+		String siteKey = enabled ? recaptchaProperties.getSiteKey() : null;
+		return ResponseEntity.ok(RespuestaApi.ok("OK",
+				new CaptchaConfigResponse(enabled, siteKey)));
+	}
 
 	@Operation(summary = "Iniciar sesion", description = "Valida credenciales y devuelve access + refresh token. "
+			+ "Si reCAPTCHA esta habilitado exige recaptchaToken en el body. "
 			+ "Aplica rate-limit por IP y por usuario (config login.*).")
 	@PostMapping("/login")
 	public ResponseEntity<RespuestaApi<TokenResponse>> login(@Valid @RequestBody LoginRequest solicitud,
