@@ -7,8 +7,7 @@ spring:
   application:
     name: back-envio-resultados-api
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:server}
-
+    active: server
   # --- JPA / Hibernate: el esquema lo gobierna Flyway, no Hibernate ---
   jpa:
     open-in-view: false

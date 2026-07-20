@@ -447,7 +447,14 @@
   border-bottom: 1px dashed var(--border);
   text-align: left;
   align-items: start;
-  justify-content: start;
+  justify-items: start;
+  min-width: 0;
+}
+
+.cred__row > span:not(.cred__k) {
+  min-width: 0;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .cred__k {

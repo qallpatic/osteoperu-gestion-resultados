@@ -309,7 +309,13 @@ export class AdmisionComponent implements OnInit {
           line-height: 1.25;
         }
         .datos .k { color: #6b7280; text-transform: uppercase; font-size: 8px; }
-        .datos .v { color: #1f2937; font-weight: 700; }
+        .datos .v {
+          color: #1f2937;
+          font-weight: 700;
+          min-width: 0;
+          word-break: break-all;
+          overflow-wrap: anywhere;
+        }
         .qr-wrap {
           flex: 0 0 auto;
           display: flex;
