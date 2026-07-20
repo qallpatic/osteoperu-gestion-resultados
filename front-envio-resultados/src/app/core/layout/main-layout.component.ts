@@ -7,11 +7,13 @@ import { AuthService } from '../auth/auth.service';
 import { MenuItem } from '../models/sesion.model';
 import { UploadComponent, UploadPrefill } from '../../features/resultados/upload.component';
 import { PacientePendiente, PendientesService } from '../../features/resultados/pendientes.service';
+import { NombreNaturalPipe } from '../pipes/nombre-natural.pipe';
+import { formatearNombreNatural } from '../utils/util-nombre';
 
 /** Shell principal: menú lateral izquierdo (con submenús) + topbar según el usuario. */
 @Component({
   selector: 'app-main-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, UploadComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, UploadComponent, NombreNaturalPipe],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
 })
@@ -22,7 +24,13 @@ export class MainLayoutComponent {
 
   readonly nombre = this.auth.nombre;
   readonly rolPrincipal = this.auth.rolPrincipal;
-  readonly primerNombre = computed(() => this.nombre().trim().split(/\s+/)[0] || 'Usuario');
+  /** El AuthService guarda el nombre en formato canonico "APELLIDOS, NOMBRES".
+   *  Para el saludo usamos la version natural ("NOMBRES APELLIDOS") y tomamos
+   *  el primer token, que ahora SI es el nombre de pila. */
+  readonly primerNombre = computed(() => {
+    const n = formatearNombreNatural(this.nombre()).trim();
+    return n.split(/\s+/)[0] || 'Usuario';
+  });
 
   // ===== Campanita de pacientes pendientes (ADMIN / RESULTADOS) =====
   readonly puedeSubir = computed(() => this.auth.tieneAlgunRol(['ADMIN', 'RESULTADOS']));
@@ -60,7 +68,7 @@ export class MainLayoutComponent {
   readonly menu = computed(() => this.items.filter((m) => this.auth.tieneAlgunRol(m.roles)));
 
   readonly iniciales = computed(() => {
-    const n = this.nombre().trim();
+    const n = formatearNombreNatural(this.nombre()).trim();
     if (!n) {
       return 'U';
     }

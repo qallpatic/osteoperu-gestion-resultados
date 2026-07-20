@@ -8,6 +8,7 @@ import { Archivo, ResultadoDetalle, ResultadoResumen } from './resultados.models
 import { sanitizarDocumento } from '../../core/utils/util-documento';
 import { TiposArchivoSoportados, esTipoSoportado } from './tipos-archivo';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
+import { NombreNaturalPipe } from '../../core/pipes/nombre-natural.pipe';
 
 interface ArchivoEditable extends Archivo {
   marcadoActivo: boolean;
@@ -30,7 +31,7 @@ interface ConfirmacionPendiente {
 
 @Component({
   selector: 'app-resultados-consultar',
-  imports: [FormsModule, DatePipe, ConfirmDialogComponent],
+  imports: [FormsModule, DatePipe, ConfirmDialogComponent, NombreNaturalPipe],
   templateUrl: './consultar-resultados.component.html',
   styleUrl: './consultar-resultados.component.css',
 })

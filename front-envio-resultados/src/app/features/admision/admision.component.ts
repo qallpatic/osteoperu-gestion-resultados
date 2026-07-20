@@ -7,12 +7,14 @@ import { AdmisionService, CredencialResponse, PacienteAdmision } from './admisio
 import { AuthService } from '../../core/auth/auth.service';
 import { ReniecService } from '../../core/services/reniec.service';
 import { TelefonoPipe } from '../../core/pipes/telefono.pipe';
+import { NombreNaturalPipe } from '../../core/pipes/nombre-natural.pipe';
 import { sanitizarDocumento } from '../../core/utils/util-documento';
 import { formatearTelefono } from '../../core/utils/util-telefono';
+import { aFormatoCanonico } from '../../core/utils/util-nombre';
 
 @Component({
   selector: 'app-admision',
-  imports: [FormsModule, DatePipe, TelefonoPipe],
+  imports: [FormsModule, DatePipe, TelefonoPipe, NombreNaturalPipe],
   templateUrl: './admision.component.html',
   styleUrl: './admision.component.css',
 })
@@ -222,7 +224,7 @@ export class AdmisionComponent implements OnInit {
     this.srv
       .generarUsuario({
         dni: this.genDni,
-        nombre: this.genNombre.trim() || undefined,
+        nombre: this.genNombre.trim() ? aFormatoCanonico(this.genNombre) : undefined,
         telefono: this.genTelefono.trim() || undefined,
         enviarSms: this.enviarSms,
       })
@@ -275,6 +277,13 @@ export class AdmisionComponent implements OnInit {
     if (!w) {
       return;
     }
+    const fechaVigencia = new Date();
+    fechaVigencia.setDate(fechaVigencia.getDate() + 180);
+    const dd = String(fechaVigencia.getDate()).padStart(2, '0');
+    const mm = String(fechaVigencia.getMonth() + 1).padStart(2, '0');
+    const yyyy = fechaVigencia.getFullYear();
+    const fechaVigenciaFmt = `${dd}/${mm}/${yyyy}`;
+    const fechaVigenciaEsc = fechaVigenciaFmt.replace(/\//g, '&#x2F;');
     w.document.write(`
       <html><head><title>Credencial ${c.usuario}</title>
       <style id="ticket-style">
@@ -283,7 +292,7 @@ export class AdmisionComponent implements OnInit {
         body {
           font-family: Arial, Helvetica, sans-serif;
           color: #1f2937;
-          padding: 5mm 2mm 3mm 2mm;
+          padding: 2mm 2mm 3mm 4mm;
           box-sizing: border-box;
           display: flex;
           flex-direction: column;
@@ -302,7 +311,7 @@ export class AdmisionComponent implements OnInit {
         .datos {
           flex: 0 0 auto;
           display: grid;
-          grid-template-columns: 18mm 1fr;
+          grid-template-columns: 16mm 1fr;
           column-gap: 2mm;
           row-gap: 1mm;
           font-size: 10px;
@@ -316,6 +325,7 @@ export class AdmisionComponent implements OnInit {
           word-break: break-all;
           overflow-wrap: anywhere;
         }
+        .datos .v.cred-big { font-size: 13px; letter-spacing: 0.5px; }
         .qr-wrap {
           flex: 0 0 auto;
           display: flex;
@@ -327,8 +337,10 @@ export class AdmisionComponent implements OnInit {
         .footer {
           flex: 0 0 auto;
           text-align: center;
-          font-size: 8.5px;
-          color: #4b5563;
+          font-size: 10.5px;
+          color: #1f2937;
+          font-weight: 700;
+          text-transform: uppercase;
           margin-top: 4mm;
           padding-top: 2mm;
           border-top: 1px dashed #043d36;
@@ -338,12 +350,12 @@ export class AdmisionComponent implements OnInit {
         <div class="datos">
           <div class="k">WEB</div><div class="v">${c.portalUrl}</div>
           <div class="k">Nombre</div><div class="v">${c.nombre ?? '-'}</div>
-          <div class="k">Usuario</div><div class="v">${c.usuario}</div>
-          <div class="k">Clave</div><div class="v">${c.clave}</div>
+          <div class="k">Usuario</div><div class="v cred-big">${c.usuario}</div>
+          <div class="k">Clave</div><div class="v cred-big">${c.clave}</div>
         </div>
         <div class="qr-wrap"><img src="assets/qr-osteoperu.png" alt="QR" /></div>
         <div class="footer">
-          Sus resultados estar&aacute;n disponibles durante 6 meses.<br/>
+          Sus resultados estar&aacute;n disponibles hasta el ${fechaVigenciaEsc}.<br/>
           Aseg&uacute;rese de descargarlos dentro de este plazo.
         </div>
       </body></html>`);

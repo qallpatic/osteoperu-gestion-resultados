@@ -56,7 +56,7 @@
           @for (p of lista(); track p.dni) {
             <tr>
               <td class="mono">{{ p.dni }}</td>
-              <td>{{ p.nombre || '—' }}</td>
+              <td>{{ (p.nombre | nombreNatural) || '—' }}</td>
               <td>{{ p.telefono || '—' }}</td>
               <td>{{ p.fechaRegistro | date:'dd/MM/yyyy HH:mm' }}</td>
               <td><span class="estado">Pendiente</span></td>

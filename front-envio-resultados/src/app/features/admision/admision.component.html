@@ -80,7 +80,7 @@
         @for (p of pacientes(); track p.dni) {
         <tr>
           <td class="mono">{{ p.dni }}</td>
-          <td>{{ p.nombre || '—' }}</td>
+          <td>{{ (p.nombre | nombreNatural) || '—' }}</td>
           <td class="telefono">{{ (p.telefono | telefono) || '—' }}</td>
           <td>{{ p.totalResultados }}</td>
           <td>{{ p.ultimaFecha | date:'dd/MM/yyyy HH:mm' }}</td>
@@ -148,7 +148,7 @@
       <small>(si lo dejas vacío se toma de RENIEC)</small>
       @if (consultandoReniec()) { <i class="fas fa-spinner fa-spin" title="Consultando RENIEC..."></i> }
     </label>
-    <input [(ngModel)]="genNombre" maxlength="250" placeholder="APELLIDO_P APELLIDO_M, NOMBRES" />
+    <input [(ngModel)]="genNombre" maxlength="250" placeholder="NOMBRES APELLIDO_P APELLIDO_M" />
   </div>
   <div class="field">
     <label>Teléfono (para enviar la credencial por SMS)</label>
@@ -182,7 +182,7 @@
   }
   <div class="credencial">
     <div class="cred__row"><span class="cred__k">WEB:</span><span>{{ c.portalUrl }}</span></div>
-    <div class="cred__row"><span class="cred__k">Nombre</span><span>{{ c.nombre || '—' }}</span></div>
+    <div class="cred__row"><span class="cred__k">Nombre</span><span>{{ (c.nombre | nombreNatural) || '—' }}</span></div>
     <div class="cred__row"><span class="cred__k">Usuario</span><span>{{ c.usuario }}</span></div>
     <div class="cred__row"><span class="cred__k">Clave</span><span class="cred__clave">{{ c.clave }}</span></div>
     <img class="cred__qr" src="assets/qr-osteoperu.png" alt="QR" width="200" height="200" />

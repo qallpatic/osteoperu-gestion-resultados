@@ -46,7 +46,7 @@
                 </span>
               }
             </span>
-            <span class="card__meta">{{ r.nombrePaciente || 'Paciente' }} · Documento de Identidad {{ r.dni }}</span>
+            <span class="card__meta">{{ (r.nombrePaciente | nombreNatural) || 'Paciente' }} · Documento de Identidad {{ r.dni }}</span>
           </div>
           <button class="btn btn--ghost" (click)="abrirDetalle(r)">
             <i class="fas" [class.fa-folder-open]="!esVencido(r.fechaVigenciaHasta)" [class.fa-eye]="esVencido(r.fechaVigenciaHasta)"></i>

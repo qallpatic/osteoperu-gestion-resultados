@@ -54,7 +54,7 @@
     <div class="sidebar__user">
       <div class="avatar">{{ iniciales() }}</div>
       <div class="usuario">
-        <span class="usuario__nombre" [title]="nombre()">{{ nombre() }}</span>
+        <span class="usuario__nombre" [title]="nombre() | nombreNatural">{{ nombre() | nombreNatural }}</span>
         <span class="usuario__rol">{{ rolPrincipal() }}</span>
       </div>
       <button class="logout" (click)="cerrarSesion()" title="Cerrar sesión" aria-label="Cerrar sesión">
@@ -102,7 +102,7 @@
                     @for (p of listaPendientes(); track p.dni) {
                       <button class="campana__item" (click)="abrirCargaPendiente(p)">
                         <div class="campana__info">
-                          <span class="campana__nombre">{{ p.nombre || 'Paciente' }}</span>
+                          <span class="campana__nombre">{{ (p.nombre | nombreNatural) || 'Paciente' }}</span>
                           <span class="campana__dni">DNI {{ p.dni }}</span>
                         </div>
                         <i class="fas fa-cloud-arrow-up"></i>
@@ -115,7 +115,7 @@
           </div>
         }
 
-        <div class="topbar__avatar" [title]="nombre()">{{ iniciales() }}</div>
+        <div class="topbar__avatar" [title]="nombre() | nombreNatural">{{ iniciales() }}</div>
         <button class="topbar__logout" (click)="cerrarSesion()" title="Cerrar sesión">
           <i class="fas fa-right-from-bracket"></i>
           <span class="topbar__logout-txt">Salir</span>

@@ -84,7 +84,7 @@
           @for (r of resultados(); track r.id) {
             <tr>
               <td class="mono">{{ r.dni }}</td>
-              <td>{{ r.nombrePaciente || '—' }}</td>
+              <td>{{ (r.nombrePaciente | nombreNatural) || '—' }}</td>
               <td>{{ r.telefono }}</td>
               <td><span class="badge">{{ r.estadoSms }}</span></td>
               <td>{{ r.contadorVistas }}</td>

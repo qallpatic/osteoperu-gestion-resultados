@@ -6,10 +6,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { PacienteService } from './paciente.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { Archivo, ResultadoDetalle, ResultadoResumen } from '../resultados/resultados.models';
+import { NombreNaturalPipe } from '../../core/pipes/nombre-natural.pipe';
 
 @Component({
   selector: 'app-mis-resultados',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, NombreNaturalPipe],
   templateUrl: './mis-resultados.component.html',
   styleUrl: './mis-resultados.component.css',
 })

@@ -3,11 +3,12 @@ import { DatePipe } from '@angular/common';
 
 import { PacientePendiente, PendientesService } from './pendientes.service';
 import { UploadComponent, UploadPrefill } from './upload.component';
+import { NombreNaturalPipe } from '../../core/pipes/nombre-natural.pipe';
 
 /** Pacientes registrados por Admisión, pendientes de subir resultados. */
 @Component({
   selector: 'app-pendientes-resultados',
-  imports: [DatePipe, UploadComponent],
+  imports: [DatePipe, UploadComponent, NombreNaturalPipe],
   templateUrl: './pendientes-resultados.component.html',
   styleUrl: './pendientes-resultados.component.css',
 })
