@@ -34,7 +34,7 @@ public class TasaLimitLoginService {
 			log.warn("[LOGIN] Bloqueado por IP y usuario. ip={}, usuario={}, intentos={}",
 					ipKey, usuarioKey, intentosIpUsuario);
 			throw new LimiteIntentosSuperadoException(
-					"Se supero el limite de intentos para este usuario desde esta IP. "
+					"Se supero el limite de intentos para este usuario. "
 							+ "Intenta nuevamente en algunos minutos.");
 		}
 

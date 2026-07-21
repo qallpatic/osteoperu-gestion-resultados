@@ -45,7 +45,7 @@ public class TasaLimitRecuperacionService {
 		long intentosIp = intentoRepository.contarPorIp(ip, desde);
 		if (intentosIp >= propiedades.getMaxIntentosIp()) {
 			registrarBloqueado(ip, documentoNorm, "ip");
-			throw limite("Se supero el limite de intentos desde esta IP. "
+			throw limite("Se supero el limite de intentos. "
 					+ "Intenta nuevamente en algunos minutos.");
 		}
 
@@ -59,7 +59,7 @@ public class TasaLimitRecuperacionService {
 		long distintosIp = intentoRepository.contarDistintosPorIp(ip, desde);
 		if (distintosIp >= propiedades.getMaxDistintosPorIp()) {
 			registrarBloqueado(ip, documentoNorm, "distintos");
-			throw limite("Se supero el limite de documentos consultados desde esta IP. "
+			throw limite("Se supero el limite de documentos consultados. "
 					+ "Intenta nuevamente en algunos minutos.");
 		}
 

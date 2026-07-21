@@ -62,7 +62,7 @@ class TasaLimitLoginServiceTest {
 				LimiteIntentosSuperadoException.class,
 				() -> servicio.evaluar("203.0.113.25", "usuario-a"));
 
-		assertTrue(error.getMessage().contains("este usuario desde esta IP"));
+		assertTrue(error.getMessage().contains("este usuario"));
 		verify(intentoRepository, never()).contarFallidosPorUsuario(any(String.class), any(LocalDateTime.class));
 		ArgumentCaptor<IntentoLogin> captor = ArgumentCaptor.forClass(IntentoLogin.class);
 		verify(intentoRepository).save(captor.capture());

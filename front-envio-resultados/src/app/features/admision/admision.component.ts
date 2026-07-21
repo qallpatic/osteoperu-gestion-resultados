@@ -287,6 +287,11 @@ export class AdmisionComponent implements OnInit {
      * propio @page (80mm), sin afectar la pestana principal. El evento
      * `afterprint` se dispara cuando el usuario cierra el dialogo (imprimio o
      * cancelo), y ahi limpiamos el iframe del DOM.
+     *
+     * Usamos `srcdoc` (no `document.write()`) para que el iframe tenga su
+     * propio documento y Chrome respete el `<title>` al "Guardar como PDF"
+     * (con document.write() la URL del iframe queda `about:blank` y Chrome
+     * usa el titulo de la pestana principal).
      */
     const iframe = document.createElement('iframe');
     iframe.setAttribute('aria-hidden', 'true');
@@ -299,7 +304,6 @@ export class AdmisionComponent implements OnInit {
     iframe.style.width = '320px';
     iframe.style.height = '600px';
     iframe.style.border = '0';
-    document.body.appendChild(iframe);
 
     const cleanup = () => {
       if (iframe.parentNode) {
@@ -307,14 +311,8 @@ export class AdmisionComponent implements OnInit {
       }
     };
 
-    const doc = iframe.contentDocument;
-    if (!doc) {
-      cleanup();
-      return;
-    }
-    doc.open();
-    doc.write(`
-      <html><head><title>Credencial ${c.usuario}</title>
+    iframe.srcdoc = `<!DOCTYPE html>
+<html><head><title>Credencial ${c.usuario}</title>
       <style id="ticket-style">
         @page { size: 80mm 100mm; margin: 0; }
         html, body { width: 80mm; margin: 0; padding: 0; }
@@ -387,10 +385,13 @@ export class AdmisionComponent implements OnInit {
           Sus resultados estar&aacute;n disponibles hasta el <b> ${fechaVigenciaEsc}</b>. 
           Aseg&uacute;rese de descargarlos dentro de este plazo.
         </div>
-      </body></html>`);
-    doc.close();
-
-    const aplicarTamano = () => {
+      </body></html>`;
+    iframe.addEventListener('load', () => {
+      const doc = iframe.contentDocument;
+      if (!doc) {
+        cleanup();
+        return;
+      }
       const hMm = Math.max(70, (doc.body.scrollHeight / (96 / 25.4)) + 20);
       doc.documentElement.style.height = hMm + 'mm';
       doc.body.style.height = hMm + 'mm';
@@ -409,14 +410,12 @@ export class AdmisionComponent implements OnInit {
       win.addEventListener('afterprint', cleanup, { once: true });
       setTimeout(() => {
         win.print();
-        // Fallback: si afterprint no se dispara (algunos navegadores viejos o
-        // si el usuario cierra la pestana con Ctrl+W), limpiamos al cabo de
-        // 30s igual para no dejar el iframe en el DOM para siempre.
+        // Fallback: si afterprint no se dispara (navegadores viejos o Ctrl+W),
+        // limpiamos al cabo de 30s para no dejar basura en el DOM.
         setTimeout(cleanup, 30000);
       }, 150);
-    };
-    const r = doc.readyState === 'complete' ? 16 : 300;
-    setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(aplicarTamano)), r);
+    });
+    document.body.appendChild(iframe);
   }
 
   private msg(e: HttpErrorResponse): string {
