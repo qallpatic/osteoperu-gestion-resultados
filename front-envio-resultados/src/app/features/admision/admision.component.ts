@@ -273,10 +273,6 @@ export class AdmisionComponent implements OnInit {
   }
 
   imprimir(c: CredencialResponse): void {
-    const w = window.open('', '_blank', 'width=320,height=700');
-    if (!w) {
-      return;
-    }
     const fechaVigencia = new Date();
     fechaVigencia.setDate(fechaVigencia.getDate() + 180);
     const dd = String(fechaVigencia.getDate()).padStart(2, '0');
@@ -284,7 +280,38 @@ export class AdmisionComponent implements OnInit {
     const yyyy = fechaVigencia.getFullYear();
     const fechaVigenciaFmt = `${dd}/${mm}/${yyyy}`;
     const fechaVigenciaEsc = fechaVigenciaFmt.replace(/\//g, '&#x2F;');
-    w.document.write(`
+
+    /**
+     * Iframe oculto: el ticket se renderiza dentro pero nunca se ve. Al disparar
+     * print() el dialogo del navegador usa el contenido del iframe con su
+     * propio @page (80mm), sin afectar la pestana principal. El evento
+     * `afterprint` se dispara cuando el usuario cierra el dialogo (imprimio o
+     * cancelo), y ahi limpiamos el iframe del DOM.
+     */
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.setAttribute('title', 'ticket-impresion');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const cleanup = () => {
+      if (iframe.parentNode) {
+        iframe.parentNode.removeChild(iframe);
+      }
+    };
+
+    const doc = iframe.contentDocument;
+    if (!doc) {
+      cleanup();
+      return;
+    }
+    doc.open();
+    doc.write(`
       <html><head><title>Credencial ${c.usuario}</title>
       <style id="ticket-style">
         @page { size: 80mm 100mm; margin: 0; }
@@ -359,21 +386,34 @@ export class AdmisionComponent implements OnInit {
           Aseg&uacute;rese de descargarlos dentro de este plazo.
         </div>
       </body></html>`);
-    w.document.close();
+    doc.close();
+
     const aplicarTamano = () => {
-      const hMm = Math.max(70, (w.document.body.scrollHeight / (96 / 25.4)) + 20);
-      w.document.documentElement.style.height = hMm + 'mm';
-      w.document.body.style.height = hMm + 'mm';
-      const styleEl = w.document.getElementById('ticket-style') as HTMLStyleElement | null;
+      const hMm = Math.max(70, (doc.body.scrollHeight / (96 / 25.4)) + 20);
+      doc.documentElement.style.height = hMm + 'mm';
+      doc.body.style.height = hMm + 'mm';
+      const styleEl = doc.getElementById('ticket-style') as HTMLStyleElement | null;
       if (styleEl?.textContent) {
         styleEl.textContent = styleEl.textContent.replace(
           /@page\s*\{[^}]*\}/,
           `@page { size: 80mm ${hMm}mm; margin: 0; }`,
         );
       }
-      setTimeout(() => w.print(), 150);
+      const win = iframe.contentWindow;
+      if (!win) {
+        cleanup();
+        return;
+      }
+      win.addEventListener('afterprint', cleanup, { once: true });
+      setTimeout(() => {
+        win.print();
+        // Fallback: si afterprint no se dispara (algunos navegadores viejos o
+        // si el usuario cierra la pestana con Ctrl+W), limpiamos al cabo de
+        // 30s igual para no dejar el iframe en el DOM para siempre.
+        setTimeout(cleanup, 30000);
+      }, 150);
     };
-    const r = w.document.readyState === 'complete' ? 16 : 300;
+    const r = doc.readyState === 'complete' ? 16 : 300;
     setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(aplicarTamano)), r);
   }
 
