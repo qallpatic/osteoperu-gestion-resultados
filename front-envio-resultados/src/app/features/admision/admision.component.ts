@@ -292,10 +292,12 @@ export class AdmisionComponent implements OnInit {
     iframe.setAttribute('aria-hidden', 'true');
     iframe.setAttribute('title', 'ticket-impresion');
     iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
+    iframe.style.left = '-9999px';
+    iframe.style.top = '0';
+    // Dimensiones reales para que el contenido se renderice bien (80mm ≈ 302px a 96dpi;
+    // dejamos 320px para holgura). Asi el calculo de scrollHeight es correcto.
+    iframe.style.width = '320px';
+    iframe.style.height = '600px';
     iframe.style.border = '0';
     document.body.appendChild(iframe);
 
@@ -319,7 +321,7 @@ export class AdmisionComponent implements OnInit {
         body {
           font-family: Arial, Helvetica, sans-serif;
           color: #1f2937;
-          padding: 2mm 2mm 3mm 4mm;
+          padding: 2mm 4mm 3mm 4mm;
           box-sizing: border-box;
           display: flex;
           flex-direction: column;
@@ -382,7 +384,7 @@ export class AdmisionComponent implements OnInit {
         </div>
         <div class="qr-wrap"><img src="assets/qr-osteoperu.png" alt="QR" /></div>
         <div class="footer">
-          Sus resultados estar&aacute;n disponibles hasta el ${fechaVigenciaEsc}.<br/>
+          Sus resultados estar&aacute;n disponibles hasta el <b> ${fechaVigenciaEsc}</b>. 
           Aseg&uacute;rese de descargarlos dentro de este plazo.
         </div>
       </body></html>`);
