@@ -282,25 +282,147 @@ export class AdmisionComponent implements OnInit {
     const fechaVigenciaEsc = fechaVigenciaFmt.replace(/\//g, '&#x2F;');
 
     /**
-     * Iframe oculto: el ticket se renderiza dentro pero nunca se ve. Al disparar
-     * print() el dialogo del navegador usa el contenido del iframe con su
-     * propio @page (80mm), sin afectar la pestana principal. El evento
-     * `afterprint` se dispara cuando el usuario cierra el dialogo (imprimio o
-     * cancelo), y ahi limpiamos el iframe del DOM.
+     * Estrategia principal: ventana off-screen. Chrome trata la ventana como un
+     * documento real y el driver de la ticketera (EPSON o cualquier otra)
+     * respeta el @page { size: 80mm X } correctamente. La ventana queda fuera
+     * del viewport (left=-9999) para que el usuario no la vea, y se auto-cierra
+     * cuando termina el dialogo de impresion (afterprint).
      *
-     * Usamos `srcdoc` (no `document.write()`) para que el iframe tenga su
-     * propio documento y Chrome respete el `<title>` al "Guardar como PDF"
-     * (con document.write() la URL del iframe queda `about:blank` y Chrome
-     * usa el titulo de la pestana principal).
+     * Fallback: si el popup blocker del navegador bloquea window.open() (caso
+     * raro, ya que se invoca como respuesta directa a un click), usamos el
+     * iframe srcdoc como antes. Funciona bien para "Guardar como PDF" pero
+     * puede no respetar @page size en algunas ticketeras.
      */
+    const html = this.construirHtmlTicket(c, fechaVigenciaEsc);
+    const w = window.open('', 'ticket_credencial', 'width=320,height=500,left=-9999,top=0');
+    if (w) {
+      this.imprimirEnVentana(w, html);
+    } else {
+      this.imprimirEnIframe(html);
+    }
+  }
+
+  /** Construye el HTML completo del ticket. Reutilizado por ventana e iframe. */
+  private construirHtmlTicket(c: CredencialResponse, fechaVigenciaEsc: string): string {
+    return `<!DOCTYPE html>
+<html><head><title>Credencial ${c.usuario}</title>
+<style id="ticket-style">
+  @page { size: 80mm 100mm; margin: 0; }
+  html, body { width: 80mm; margin: 0; padding: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    color: #1f2937;
+    padding: 2mm 4mm 3mm 4mm;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+  .header {
+    text-align: center;
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    color: #043d36;
+    padding-bottom: 2mm;
+    margin-bottom: 3mm;
+    border-bottom: 1px dashed #043d36;
+  }
+  .datos {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 16mm 1fr;
+    column-gap: 2mm;
+    row-gap: 1mm;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+  .datos .k { color: #6b7280; text-transform: uppercase; font-size: 8px; }
+  .datos .v {
+    color: #1f2937;
+    font-weight: 700;
+    min-width: 0;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+  }
+  .datos .v.cred-big { font-size: 13px; letter-spacing: 0.5px; }
+  .qr-wrap {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 6mm;
+  }
+  .qr-wrap img { width: 28mm; height: 28mm; display: block; }
+  .footer {
+    flex: 0 0 auto;
+    text-align: center;
+    font-size: 10.5px;
+    color: #1f2937;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-top: 4mm;
+    padding-top: 2mm;
+    border-top: 1px dashed #043d36;
+  }
+</style></head><body>
+  <div class="header">SERVICIOS MEDICOS ASOCIADOS OSTEOPERU SAC</div>
+  <div class="datos">
+    <div class="k">WEB</div><div class="v">${c.portalUrl}</div>
+    <div class="k">Nombre</div><div class="v">${c.nombre ?? '-'}</div>
+    <div class="k">Usuario</div><div class="v cred-big">${c.usuario}</div>
+    <div class="k">Clave</div><div class="v cred-big">${c.clave}</div>
+  </div>
+  <div class="qr-wrap"><img src="assets/qr-osteoperu.png" alt="QR" /></div>
+  <div class="footer">
+    Sus resultados estar&aacute;n disponibles hasta el <b> ${fechaVigenciaEsc}</b>.
+    Aseg&uacute;rese de descargarlos dentro de este plazo.
+  </div>
+</body></html>`;
+  }
+
+  /** Estrategia principal: ventana off-screen. Auto-imprime y auto-cierra. */
+  private imprimirEnVentana(w: Window, html: string): void {
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+
+    const aplicarTamano = () => {
+      const doc = w.document;
+      const hMm = Math.max(70, (doc.body.scrollHeight / (96 / 25.4)) + 20);
+      doc.documentElement.style.height = hMm + 'mm';
+      doc.body.style.height = hMm + 'mm';
+      const styleEl = doc.getElementById('ticket-style') as HTMLStyleElement | null;
+      if (styleEl?.textContent) {
+        styleEl.textContent = styleEl.textContent.replace(
+          /@page\s*\{[^}]*\}/,
+          `@page { size: 80mm ${hMm}mm; margin: 0; }`,
+        );
+      }
+      w.addEventListener('afterprint', () => w.close(), { once: true });
+      setTimeout(() => {
+        w.focus();
+        w.print();
+        // Fallback: si afterprint no se dispara (raro), cerramos a los 30s.
+        setTimeout(() => {
+          if (!w.closed) {
+            w.close();
+          }
+        }, 30000);
+      }, 150);
+    };
+    const r = w.document.readyState === 'complete' ? 16 : 300;
+    setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(aplicarTamano)), r);
+  }
+
+  /** Fallback: iframe srcdoc. Usado solo si window.open() es bloqueado. */
+  private imprimirEnIframe(html: string): void {
     const iframe = document.createElement('iframe');
     iframe.setAttribute('aria-hidden', 'true');
     iframe.setAttribute('title', 'ticket-impresion');
     iframe.style.position = 'fixed';
     iframe.style.left = '-9999px';
     iframe.style.top = '0';
-    // Dimensiones reales para que el contenido se renderice bien (80mm ≈ 302px a 96dpi;
-    // dejamos 320px para holgura). Asi el calculo de scrollHeight es correcto.
     iframe.style.width = '320px';
     iframe.style.height = '600px';
     iframe.style.border = '0';
@@ -311,81 +433,8 @@ export class AdmisionComponent implements OnInit {
       }
     };
 
-    iframe.srcdoc = `<!DOCTYPE html>
-<html><head><title>Credencial ${c.usuario}</title>
-      <style id="ticket-style">
-        @page { size: 80mm 100mm; margin: 0; }
-        html, body { width: 80mm; margin: 0; padding: 0; }
-        body {
-          font-family: Arial, Helvetica, sans-serif;
-          color: #1f2937;
-          padding: 2mm 4mm 3mm 4mm;
-          box-sizing: border-box;
-          display: flex;
-          flex-direction: column;
-        }
-        .header {
-          text-align: center;
-          flex: 0 0 auto;
-          font-size: 11px;
-          font-weight: 800;
-          letter-spacing: 0.4px;
-          color: #043d36;
-          padding-bottom: 2mm;
-          margin-bottom: 3mm;
-          border-bottom: 1px dashed #043d36;
-        }
-        .datos {
-          flex: 0 0 auto;
-          display: grid;
-          grid-template-columns: 16mm 1fr;
-          column-gap: 2mm;
-          row-gap: 1mm;
-          font-size: 10px;
-          line-height: 1.25;
-        }
-        .datos .k { color: #6b7280; text-transform: uppercase; font-size: 8px; }
-        .datos .v {
-          color: #1f2937;
-          font-weight: 700;
-          min-width: 0;
-          word-break: break-all;
-          overflow-wrap: anywhere;
-        }
-        .datos .v.cred-big { font-size: 13px; letter-spacing: 0.5px; }
-        .qr-wrap {
-          flex: 0 0 auto;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-top: 6mm;
-        }
-        .qr-wrap img { width: 28mm; height: 28mm; display: block; }
-        .footer {
-          flex: 0 0 auto;
-          text-align: center;
-          font-size: 10.5px;
-          color: #1f2937;
-          font-weight: 700;
-          text-transform: uppercase;
-          margin-top: 4mm;
-          padding-top: 2mm;
-          border-top: 1px dashed #043d36;
-        }
-      </style></head><body>
-        <div class="header">SERVICIOS MEDICOS ASOCIADOS OSTEOPERU SAC</div>
-        <div class="datos">
-          <div class="k">WEB</div><div class="v">${c.portalUrl}</div>
-          <div class="k">Nombre</div><div class="v">${c.nombre ?? '-'}</div>
-          <div class="k">Usuario</div><div class="v cred-big">${c.usuario}</div>
-          <div class="k">Clave</div><div class="v cred-big">${c.clave}</div>
-        </div>
-        <div class="qr-wrap"><img src="assets/qr-osteoperu.png" alt="QR" /></div>
-        <div class="footer">
-          Sus resultados estar&aacute;n disponibles hasta el <b> ${fechaVigenciaEsc}</b>. 
-          Aseg&uacute;rese de descargarlos dentro de este plazo.
-        </div>
-      </body></html>`;
+    iframe.srcdoc = html;
+
     iframe.addEventListener('load', () => {
       const doc = iframe.contentDocument;
       if (!doc) {
@@ -398,7 +447,7 @@ export class AdmisionComponent implements OnInit {
       const styleEl = doc.getElementById('ticket-style') as HTMLStyleElement | null;
       if (styleEl?.textContent) {
         styleEl.textContent = styleEl.textContent.replace(
-          /@page\s*\{[^}]*\}/,
+          /@page\\s*\\{[^}]*\\}/,
           `@page { size: 80mm ${hMm}mm; margin: 0; }`,
         );
       }
@@ -410,8 +459,6 @@ export class AdmisionComponent implements OnInit {
       win.addEventListener('afterprint', cleanup, { once: true });
       setTimeout(() => {
         win.print();
-        // Fallback: si afterprint no se dispara (navegadores viejos o Ctrl+W),
-        // limpiamos al cabo de 30s para no dejar basura en el DOM.
         setTimeout(cleanup, 30000);
       }, 150);
     });
