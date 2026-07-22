@@ -281,28 +281,10 @@ export class AdmisionComponent implements OnInit {
     const fechaVigenciaFmt = `${dd}/${mm}/${yyyy}`;
     const fechaVigenciaEsc = fechaVigenciaFmt.replace(/\//g, '&#x2F;');
 
-    /**
-     * Estrategia principal: ventana off-screen. Chrome trata la ventana como un
-     * documento real y el driver de la ticketera (EPSON o cualquier otra)
-     * respeta el @page { size: 80mm X } correctamente. La ventana queda fuera
-     * del viewport (left=-9999) para que el usuario no la vea, y se auto-cierra
-     * cuando termina el dialogo de impresion (afterprint).
-     *
-     * Fallback: si el popup blocker del navegador bloquea window.open() (caso
-     * raro, ya que se invoca como respuesta directa a un click), usamos el
-     * iframe srcdoc como antes. Funciona bien para "Guardar como PDF" pero
-     * puede no respetar @page size en algunas ticketeras.
-     */
     const html = this.construirHtmlTicket(c, fechaVigenciaEsc);
-    const w = window.open('', 'ticket_credencial', 'width=320,height=500,left=-9999,top=0');
-    if (w) {
-      this.imprimirEnVentana(w, html);
-    } else {
-      this.imprimirEnIframe(html);
-    }
+    this.imprimirEnIframe(html);
   }
 
-  /** Construye el HTML completo del ticket. Reutilizado por ventana e iframe. */
   private construirHtmlTicket(c: CredencialResponse, fechaVigenciaEsc: string): string {
     return `<!DOCTYPE html>
 <html><head><title>Credencial ${c.usuario}</title>
@@ -381,50 +363,15 @@ export class AdmisionComponent implements OnInit {
 </body></html>`;
   }
 
-  /** Estrategia principal: ventana off-screen. Auto-imprime y auto-cierra. */
-  private imprimirEnVentana(w: Window, html: string): void {
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-
-    const aplicarTamano = () => {
-      const doc = w.document;
-      const hMm = Math.max(70, (doc.body.scrollHeight / (96 / 25.4)) + 20);
-      doc.documentElement.style.height = hMm + 'mm';
-      doc.body.style.height = hMm + 'mm';
-      const styleEl = doc.getElementById('ticket-style') as HTMLStyleElement | null;
-      if (styleEl?.textContent) {
-        styleEl.textContent = styleEl.textContent.replace(
-          /@page\s*\{[^}]*\}/,
-          `@page { size: 80mm ${hMm}mm; margin: 0; }`,
-        );
-      }
-      w.addEventListener('afterprint', () => w.close(), { once: true });
-      setTimeout(() => {
-        w.focus();
-        w.print();
-        // Fallback: si afterprint no se dispara (raro), cerramos a los 30s.
-        setTimeout(() => {
-          if (!w.closed) {
-            w.close();
-          }
-        }, 30000);
-      }, 150);
-    };
-    const r = w.document.readyState === 'complete' ? 16 : 300;
-    setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(aplicarTamano)), r);
-  }
-
-  /** Fallback: iframe srcdoc. Usado solo si window.open() es bloqueado. */
   private imprimirEnIframe(html: string): void {
     const iframe = document.createElement('iframe');
     iframe.setAttribute('aria-hidden', 'true');
     iframe.setAttribute('title', 'ticket-impresion');
     iframe.style.position = 'fixed';
-    iframe.style.left = '-9999px';
-    iframe.style.top = '0';
-    iframe.style.width = '320px';
-    iframe.style.height = '600px';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
     iframe.style.border = '0';
 
     const cleanup = () => {
@@ -447,7 +394,7 @@ export class AdmisionComponent implements OnInit {
       const styleEl = doc.getElementById('ticket-style') as HTMLStyleElement | null;
       if (styleEl?.textContent) {
         styleEl.textContent = styleEl.textContent.replace(
-          /@page\\s*\\{[^}]*\\}/,
+          /@page\s*\{[^}]*\}/,
           `@page { size: 80mm ${hMm}mm; margin: 0; }`,
         );
       }
