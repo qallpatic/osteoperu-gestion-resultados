@@ -25,7 +25,7 @@
       <thead>
         <tr>
           <th class="sortable"
-              [class.sort-active]="ordenarPor() === 'dni'"
+              [class.sort-active]="ordenarPor() === 'dni'" 
               (click)="ordenar('dni')">
             DNI<i class="fas sort-ico"
               [class.fa-sort]="ordenarPor() !== 'dni'"
@@ -207,7 +207,7 @@
         <div class="archivos-edit__rows">
           @for (a of editArchivosArchivos(); track a.id) {
             <div class="archivos-edit__row" [class.is-off]="!a.marcadoActivo">
-              <div class="archivos-edit__name" [title]="a.motivoEliminacion || null">
+              <div class="archivos-edit__name" [title]="a.motivoEliminacion || ''">
                 <i class="fas"
                    [class.fa-file-pdf]="a.tipoMedio === 'PDF'"
                    [class.fa-file-image]="a.tipoMedio === 'IMAGEN'"
