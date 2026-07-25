@@ -21,8 +21,6 @@ import pe.com.qallpatic.osteoperu.compartido.util.NombreParser;
 import pe.com.qallpatic.osteoperu.compartido.util.UtilTelefono;
 import pe.com.qallpatic.osteoperu.config.AppProperties;
 import pe.com.qallpatic.osteoperu.config.SmsProperties;
-import pe.com.qallpatic.osteoperu.integracion.reniec.ClienteReniec;
-import pe.com.qallpatic.osteoperu.integracion.reniec.DatosReniec;
 import pe.com.qallpatic.osteoperu.pacientes.entity.Paciente;
 import pe.com.qallpatic.osteoperu.pacientes.repository.PacienteRepository;
 import pe.com.qallpatic.osteoperu.resultados.dto.PacienteResumenProj;
@@ -53,7 +51,6 @@ public class AdmisionServiceImpl implements AdmisionService {
 	private final PacienteRepository pacienteRepository;
 	private final ResultadoCargaRepository resultadoCargaRepository;
 	private final PasswordEncoder passwordEncoder;
-	private final ClienteReniec clienteReniec;
 	private final SmsService smsService;
 	private final SmsProperties smsProperties;
 	private final AppProperties appProperties;
@@ -96,12 +93,7 @@ public class AdmisionServiceImpl implements AdmisionService {
 					"El DNI " + dni + " ya tiene una cuenta activa. Anulela antes de regenerar.");
 		}
 
-		String nombreCompleto = (solicitud.nombre() != null && !solicitud.nombre().isBlank())
-				? solicitud.nombre().trim()
-				: clienteReniec.consultar(dni).map(DatosReniec::nombreCompleto)
-						.orElse(existente != null ? existente.getNombre() : null);
-
-		NombreParser parser = NombreParser.parsear(nombreCompleto);
+		NombreParser parser = NombreParser.parsear(solicitud.nombre().trim());
 
 		String clave = GeneradorCodigos.generar(6).toUpperCase();
 

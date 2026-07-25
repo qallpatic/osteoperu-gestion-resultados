@@ -105,7 +105,7 @@ export class UploadComponent implements OnInit {
     input.value = this.formatPhoneDisplay(this.phone);
   }
 
-  /** Handler de input para el DNI: permite solo digitos y limita a 12 caracteres. */
+  /** Handler de input para el DNI: permite solo letras y numeros (mayusculas) y limita a 12 caracteres. */
   onDniInput(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.dni = sanitizarDocumento(input.value, 12);
@@ -113,13 +113,11 @@ export class UploadComponent implements OnInit {
   }
 
   phoneValid(): boolean {
-    // Telefono opcional: vacio es valido, cuando hay valor exige 9 digitos.
     return this.phone === '' || /^\d{9}$/.test(this.phone);
   }
 
   dniValid(): boolean {
-    // DNI peruano = 8 digitos. Carnet de Extranjeria (CE) = 9 a 12.
-    return /^\d{8,12}$/.test(this.dni);
+    return /^[A-Z0-9]{8,12}$/.test(this.dni);
   }
 
   /** El mensaje es obligatorio (los adjuntos pueden ir por link externo). */

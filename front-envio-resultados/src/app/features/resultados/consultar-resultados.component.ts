@@ -23,6 +23,7 @@ interface ConfirmacionPendiente {
   variante: 'warn' | 'danger';
   /** Si true, el dialog muestra un input de texto y emite su valor en (confirmar). */
   conMotivo?: boolean;
+  motivoObligatorio?: boolean;
   motivoPlaceholder?: string;
   motivoInicial?: string;
   /** Recibe el motivo tipeado (o undefined si no hay input). */
@@ -271,7 +272,8 @@ export class ConsultarResultadosComponent implements OnInit {
       textoCancelar: 'Cancelar',
       variante: 'warn',
       conMotivo: true,
-      motivoPlaceholder: 'Motivo (opcional · queda en la bitacora)',
+      motivoObligatorio: true,
+      motivoPlaceholder: 'Describe el motivo (obligatorio · queda en la bitacora)',
       motivoInicial: this.ultimoMotivoUsado,
       onAceptar: (motivo) => {
         this.aplicarToggle(a, false);

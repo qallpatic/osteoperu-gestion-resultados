@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
+import java.util.ArrayList;
 
 @Service
 @Slf4j
@@ -213,11 +214,12 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 	/**
 	 * Marca como inactivos los archivos solicitados. Devuelve cuantos efectivamente
 	 * pasaron de activo a inactivo. Lanza 400 si la operacion dejaria la cabecera
-	 * sin archivos activos.
+	 * sin archivos activos o si algun archivo a desactivar llega sin motivo.
 	 *
-	 * <p>Cada archivo desactivado lleva su motivo individual capturado en el
-	 * dialog de confirmacion (frontend). Si el operador lo dejo vacio, se
-	 * persiste como null (motivo opcional, no obligatorio).
+	 * <p>Cada archivo desactivado debe llevar su motivo individual (obligatorio,
+	 * queda en la bitacora). Si el operador lo deja vacio en el dialog, el
+	 * frontend bloquea el envio; el backend valida de nuevo como defensa en
+	 * profundidad para llamadas que no pasen por la UI.
 	 */
 	private int aplicarDesactivaciones(ResultadoCarga carga, List<Long> ids,
 			Map<Long, String> motivosPorArchivo, String actor, LocalDateTime ahora) {
@@ -230,6 +232,7 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 					"No se puede desactivar: la cabecera debe conservar al menos un archivo activo.");
 		}
 
+		List<Long> sinMotivo = new ArrayList<>();
 		int aplicados = 0;
 		for (ResultadoArchivo a : carga.getArchivos()) {
 			if (ids.contains(a.getIdResultadoArchivo()) && (a.getEstado() == null || a.getEstado() != 0)) {
@@ -237,12 +240,20 @@ public class ConsultaResultadoServiceImpl implements ConsultaResultadoService {
 				String motivoFinal = motivoIndividual != null && !motivoIndividual.isBlank()
 						? motivoIndividual.trim()
 						: null;
+				if (motivoFinal == null) {
+					sinMotivo.add(a.getIdResultadoArchivo());
+					continue;
+				}
 				a.setEstado(0);
 				a.setFechaEliminacion(ahora);
 				a.setUsuarioEliminacion(actor);
 				a.setMotivoEliminacion(motivoFinal);
 				aplicados++;
 			}
+		}
+		if (!sinMotivo.isEmpty()) {
+			throw new SolicitudInvalidaException(
+					"Falta el motivo de desactivacion para los archivos: " + sinMotivo);
 		}
 		return aplicados;
 	}

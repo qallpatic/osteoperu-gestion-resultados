@@ -76,6 +76,8 @@ export class AdmisionComponent implements OnInit {
   readonly regenerando = signal(false);
   /** true = alta de un DNI nuevo (DNI editable). */
   readonly nuevoUsuario = signal(false);
+  /** Marca el campo "Nombre completo" como tocado al perder foco o al intentar enviar. */
+  readonly genNombreTocado = signal(false);
 
   // Credencial resultante
   readonly credencial = signal<CredencialResponse | null>(null);
@@ -138,6 +140,7 @@ export class AdmisionComponent implements OnInit {
     this.enviarSms = !!p.telefono;
     this.regenerando.set(p.estadoCuenta === 'ANULADO');
     this.nuevoUsuario.set(false);
+    this.genNombreTocado.set(false);
     this.credencial.set(null);
     this.genOpen.set(true);
   }
@@ -150,6 +153,7 @@ export class AdmisionComponent implements OnInit {
     this.enviarSms = false;
     this.regenerando.set(false);
     this.nuevoUsuario.set(true);
+    this.genNombreTocado.set(false);
     this.credencial.set(null);
     this.genOpen.set(true);
   }
@@ -159,7 +163,20 @@ export class AdmisionComponent implements OnInit {
   }
 
   dniGenValido(): boolean {
-    return /^\d{8,12}$/.test(this.genDni.trim());
+    return /^[A-Z0-9]{8,12}$/.test(this.genDni.trim());
+  }
+
+  nombreGenValido(): boolean {
+    return this.genNombre.trim().length > 0;
+  }
+
+  /** Muestra el error del nombre solo después de que el operador interactuó o intentó enviar. */
+  mostrarErrorNombre(): boolean {
+    return this.genNombreTocado() && !this.nombreGenValido();
+  }
+
+  onGenNombreBlur(): void {
+    this.genNombreTocado.set(true);
   }
 
   /**
@@ -217,14 +234,20 @@ export class AdmisionComponent implements OnInit {
       return;
     }
     if (!this.dniGenValido()) {
+      this.genNombreTocado.set(true);
       this.notice.set({ type: 'error', text: 'Ingresa un documento válido de 8 a 12 dígitos.' });
+      return;
+    }
+    if (!this.nombreGenValido()) {
+      this.genNombreTocado.set(true);
+      this.notice.set({ type: 'error', text: 'El nombre completo es obligatorio.' });
       return;
     }
     this.generando.set(true);
     this.srv
       .generarUsuario({
         dni: this.genDni,
-        nombre: this.genNombre.trim() ? aFormatoCanonico(this.genNombre) : undefined,
+        nombre: aFormatoCanonico(this.genNombre),
         telefono: this.genTelefono.trim() || undefined,
         enviarSms: this.enviarSms,
       })

@@ -50,20 +50,21 @@ public final class UtilTelefono {
 
 	/**
 	 * Valida un documento de identidad peruano: DNI (8 digitos) o Carnet de
-	 * Extranjeria (CE, 9 a 12 digitos). Usar en endpoints donde se aceptan
-	 * extranjeros (carga de resultados, alta de cuenta del paciente).
+	 * Extranjeria (CE, 9 a 12 caracteres alfanumericos en mayusculas). Usar en
+	 * endpoints donde se aceptan extranjeros (carga de resultados, alta de
+	 * cuenta del paciente).
 	 */
 	public static String validarDocumentoIdentidad(String doc) {
 		if (doc == null || doc.isBlank()) {
 			throw new SolicitudInvalidaException("El documento de identidad es obligatorio.");
 		}
-		String clean = doc.replaceAll("\\D", "");
+		String clean = doc.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
 		int len = clean.length();
 		boolean esDni = len == 8;
 		boolean esCe = len >= 9 && len <= 12;
 		if (!esDni && !esCe) {
 			throw new SolicitudInvalidaException(
-					"Documento invalido. DNI debe tener 8 digitos y CE entre 9 y 12.");
+					"Documento invalido. DNI debe tener 8 digitos y CE entre 9 y 12 caracteres alfanumericos.");
 		}
 		return clean;
 	}

@@ -165,14 +165,15 @@ public class ServicioRecuperacionPasswordImpl implements ServicioRecuperacionPas
 	}
 
 	/**
-	 * Devuelve los ultimos 4 digitos enmascarados con 5 bullets. Acepta
-	 * documentos de 4+ digitos; si son menos, devuelve solo bullets.
+	 * Devuelve los ultimos 4 caracteres enmascarados con 5 bullets. Acepta
+	 * documentos de 4+ caracteres alfanumericos; si son menos, devuelve solo
+	 * los caracteres disponibles precedidos de los bullets.
 	 */
 	static String ofuscar(String doc) {
 		if (doc == null) {
 			return "•••••";
 		}
-		String limpio = doc.replaceAll("\\D", "");
+		String limpio = doc.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
 		if (limpio.length() < 4) {
 			return "•••••" + limpio;
 		}

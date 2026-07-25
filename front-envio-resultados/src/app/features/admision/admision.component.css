@@ -401,6 +401,14 @@
   cursor: text;
 }
 
+.field__error {
+  display: block;
+  margin-top: 4px;
+  color: var(--danger);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .check {
   display: inline-flex;
   align-items: center;

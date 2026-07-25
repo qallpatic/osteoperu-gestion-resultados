@@ -176,7 +176,7 @@
       <h2 class="modal__title">Editar archivos</h2>
       <p class="modal__sub">
         Desactiva los archivos equivocados o sube archivos nuevos al mismo visor.
-        El motivo se pide al desactivar.
+        Al desactivar es obligatorio indicar el motivo (queda en la bitácora).
       </p>
 
       @if (toastExito(); as t) {
@@ -289,7 +289,8 @@
     [textoCancelar]="c.textoCancelar"
     [textoAceptar]="c.textoAceptar"
     [variante]="c.variante"
-    [inputLabel]="c.conMotivo ? 'Motivo (opcional, queda en la bitácora)' : ''"
+    [inputLabel]="c.conMotivo ? 'Motivo' : ''"
+    [inputObligatorio]="!!c.conMotivo && !!c.motivoObligatorio"
     [inputPlaceholder]="c.motivoPlaceholder ?? ''"
     [inputValorInicial]="c.motivoInicial ?? ''"
     (confirmar)="ejecutarConfirmacion($event)"

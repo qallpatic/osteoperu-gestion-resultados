@@ -115,7 +115,8 @@ public class ConsultaResultadoController {
 					+ "arrepiente y subir archivos nuevos al mismo visor (/r/{token}). "
 					+ "Soft-delete: los archivos desactivados no se borran fisicamente y el visor "
 					+ "deja de mostrarlos. El SMS solo se reencola si reenviarSms=true. "
-					+ "motivosPorArchivoJson es JSON {idArchivo: motivoIndividual} (opcional, sin motivo general).")
+					+ "motivosPorArchivoJson es JSON {idArchivo: motivoIndividual} y es OBLIGATORIO "
+					+ "para cada archivo desactivado (sin motivo general).")
 	@PutMapping(value = "/{id}/archivos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<RespuestaApi<ResultadoDetalleResponse>> actualizarArchivos(
 			@PathVariable Long id,

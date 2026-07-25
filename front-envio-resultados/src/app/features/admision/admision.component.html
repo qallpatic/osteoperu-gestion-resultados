@@ -144,11 +144,15 @@
   </div>
   }
   <div class="field">
-    <label>Nombre completo
-      <small>(si lo dejas vacío se toma de RENIEC)</small>
+    <label>Nombre completo <b class="req">*</b>
+      <small>(lo autocompletamos desde RENIEC si es posible)</small>
       @if (consultandoReniec()) { <i class="fas fa-spinner fa-spin" title="Consultando RENIEC..."></i> }
     </label>
-    <input [(ngModel)]="genNombre" maxlength="250" placeholder="NOMBRES APELLIDO_P APELLIDO_M" />
+    <input [(ngModel)]="genNombre" (blur)="onGenNombreBlur()" maxlength="250" required
+      placeholder="NOMBRES APELLIDO_P APELLIDO_M" />
+    @if (mostrarErrorNombre()) {
+    <small class="field__error">El nombre es obligatorio.</small>
+    }
   </div>
   <div class="field">
     <label>Teléfono (para enviar la credencial por SMS)</label>
@@ -162,7 +166,7 @@
   }
   <div class="modal__actions">
     <button class="btn btn--ghost" (click)="cerrarGenerar()">Cancelar</button>
-    <button class="btn btn--primary" [disabled]="generando() || !dniGenValido()" (click)="generar()">
+    <button class="btn btn--primary" [disabled]="generando() || !dniGenValido() || !nombreGenValido()" (click)="generar()">
       <i class="fas" [class.fa-id-card]="!generando()" [class.fa-spinner]="generando()"
         [class.fa-spin]="generando()"></i>
       {{ regenerando() ? 'Regenerar' : 'Generar' }}

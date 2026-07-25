@@ -28,9 +28,9 @@ export class RecuperarPasswordComponent {
   /** Errores de cliente (formato invalido, http). */
   error = signal('');
 
-  /** DNI (8 digitos) o CE (9-12 digitos). */
+  /** DNI (8 digitos) o CE (9-12 caracteres alfanumericos en mayusculas). */
   documentoValido(): boolean {
-    return /^\d{8,12}$/.test(this.documento.trim());
+    return /^[A-Z0-9]{8,12}$/.test(this.documento.trim());
   }
 
   enviar(): void {
@@ -42,7 +42,7 @@ export class RecuperarPasswordComponent {
 
     const doc = this.documento.trim();
     if (!this.documentoValido()) {
-      this.error.set('Ingresa un documento valido (DNI 8 digitos o CE 9-12).');
+      this.error.set('Ingresa un documento valido (DNI 8 digitos o CE 9-12 alfanumerico).');
       return;
     }
 
