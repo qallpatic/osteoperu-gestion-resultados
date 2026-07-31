@@ -125,3 +125,16 @@
   </div>
 </div>
 }
+
+<!-- Dialogo reutilizable: el DNI no tiene usuario creado en Admision -->
+@if (confirmacion(); as c) {
+  <app-confirm-dialog
+    [titulo]="c.titulo"
+    [mensaje]="c.mensaje"
+    [detalle]="c.detalle ?? ''"
+    [textoCancelar]="c.textoCancelar"
+    [textoAceptar]="c.textoAceptar"
+    [variante]="c.variante"
+    (confirmar)="cerrarDialogoSinUsuario()"
+    (cancelar)="cerrarDialogoSinUsuario()" />
+}

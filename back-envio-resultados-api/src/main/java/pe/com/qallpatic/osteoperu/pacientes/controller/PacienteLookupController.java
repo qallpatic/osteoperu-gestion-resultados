@@ -32,16 +32,16 @@ public class PacienteLookupController {
 	private final PacienteRepository pacienteRepository;
 
 	@Operation(summary = "Buscar paciente por DNI",
-			description = "Devuelve {dni, nombre, telefono} si el DNI esta registrado en PACIENTE, "
+			description = "Devuelve {dni, nombre, telefono, existe} si el DNI esta registrado en PACIENTE, "
 					+ "incluyendo cuentas anuladas (el operador puede estar reactivandolas). "
-					+ "Si no existe, devuelve 200 con nombre=null y telefono=null para que el front "
-					+ "caiga al fallback de RENIEC.")
+					+ "Si no existe, devuelve 200 con nombre=null, telefono=null y existe=false para que el front "
+					+ "caiga al fallback de RENIEC y muestre el dialogo de 'DNI/CE sin usuario creado'.")
 	@GetMapping("/buscar/{dni}")
 	public ResponseEntity<RespuestaApi<PacienteLookupResponse>> buscar(@PathVariable String dni) {
 		String d = UtilTelefono.validarDocumentoIdentidad(dni);
 		PacienteLookupResponse body = pacienteRepository.findByDni(d)
-				.map(p -> new PacienteLookupResponse(p.getDni(), p.getNombre(), p.getTelefono()))
-				.orElseGet(() -> new PacienteLookupResponse(d, null, null));
+				.map(p -> new PacienteLookupResponse(p.getDni(), p.getNombre(), p.getTelefono(), true))
+				.orElseGet(() -> new PacienteLookupResponse(d, null, null, false));
 		return ResponseEntity.ok(RespuestaApi.ok(body));
 	}
 }

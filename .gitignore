@@ -31,3 +31,6 @@ uploads/
 front-envio-resultados/dist/
 front-envio-resultados/node_modules/
 front-envio-resultados/.angular/
+
+#Platwright
+.playwright-mcp/

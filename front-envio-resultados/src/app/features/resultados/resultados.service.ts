@@ -108,12 +108,23 @@ export class ResultadosService {
   }
 
   /** Datos basicos del paciente registrado (nombre + telefono) para autocompletar la carga.
-   * Devuelve nombre=null y telefono=null si el DNI no existe en PACIENTE. */
-  buscarPaciente(dni: string): Observable<{ dni: string; nombre: string | null; telefono: string | null }> {
+   * Devuelve nombre=null y telefono=null si el DNI no existe en PACIENTE; en ese caso
+   * `usuarioExiste=false`. Cuando `usuarioExiste=true` el operador lo dio de alta en Admision. */
+  buscarPaciente(dni: string): Observable<{
+    dni: string;
+    nombre: string | null;
+    telefono: string | null;
+    usuarioExiste: boolean;
+  }> {
     return this.http
-      .get<RespuestaApi<{ dni: string; nombre: string | null; telefono: string | null }>>(
-        `${environment.apiBaseUrl}/api/pacientes/buscar/${encodeURIComponent(dni)}`,
-      )
+      .get<
+        RespuestaApi<{
+          dni: string;
+          nombre: string | null;
+          telefono: string | null;
+          usuarioExiste: boolean;
+        }>
+      >(`${environment.apiBaseUrl}/api/pacientes/buscar/${encodeURIComponent(dni)}`)
       .pipe(map((r) => r.data));
   }
 

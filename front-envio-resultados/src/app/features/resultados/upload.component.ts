@@ -4,6 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 
 import { ResultadosService } from './resultados.service';
 import { sanitizarDocumento } from '../../core/utils/util-documento';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
 
 interface PickedFile {
   file: File;
@@ -24,6 +25,17 @@ interface Confirmacion {
   nombrePdf: string | null;
 }
 
+/** Estado del dialogo de "el DNI no tiene usuario creado" (mismo patron que consultar-resultados).
+ *  No necesita callback: el dialogo es informativo y solo requiere que el operador lo cierre. */
+interface ConfirmacionSinUsuario {
+  titulo: string;
+  mensaje: string;
+  detalle?: string;
+  textoAceptar: string;
+  textoCancelar: string;
+  variante: 'warn' | 'danger';
+}
+
 /** Límite por archivo y tipos aceptados (deben coincidir con el backend). */
 const MAX_MB = 50;
 const MAX_BYTES = MAX_MB * 1024 * 1024;
@@ -31,7 +43,7 @@ const ACCEPTED = ['application/pdf', 'image/', 'video/'];
 
 @Component({
   selector: 'app-upload',
-  imports: [FormsModule],
+  imports: [FormsModule, ConfirmDialogComponent],
   templateUrl: './upload.component.html',
   styleUrl: './upload.component.css',
 })
@@ -67,6 +79,16 @@ export class UploadComponent implements OnInit {
   /** Datos del diálogo de confirmación cuando el nombre del PDF no coincide con RENIEC. */
   pendiente = signal<Confirmacion | null>(null);
 
+  /**
+   * null  = aun no se consulto el DNI (estado inicial)
+   * true  = el DNI esta en la tabla PACIENTE (el operador lo dio de alta en Admision)
+   * false = el DNI NO esta en PACIENTE: ya se mostro (o se va a mostrar) el dialogo de advertencia
+   */
+  pacienteExiste = signal<boolean | null>(null);
+
+  /** Dialogo reutilizable cuando el DNI no tiene usuario creado. */
+  readonly confirmacion = signal<ConfirmacionSinUsuario | null>(null);
+
   ngOnInit(): void {
     if (this.prefill) {
       this.dni = this.prefill.dni ?? '';
@@ -74,6 +96,8 @@ export class UploadComponent implements OnInit {
       this.phone = this.normalizarTelefono(this.prefill.telefono);
       this.ultimoDniConsultado = this.dni; // evita re-consultar RENIEC de inmediato
       this.dniPrefill = this.dni;
+      // La campanita solo lista pacientes registrados en Admision, ya tienen fila en PACIENTE.
+      this.pacienteExiste.set(true);
     }
   }
 
@@ -175,8 +199,12 @@ export class UploadComponent implements OnInit {
               if (p.telefono) {
                 this.phone = this.normalizarTelefono(p.telefono);
               }
+              this.procesarExistencia(p.usuarioExiste);
             },
-            error: () => this.buscandoNombre.set(false),
+            error: () => {
+              this.buscandoNombre.set(false);
+              this.procesarExistencia(p.usuarioExiste);
+            },
           });
           return;
         }
@@ -187,9 +215,31 @@ export class UploadComponent implements OnInit {
         if (p.telefono) {
           this.phone = this.normalizarTelefono(p.telefono);
         }
+        this.procesarExistencia(p.usuarioExiste);
       },
       error: () => this.buscandoNombre.set(false),
     });
+  }
+
+  /**
+   * Si el DNI no existe en PACIENTE, muestra el dialogo de advertencia apenas
+   * se conoce el resultado (en el blur del campo DNI), en vez de esperar a
+   * que el operador termine de llenar todo y pulse "Enviar resultados".
+   * El dialogo es solo informativo: el operador puede cerrarlo y continuar.
+   */
+  private procesarExistencia(usuarioExiste: boolean): void {
+    this.pacienteExiste.set(usuarioExiste);
+    if (!usuarioExiste) {
+      this.confirmacion.set({
+        titulo: 'DNI/CE sin usuario creado',
+        mensaje: `El documento ${this.dni} no tiene un usuario creado en Admisión.`,
+        detalle:
+          'Si continúas, los resultados se cargarán y se enviará el SMS al paciente, pero no podrá acceder al portal hasta que se le genere una cuenta desde Gestión de usuarios / Admisión.',
+        textoAceptar: 'Entendido',
+        textoCancelar: 'Cerrar',
+        variante: 'warn',
+      });
+    }
   }
 
   canSend(): boolean {
@@ -281,6 +331,8 @@ export class UploadComponent implements OnInit {
             return;
           }
           this.pendiente.set(null);
+          this.pacienteExiste.set(null);
+          this.ultimoDniConsultado = '';
           this.notice.set({
             type: 'ok',
             text: `Resultados enviados al paciente. Se generó el link y se encoló el SMS (${res.smsStatus}).`,
@@ -293,6 +345,10 @@ export class UploadComponent implements OnInit {
           this.notice.set({ type: 'error', text: this.errorMessage(err) });
         },
       });
+  }
+
+  cerrarDialogoSinUsuario(): void {
+    this.confirmacion.set(null);
   }
 
   confirmarCarga(): void {
