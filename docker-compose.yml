@@ -13,7 +13,7 @@ services:
   backend:
     build: ./back-envio-resultados-api
     image: osteoperu/back-resultados:${TAG:-latest}
-    container_name: osteoperu-backend
+    container_name: osteoperu-backend-dev
     restart: unless-stopped
     # Mapeo del puerto al host. En prod se quita via docker-compose.prod.yml
     # (el backend queda accesible solo desde osteoperu-frontend dentro de la red).
@@ -56,7 +56,7 @@ services:
     # y el ng build dentro de su propio multi-stage).
     build: ./front-envio-resultados
     image: osteoperu/front-resultados:${TAG:-latest}
-    container_name: osteoperu-frontend
+    container_name: osteoperu-frontend-dev
     restart: unless-stopped
     # Acceso directo sin NPM: http://localhost:6060/resultados/
     # Acceso por subdominio: https://osteoperu-dev.qallpatic.com/resultados/ (via NPM)
