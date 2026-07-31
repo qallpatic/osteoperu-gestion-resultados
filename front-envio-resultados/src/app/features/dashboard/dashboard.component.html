@@ -102,12 +102,11 @@
         <span class="chart__sub">Cantidad de cabeceras creadas dentro del rango</span>
       </header>
       <div class="chart__body" [class.chart__body--loading]="cargando() && data()">
-        @if (!data()) {
+        @if (esPrimerLoad()) {
           <div class="chart__skel"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
         } @else {
           <canvas
             baseChart
-            #chartRes
             [type]="'bar'"
             [data]="chartResultados"
             [options]="chartOptions">
@@ -127,12 +126,11 @@
         <span class="chart__sub">Curva de crecimiento de la base de usuarios</span>
       </header>
       <div class="chart__body" [class.chart__body--loading]="cargando() && data()">
-        @if (!data()) {
+        @if (esPrimerLoad()) {
           <div class="chart__skel"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
         } @else {
           <canvas
             baseChart
-            #chartUsu
             [type]="'line'"
             [data]="chartUsuarios"
             [options]="chartOptions">

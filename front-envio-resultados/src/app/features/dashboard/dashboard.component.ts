@@ -1,9 +1,10 @@
-import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { BaseChartDirective } from 'ng2-charts';
 import { NgChartsModule } from 'ng2-charts';
-import type { ChartConfiguration, ChartData, ChartOptions } from 'chart.js';
+import { Subject, debounceTime, interval } from 'rxjs';
+import type { ChartData, ChartOptions } from 'chart.js';
 
 import { DashboardService } from './dashboard.service';
 import { DashboardResumen } from './dashboard.models';
@@ -17,9 +18,9 @@ type Preset = '7d' | '30d' | '90d' | '365d';
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
 })
-export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
+export class DashboardComponent implements OnInit {
   private readonly srv = inject(DashboardService);
-  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly cargando = signal(false);
   readonly error = signal<string | null>(null);
@@ -35,21 +36,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Ultima peticion en vuelo; si llega otra, se descarta para no pintar datos viejos. */
   private peticionSeq = 0;
 
-  onDesde(event: Event): void {
-    const v = (event.target as HTMLInputElement).value;
-    if (v) {
-      this.desde.set(v);
-      this.preset.set('30d');
-    }
-  }
-
-  onHasta(event: Event): void {
-    const v = (event.target as HTMLInputElement).value;
-    if (v) {
-      this.hasta.set(v);
-      this.preset.set('30d');
-    }
-  }
+  /** Stream para auto-aplicar el rango tras un cambio manual en los inputs. */
+  private readonly rangoCambiado$ = new Subject<void>();
 
   readonly rangoTexto = computed(() => {
     const d = this.data();
@@ -58,6 +46,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     return `${d.desde} → ${d.hasta}`;
   });
+
+  /** Mientras data es null y se esta cargando, mostramos un spinner "primer load". */
+  readonly esPrimerLoad = computed(() => this.cargando() && !this.data());
 
   /**
    * Opciones globales para los graficos. Animacion de 300ms (vs 1000ms por defecto)
@@ -92,25 +83,53 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     },
   };
 
-  readonly chartResultados: ChartData<'bar'> = { labels: [], datasets: [] };
-  readonly chartUsuarios: ChartData<'line'> = { labels: [], datasets: [] };
+  /**
+   * Objetos ChartData: SE REEMPLAZAN COMPLETOS en cada update (no se mutan).
+   * Esto es lo que dispara ngOnChanges en BaseChartDirective y por lo tanto
+   * el repintado del canvas. Si mutaramos labels/datasets in-place, Angular
+   * no detectaria el cambio (misma referencia) y el grafico quedaria "pegado".
+   */
+  chartResultados: ChartData<'bar'> = { labels: [], datasets: [] };
+  chartUsuarios: ChartData<'line'> = { labels: [], datasets: [] };
 
-  /** Referencias a las directivas para forzar `chart.update('none')` sin animacion. */
-  @ViewChild('chartRes') private chartRes?: BaseChartDirective;
-  @ViewChild('chartUsu') private chartUsu?: BaseChartDirective;
+  constructor() {
+    // Auto-aplicar 400ms despues del ultimo cambio manual en Desde/Hasta.
+    this.rangoCambiado$
+      .pipe(debounceTime(400), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.aplicar(false));
+
+    // Auto-refresh cada 30s SOLO mientras el componente esta montado.
+    // Si el ADMIN navega a otra vista, el destroyRef corta la suscripcion.
+    interval(30_000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (!this.cargando() && this.data()) {
+          this.cargar();
+        }
+      });
+  }
 
   ngOnInit(): void {
     this.aplicarPreset('30d', false);
     this.cargar();
   }
 
-  ngAfterViewInit(): void {
-    // Nada que hacer aca; las directivas ya estan disponibles via @ViewChild.
+  onDesde(event: Event): void {
+    const v = (event.target as HTMLInputElement).value;
+    if (v) {
+      this.desde.set(v);
+      this.preset.set('30d');
+      this.rangoCambiado$.next();
+    }
   }
 
-  ngOnDestroy(): void {
-    // Marcamos seq para descartar respuestas tardias.
-    this.peticionSeq++;
+  onHasta(event: Event): void {
+    const v = (event.target as HTMLInputElement).value;
+    if (v) {
+      this.hasta.set(v);
+      this.preset.set('30d');
+      this.rangoCambiado$.next();
+    }
   }
 
   aplicarPreset(p: Preset, recargar = true): void {
@@ -126,7 +145,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  aplicar(): void {
+  /**
+   * Aplica el rango actual. Se usa tanto desde el boton "Aplicar" como desde
+   * el debounce automatico. Si la validacion falla, muestra error y NO consulta.
+   */
+  aplicar(origenManual = true): void {
     if (!this.desde() || !this.hasta()) {
       this.error.set('Selecciona un rango de fechas valido.');
       return;
@@ -135,12 +158,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.error.set('La fecha "desde" no puede ser posterior a "hasta".');
       return;
     }
-    this.preset.set('30d');
+    this.error.set(null);
     this.cargar();
   }
 
   cargar(): void {
-    // Evita requests duplicados si el usuario clickea varios presets rapido.
     if (this.cargando()) {
       return;
     }
@@ -151,15 +173,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       .resumen({ desde: this.desde() || undefined, hasta: this.hasta() || undefined })
       .subscribe({
         next: (d) => {
-          // Si una peticion posterior se inicio mientras esperabamos esta,
-          // descartamos la respuesta vieja para no pintar datos incorrectos.
           if (seq !== this.peticionSeq) {
             return;
           }
           this.data.set(d);
           this.aplicarDatosGraficos(d);
           this.cargando.set(false);
-          this.cdr.markForCheck();
         },
         error: (e: HttpErrorResponse) => {
           if (seq !== this.peticionSeq) {
@@ -176,49 +195,44 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Reemplaza los datos del chart. Cuando los @ViewChild ya estan disponibles
-   * (ngAfterViewInit), forzamos `chart.update('none')` para saltarnos la
-   * animacion y repintar al instante. Antes del primer ngAfterViewInit el
-   * ng2-charts detectara el cambio por si solo.
+   * Reemplaza los objetos chartResultados / chartUsuarios con referencias
+   * NUEVAS. ng2-charts detecta el cambio por referencia (ngOnChanges), copia
+   * los datos al chart existente via Object.assign y llama a chart.update()
+   * para repintar. No necesitamos @ViewChild ni llamadas manuales.
    */
   private aplicarDatosGraficos(d: DashboardResumen): void {
     const labels = d.serieResultadosPorDia.map((p) => p.fecha);
 
-    this.chartResultados.labels = labels;
-    this.chartResultados.datasets = [
-      {
-        data: d.serieResultadosPorDia.map((p) => p.total),
-        label: 'Resultados',
-        backgroundColor: 'rgba(18, 140, 126, 0.65)',
-        hoverBackgroundColor: 'rgba(7, 94, 84, 0.95)',
-        borderRadius: 6,
-        maxBarThickness: 28,
-      },
-    ];
+    this.chartResultados = {
+      labels,
+      datasets: [
+        {
+          data: d.serieResultadosPorDia.map((p) => p.total),
+          label: 'Resultados',
+          backgroundColor: 'rgba(18, 140, 126, 0.65)',
+          hoverBackgroundColor: 'rgba(7, 94, 84, 0.95)',
+          borderRadius: 6,
+          maxBarThickness: 28,
+        },
+      ],
+    };
 
-    this.chartUsuarios.labels = labels;
-    this.chartUsuarios.datasets = [
-      {
-        data: d.serieUsuariosPorDia.map((p) => p.total),
-        label: 'Usuarios',
-        borderColor: '#25d366',
-        backgroundColor: 'rgba(37, 211, 102, 0.15)',
-        pointBackgroundColor: '#075e54',
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        tension: 0.35,
-        fill: true,
-      },
-    ];
-
-    const c1 = this.chartRes?.chart;
-    const c2 = this.chartUsu?.chart;
-    if (c1 && typeof c1.update === 'function') {
-      c1.update('none');
-    }
-    if (c2 && typeof c2.update === 'function') {
-      c2.update('none');
-    }
+    this.chartUsuarios = {
+      labels,
+      datasets: [
+        {
+          data: d.serieUsuariosPorDia.map((p) => p.total),
+          label: 'Usuarios',
+          borderColor: '#25d366',
+          backgroundColor: 'rgba(37, 211, 102, 0.15)',
+          pointBackgroundColor: '#075e54',
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          tension: 0.35,
+          fill: true,
+        },
+      ],
+    };
   }
 
   private toIso(d: Date): string {
@@ -228,6 +242,3 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     return `${y}-${m}-${day}`;
   }
 }
-
-// type export para que TS no marque ChartConfiguration como unused en strict.
-export type _ChartConfigurationRef = ChartConfiguration;
