@@ -12,4 +12,7 @@ public interface ResultadoArchivoRepository extends JpaRepository<ResultadoArchi
 	Optional<ResultadoArchivo> findByIdArchivo(String idArchivo);
 
 	List<ResultadoArchivo> findByIdGenerado(String idGenerado);
+
+	/** Total de archivos activos (estado=1, sin soft delete). */
+	long countByEstado(Integer estado);
 }

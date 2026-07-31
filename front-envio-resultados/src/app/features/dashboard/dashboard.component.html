@@ -1,0 +1,149 @@
+<section class="page">
+  <header class="page__head">
+    <div>
+      <h1>Dashboard</h1>
+      <p>Metricas e indicadores de la plataforma. Visible solo para administradores.</p>
+    </div>
+    <span class="page__rango"><i class="fas fa-calendar-range"></i> {{ rangoTexto() || '—' }}</span>
+  </header>
+
+  @if (error(); as e) {
+    <div class="alert alert--err">
+      <i class="fas fa-circle-exclamation"></i>
+      <span>{{ e }}</span>
+    </div>
+  }
+
+  <!-- Filtros -->
+  <div class="filtros">
+    <div class="presets">
+      <button type="button" class="preset" [class.preset--on]="preset() === '7d'" (click)="aplicarPreset('7d')" [disabled]="cargando()">
+        7 dias
+      </button>
+      <button type="button" class="preset" [class.preset--on]="preset() === '30d'" (click)="aplicarPreset('30d')" [disabled]="cargando()">
+        30 dias
+      </button>
+      <button type="button" class="preset" [class.preset--on]="preset() === '90d'" (click)="aplicarPreset('90d')" [disabled]="cargando()">
+        90 dias
+      </button>
+      <button type="button" class="preset" [class.preset--on]="preset() === '365d'" (click)="aplicarPreset('365d')" [disabled]="cargando()">
+        1 año
+      </button>
+    </div>
+    <div class="rango">
+      <label class="rf">
+        <span>Desde</span>
+        <input type="date" [value]="desde()" (change)="onDesde($event)" [max]="hasta()" [disabled]="cargando()" />
+      </label>
+      <label class="rf">
+        <span>Hasta</span>
+        <input type="date" [value]="hasta()" (change)="onHasta($event)" [min]="desde()" [max]="today" [disabled]="cargando()" />
+      </label>
+      <button type="button" class="btn btn--primary" (click)="aplicar()" [disabled]="cargando()">
+        @if (cargando()) {
+          <i class="fas fa-spinner fa-spin"></i> Cargando...
+        } @else {
+          <i class="fas fa-magnifying-glass-chart"></i> Aplicar
+        }
+      </button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpis">
+    <article class="kpi kpi--brand">
+      <header>
+        <span class="kpi__label">Resultados cargados</span>
+        <span class="kpi__ico"><i class="fas fa-file-medical"></i></span>
+      </header>
+      <div class="kpi__value">{{ (data()?.totalResultados ?? 0) | number }}</div>
+      <p class="kpi__sub">Cabeceras vivas en la plataforma</p>
+    </article>
+
+    <article class="kpi kpi--green">
+      <header>
+        <span class="kpi__label">Usuarios registrados</span>
+        <span class="kpi__ico"><i class="fas fa-user-plus"></i></span>
+      </header>
+      <div class="kpi__value">{{ (data()?.totalUsuarios ?? 0) | number }}</div>
+      <p class="kpi__sub">
+        @if (data()?.picoUsuarios; as pico) {
+          Pico historico: <b>{{ pico.total | number }}</b> el {{ pico.fecha | date: 'dd/MM/yyyy' }}
+        } @else {
+          Sin registros suficientes para calcular un pico
+        }
+      </p>
+    </article>
+
+    <article class="kpi kpi--cyan">
+      <header>
+        <span class="kpi__label">Archivos subidos</span>
+        <span class="kpi__ico"><i class="fas fa-cloud-arrow-up"></i></span>
+      </header>
+      <div class="kpi__value">{{ (data()?.totalArchivos ?? 0) | number }}</div>
+      <p class="kpi__sub">Archivos activos (no eliminados)</p>
+    </article>
+
+    <article class="kpi kpi--amber">
+      <header>
+        <span class="kpi__label">Vistas de pacientes</span>
+        <span class="kpi__ico"><i class="fas fa-eye"></i></span>
+      </header>
+      <div class="kpi__value">{{ (data()?.totalVistas ?? 0) | number }}</div>
+      <p class="kpi__sub">Aperturas acumuladas del visor</p>
+    </article>
+  </div>
+
+  <!-- Graficos -->
+  <div class="charts">
+    <article class="chart">
+      <header class="chart__head">
+        <h2>Resultados cargados por dia</h2>
+        <span class="chart__sub">Cantidad de cabeceras creadas dentro del rango</span>
+      </header>
+      <div class="chart__body" [class.chart__body--loading]="cargando() && data()">
+        @if (!data()) {
+          <div class="chart__skel"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
+        } @else {
+          <canvas
+            baseChart
+            #chartRes
+            [type]="'bar'"
+            [data]="chartResultados"
+            [options]="chartOptions">
+          </canvas>
+          @if (cargando()) {
+            <div class="chart__overlay" aria-label="Actualizando">
+              <i class="fas fa-spinner fa-spin"></i>
+            </div>
+          }
+        }
+      </div>
+    </article>
+
+    <article class="chart">
+      <header class="chart__head">
+        <h2>Usuarios registrados por dia</h2>
+        <span class="chart__sub">Curva de crecimiento de la base de usuarios</span>
+      </header>
+      <div class="chart__body" [class.chart__body--loading]="cargando() && data()">
+        @if (!data()) {
+          <div class="chart__skel"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
+        } @else {
+          <canvas
+            baseChart
+            #chartUsu
+            [type]="'line'"
+            [data]="chartUsuarios"
+            [options]="chartOptions">
+          </canvas>
+          @if (cargando()) {
+            <div class="chart__overlay" aria-label="Actualizando">
+              <i class="fas fa-spinner fa-spin"></i>
+            </div>
+          }
+        }
+      </div>
+    </article>
+  </div>
+</section>
