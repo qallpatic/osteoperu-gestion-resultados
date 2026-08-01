@@ -48,7 +48,7 @@ export class MainLayoutComponent {
   readonly url = signal(this.router.url);
 
   private readonly items: MenuItem[] = [
-    { label: 'Inicio', icon: 'fa-gauge-high', route: '/dashboard', roles: [], disponible: true },
+    { label: 'Dashboard', icon: 'fa-chart-line', route: '/dashboard', roles: ['ADMIN'], disponible: true },
     {
       label: 'Resultados', icon: 'fa-file-medical', route: '/resultados',
       roles: ['ADMIN', 'RESULTADOS'], disponible: true,

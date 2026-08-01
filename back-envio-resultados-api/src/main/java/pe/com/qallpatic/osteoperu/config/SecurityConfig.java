@@ -78,8 +78,10 @@ public class SecurityConfig {
 						// Ruta propia para no abrir /api/resultados a ADMISION solo por este caso.
 						.requestMatchers(HttpMethod.GET, "/api/reniec/**").hasAnyRole("ADMIN", "RESULTADOS", "ADMISION")
 						// Protegido por rol (ADMIN incluido en cada modulo)
-						.requestMatchers("/api/admin/**").hasRole("ADMIN")
-						.requestMatchers("/api/resultados/**").hasAnyRole("ADMIN", "RESULTADOS")
+.requestMatchers("/api/admin/**").hasRole("ADMIN")
+					// Dashboard / metricas: solo ADMIN.
+					.requestMatchers("/api/dashboard/**").hasRole("ADMIN")
+					.requestMatchers("/api/resultados/**").hasAnyRole("ADMIN", "RESULTADOS")
 						// Admision: lectura abierta a RESULTADOS (solo listado de pacientes),
 						// escritura (generar/anular cuenta) restringida a ADMIN/ADMISION.
 						.requestMatchers(HttpMethod.GET, "/api/admision/pacientes").hasAnyRole("ADMIN", "RESULTADOS", "ADMISION")

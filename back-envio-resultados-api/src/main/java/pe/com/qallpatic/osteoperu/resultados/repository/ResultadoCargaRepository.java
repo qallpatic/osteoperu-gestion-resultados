@@ -8,9 +8,12 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import pe.com.qallpatic.osteoperu.compartido.proyeccion.ConteoPorFechaProjection;
 import pe.com.qallpatic.osteoperu.resultados.dto.PacienteResumenProj;
 import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoCarga;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface ResultadoCargaRepository
@@ -45,4 +48,26 @@ public interface ResultadoCargaRepository
 			countQuery = "SELECT COUNT(DISTINCT r.documentoIdentidad) FROM ResultadoCarga r "
 					+ "WHERE (:dni IS NULL OR r.documentoIdentidad LIKE CONCAT('%', :dni, '%'))")
 	Page<PacienteResumenProj> resumenPacientes(@Param("dni") String dni, Pageable pageable);
+
+	/** Total de cabeceras por estado (1 = vivas, 0 = eliminadas por soft delete). */
+	long countByEstado(Integer estado);
+
+	/** Total de cabeceras vivas creadas dentro de un rango. */
+	@Query("SELECT COUNT(r) FROM ResultadoCarga r "
+			+ "WHERE r.estado = :estado AND r.fechaHoraCarga BETWEEN :desde AND :hasta")
+	long countByFechaHoraCargaBetween(@Param("desde") LocalDateTime desde,
+			@Param("hasta") LocalDateTime hasta, @Param("estado") Integer estado);
+
+	/** Serie diaria de cabeceras vivas cargadas en un rango. */
+	@Query("SELECT FUNCTION('DATE', r.fechaHoraCarga) AS fecha, COUNT(r) AS total "
+			+ "FROM ResultadoCarga r "
+			+ "WHERE r.estado = :estado AND r.fechaHoraCarga BETWEEN :desde AND :hasta "
+			+ "GROUP BY FUNCTION('DATE', r.fechaHoraCarga) "
+			+ "ORDER BY FUNCTION('DATE', r.fechaHoraCarga) ASC")
+	List<ConteoPorFechaProjection> conteoPorFechaCarga(@Param("desde") LocalDateTime desde,
+			@Param("hasta") LocalDateTime hasta, @Param("estado") Integer estado);
+
+	/** Suma de vistas (CONTADOR_VISTAS) de cabeceras vivas. */
+	@Query("SELECT COALESCE(SUM(r.contadorVistas), 0) FROM ResultadoCarga r WHERE r.estado = :estado")
+	long sumContadorVistasByEstado(@Param("estado") Integer estado);
 }
