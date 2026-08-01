@@ -24,4 +24,22 @@ export class DashboardService {
       .get<RespuestaApi<DashboardResumen>>(`${this.base}/resumen`, { params })
       .pipe(map((r) => r.data));
   }
+
+  /**
+   * Descarga el .xlsx del dashboard para el mismo rango que {@link resumen}.
+   * Devuelve el blob crudo: el caller decide si lo guarda o lo embebe.
+   */
+  exportarExcel(p: DashboardParams = {}): Observable<Blob> {
+    let params = new HttpParams();
+    if (p.desde) {
+      params = params.set('desde', p.desde);
+    }
+    if (p.hasta) {
+      params = params.set('hasta', p.hasta);
+    }
+    return this.http.get(`${this.base}/resumen/exportar`, {
+      params,
+      responseType: 'blob',
+    });
+  }
 }

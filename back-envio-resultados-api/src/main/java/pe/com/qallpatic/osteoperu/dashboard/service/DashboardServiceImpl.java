@@ -11,6 +11,7 @@ import pe.com.qallpatic.osteoperu.compartido.proyeccion.PicoPorFechaProjection;
 import pe.com.qallpatic.osteoperu.dashboard.dto.DashboardResumenResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PicoRegistrosResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoSerieDiaria;
+import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorDashboardExcel;
 import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoArchivoRepository;
 import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoCargaRepository;
 import pe.com.qallpatic.osteoperu.seguridad.repository.UsuarioRepository;
@@ -127,6 +128,17 @@ public class DashboardServiceImpl implements DashboardService {
 		cache.put(key, new EntradaCacheDashboard(respuesta,
 				Instant.now().plusSeconds(CACHE_TTL_SEGUNDOS)));
 		return respuesta;
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public byte[] generarExcel(LocalDate desde, LocalDate hasta) {
+		// Reutilizamos obtenerResumen para beneficiarnos del cache en memoria.
+		// La normalizacion del rango (defaults / inversion / cap a 365 dias)
+		// ocurre una sola vez adentro, asi que el Excel sale consistente
+		// con lo que el ADMIN ve en pantalla.
+		DashboardResumenResponse resumen = obtenerResumen(desde, hasta);
+		return ExportadorDashboardExcel.generar(resumen);
 	}
 
 	/**
