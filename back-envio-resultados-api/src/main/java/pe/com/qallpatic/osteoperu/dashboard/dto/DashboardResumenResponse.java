@@ -1,5 +1,6 @@
 package pe.com.qallpatic.osteoperu.dashboard.dto;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -9,6 +10,10 @@ import java.util.List;
  * dentro del rango pedido (default: ultimos 30 dias) y se devuelven densas
  * (un punto por dia, con 0 si no hubo actividad) para que el front pueda
  * graficar sin re-armar el calendario.
+ *
+ * <p>Archivos y peso total consideran TODOS los registros (incluido soft-delete),
+ * porque en OSTEOPERU los blobs no se borran fisicamente: estado=0 mantiene
+ * la fila en BD y el archivo sigue ocupando espacio en el bucket.
  */
 public record DashboardResumenResponse(
 
@@ -16,6 +21,7 @@ public record DashboardResumenResponse(
 		long totalUsuarios,
 		long totalResultados,
 		long totalArchivos,
+		BigDecimal pesoTotalMb,
 		long totalVistas,
 
 		/** Pico historico de usuarios registrados en un solo dia. */

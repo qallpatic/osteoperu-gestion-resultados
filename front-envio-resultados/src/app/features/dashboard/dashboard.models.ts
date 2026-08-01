@@ -15,6 +15,8 @@ export interface DashboardResumen {
   totalUsuarios: number;
   totalResultados: number;
   totalArchivos: number;
+  /** Peso total acumulado en MB. Considera TODOS los archivos (incluso soft-deleted). */
+  pesoTotalMb: number;
   totalVistas: number;
   picoUsuarios: PicoRegistros | null;
   desde: string;

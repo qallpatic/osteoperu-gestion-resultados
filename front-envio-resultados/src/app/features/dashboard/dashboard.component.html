@@ -57,7 +57,7 @@
         <span class="kpi__ico"><i class="fas fa-file-medical"></i></span>
       </header>
       <div class="kpi__value">{{ (data()?.totalResultados ?? 0) | number }}</div>
-      <p class="kpi__sub">Cabeceras vivas en la plataforma</p>
+      <p class="kpi__sub">Resultados cargados en la plataforma</p>
     </article>
 
     <article class="kpi kpi--green">
@@ -77,11 +77,13 @@
 
     <article class="kpi kpi--cyan">
       <header>
-        <span class="kpi__label">Archivos subidos</span>
-        <span class="kpi__ico"><i class="fas fa-cloud-arrow-up"></i></span>
+        <span class="kpi__label">Almacenamiento usado</span>
+        <span class="kpi__ico"><i class="fas fa-hard-drive"></i></span>
       </header>
-      <div class="kpi__value">{{ (data()?.totalArchivos ?? 0) | number }}</div>
-      <p class="kpi__sub">Archivos activos (no eliminados)</p>
+      <div class="kpi__value">{{ pesoFormateado().texto }}</div>
+      <p class="kpi__sub">
+        {{ (data()?.totalArchivos ?? 0) | number }} archivos registrados
+      </p>
     </article>
 
     <article class="kpi kpi--amber">

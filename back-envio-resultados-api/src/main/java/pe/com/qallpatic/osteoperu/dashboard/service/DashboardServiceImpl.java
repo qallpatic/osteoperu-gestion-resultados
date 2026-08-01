@@ -91,7 +91,11 @@ public class DashboardServiceImpl implements DashboardService {
 		// ===== KPIs globales =====
 		long totalUsuarios = usuarioRepository.count();
 		long totalResultados = resultadoCargaRepository.countByEstado(ESTADO_VIVO);
-		long totalArchivos = resultadoArchivoRepository.countByEstado(ESTADO_VIVO);
+		// Archivos y peso: TODOS los registros (sin filtrar estado). En OSTEOPERU
+		// los archivos no se borran fisicamente — solo soft-delete, asi que el
+		// espacio en el bucket corresponde al total de filas en la tabla.
+		long totalArchivos = resultadoArchivoRepository.count();
+		java.math.BigDecimal pesoTotalMb = resultadoArchivoRepository.sumPesoMb();
 		long totalVistas = resultadoCargaRepository.sumContadorVistasByEstado(ESTADO_VIVO);
 
 		// ===== Pico historico de usuarios (top 1) =====
@@ -114,7 +118,8 @@ public class DashboardServiceImpl implements DashboardService {
 				desdeEf, hastaEf, totalResultados, totalUsuarios);
 
 		DashboardResumenResponse respuesta = new DashboardResumenResponse(
-				totalUsuarios, totalResultados, totalArchivos, totalVistas,
+				totalUsuarios, totalResultados, totalArchivos, pesoTotalMb,
+				totalVistas,
 				picoUsuarios,
 				desdeEf.toString(), hastaEf.toString(),
 				serieResultados, serieUsuarios);

@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -8,6 +8,8 @@ import type { ChartData, ChartOptions } from 'chart.js';
 
 import { DashboardService } from './dashboard.service';
 import { DashboardResumen } from './dashboard.models';
+import { FechaCortaPipe } from './pipes/fecha-corta.pipe';
+import { formatearPeso } from './util-format';
 
 type Preset = '7d' | '30d' | '90d' | '365d';
 
@@ -39,6 +41,9 @@ export class DashboardComponent implements OnInit {
   /** Stream para auto-aplicar el rango tras un cambio manual en los inputs. */
   private readonly rangoCambiado$ = new Subject<void>();
 
+  /** Formateo reactivo del peso total, recalculado cuando cambia la data. */
+  readonly pesoFormateado = computed(() => formatearPeso(this.data()?.pesoTotalMb ?? 0));
+
   readonly rangoTexto = computed(() => {
     const d = this.data();
     if (!d) {
@@ -53,6 +58,10 @@ export class DashboardComponent implements OnInit {
   /**
    * Opciones globales para los graficos. Animacion de 300ms (vs 1000ms por defecto)
    * para que el repintado al cambiar de rango se sienta inmediato.
+   *
+   * El eje X usa un callback que formatea "2026-07-27" a "27-Jul" para que el
+   * usuario identifique el punto rapidamente. Los labels originales (ISO) se
+   * conservan en data para que el tooltip pueda mostrar la fecha larga.
    */
   readonly chartOptions: ChartOptions<'line' | 'bar'> = {
     responsive: true,
@@ -68,12 +77,38 @@ export class DashboardComponent implements OnInit {
         borderColor: '#075e54',
         borderWidth: 1,
         padding: 10,
+        callbacks: {
+          title: (items) => {
+            const raw = items[0]?.label;
+            if (!raw) {
+              return '';
+            }
+            const d = new Date(`${raw}T00:00:00`);
+            if (Number.isNaN(d.getTime())) {
+              return raw;
+            }
+            return d.toLocaleDateString('es-PE', {
+              weekday: 'long',
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric',
+            });
+          },
+        },
       },
     },
     scales: {
       x: {
         grid: { display: false },
-        ticks: { color: '#6c757d', maxRotation: 0, autoSkipPadding: 16 },
+        ticks: {
+          color: '#6c757d',
+          maxRotation: 0,
+          autoSkipPadding: 16,
+          callback: function (this: { getLabelForValue: (v: number) => string }, value: string | number) {
+            const idx = typeof value === 'number' ? value : Number(value);
+            return fechaCortaPipeInstance.transform(this.getLabelForValue(idx));
+          },
+        },
       },
       y: {
         beginAtZero: true,
@@ -96,7 +131,7 @@ export class DashboardComponent implements OnInit {
     // Auto-aplicar 400ms despues del ultimo cambio manual en Desde/Hasta.
     this.rangoCambiado$
       .pipe(debounceTime(400), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.aplicar(false));
+      .subscribe(() => this.aplicar());
 
     // Auto-refresh cada 30s SOLO mientras el componente esta montado.
     // Si el ADMIN navega a otra vista, el destroyRef corta la suscripcion.
@@ -149,7 +184,7 @@ export class DashboardComponent implements OnInit {
    * Aplica el rango actual. Se usa tanto desde el boton "Aplicar" como desde
    * el debounce automatico. Si la validacion falla, muestra error y NO consulta.
    */
-  aplicar(origenManual = true): void {
+  aplicar(): void {
     if (!this.desde() || !this.hasta()) {
       this.error.set('Selecciona un rango de fechas valido.');
       return;
@@ -242,3 +277,9 @@ export class DashboardComponent implements OnInit {
     return `${y}-${m}-${day}`;
   }
 }
+
+// Closure local: el callback de ticks lo necesita para formatear labels.
+// Declarado fuera del componente para que sea accesible desde el callback
+// de Chart.js sin problemas de `this`. Es `pure: true` y no depende del
+// inyector de Angular, asi que se puede instanciar y usar libremente.
+const fechaCortaPipeInstance = new FechaCortaPipe();
