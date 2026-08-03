@@ -18,10 +18,13 @@ import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoAcumuladoMb;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoSerieDiaria;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoVistaDiaria;
 import pe.com.qallpatic.osteoperu.dashboard.dto.ReporteResultadoRow;
+import pe.com.qallpatic.osteoperu.dashboard.dto.ReporteUsuarioRow;
 import pe.com.qallpatic.osteoperu.dashboard.dto.ResultadoMasVistoResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.VistasDetalleResponse;
 import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorDashboardExcel;
 import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorReporteResultados;
+import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorReporteUsuarios;
+import pe.com.qallpatic.osteoperu.seguridad.entity.Usuario;
 import pe.com.qallpatic.osteoperu.resultados.repository.EventoVistaRepository;
 import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoArchivoRepository;
 import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoCargaRepository;
@@ -195,6 +198,38 @@ public class DashboardServiceImpl implements DashboardService {
 		log.info("Reporte resultados exportado. rango=[{}, {}], filas={}",
 				rango.desde(), rango.hasta(), reporte.size());
 		return ExportadorReporteResultados.generar(reporte, rango.desde().toString(), rango.hasta().toString());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public byte[] generarExcelUsuarios(LocalDate desde, LocalDate hasta) {
+		RangoNormalizado rango = normalizar(desde, hasta);
+		LocalDateTime desdeDt = rango.desde().atStartOfDay();
+		LocalDateTime hastaDt = rango.hasta().atTime(LocalTime.MAX);
+
+		List<Usuario> usuarios = usuarioRepository.listarParaReporte(desdeDt, hastaDt);
+		List<ReporteUsuarioRow> reporte = new ArrayList<>(usuarios.size());
+		for (Usuario u : usuarios) {
+			List<String> roles = u.getRoles().stream()
+					.map(r -> r.getNombre())
+					.sorted()
+					.toList();
+			reporte.add(new ReporteUsuarioRow(
+					u.getFechaCreacion(),
+					u.getUsuario(),
+					u.getNombre(),
+					u.getDni(),
+					u.getCorreo(),
+					roles,
+					u.isEstado(),
+					u.getFechaModificacion(),
+					u.getUsuarioCreacion(),
+					u.getUsuarioModificacion()));
+		}
+
+		log.info("Reporte usuarios exportado. rango=[{}, {}], filas={}",
+				rango.desde(), rango.hasta(), reporte.size());
+		return ExportadorReporteUsuarios.generar(reporte, rango.desde().toString(), rango.hasta().toString());
 	}
 
 	@Override

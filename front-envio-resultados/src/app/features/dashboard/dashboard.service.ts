@@ -63,6 +63,17 @@ export class DashboardService {
     });
   }
 
+  /**
+   * Descarga el .xlsx con el detalle plano de "Usuarios registrados" para el
+   * mismo rango que las demas vistas del dashboard.
+   */
+  exportarExcelUsuarios(p: DashboardParams = {}): Observable<Blob> {
+    return this.http.get(`${this.base}/usuarios/exportar`, {
+      params: this.toParams(p),
+      responseType: 'blob',
+    });
+  }
+
   /** Construye HttpParams a partir de los strings desde/hasta (omite campos null/undefined). */
   private toParams(p: DashboardParams): HttpParams {
     let params = new HttpParams();

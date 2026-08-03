@@ -47,4 +47,11 @@ public interface DashboardService {
 	 * y campos de eliminacion cuando aplica.
 	 */
 	byte[] generarExcelResultados(LocalDate desde, LocalDate hasta);
+
+	/**
+	 * Genera el .xlsx con el detalle plano de "Usuarios registrados" del rango.
+	 * Una fila por usuario con sus roles (CSV), datos de contacto y campos
+	 * de auditoria (creado por / modificado por).
+	 */
+	byte[] generarExcelUsuarios(LocalDate desde, LocalDate hasta);
 }

@@ -117,6 +117,21 @@ public class DashboardController {
 		return descargaExcel(bytes, "dashboard_resultados_" + sufijoRango(desde, hasta) + ".xlsx");
 	}
 
+	@Operation(
+			summary = "Exportar detalle de usuarios registrados a Excel",
+			description = "Genera un .xlsx con dos hojas (Resumen + Usuarios) listando TODOS los "
+					+ "usuarios del rango con sus roles (CSV), datos de contacto y campos de "
+					+ "auditoria (creado por / modificado por). Pensado para auditoria operativa del ADMIN.")
+	@GetMapping("/usuarios/exportar")
+	public ResponseEntity<byte[]> exportarUsuarios(
+			@Parameter(description = "Fecha de inicio del rango (inclusive). Default: hoy - 29 dias.")
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@Parameter(description = "Fecha de fin del rango (inclusive). Default: hoy. Maximo 365 dias.")
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+		byte[] bytes = dashboardService.generarExcelUsuarios(desde, hasta);
+		return descargaExcel(bytes, "dashboard_usuarios_" + sufijoRango(desde, hasta) + ".xlsx");
+	}
+
 	/**
 	 * Construye la respuesta HTTP para una descarga de .xlsx. Centraliza el
 	 * Content-Disposition UTF-8 y los headers (Content-Type, Content-Length).
