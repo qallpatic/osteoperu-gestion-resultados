@@ -48,7 +48,17 @@ export class MainLayoutComponent {
   readonly url = signal(this.router.url);
 
   private readonly items: MenuItem[] = [
-    { label: 'Dashboard', icon: 'fa-chart-line', route: '/dashboard', roles: ['ADMIN'], disponible: true },
+    {
+      label: 'Dashboard', icon: 'fa-chart-line', route: '/dashboard',
+      roles: ['ADMIN'], disponible: true,
+      children: [
+        { label: 'Resumen', icon: 'fa-gauge-high', route: '/dashboard/resumen' },
+        { label: 'Resultados cargados', icon: 'fa-file-medical', route: '/dashboard/resultados' },
+        { label: 'Usuarios registrados', icon: 'fa-user-plus', route: '/dashboard/usuarios' },
+        { label: 'Almacenamiento usado', icon: 'fa-hard-drive', route: '/dashboard/almacenamiento' },
+        { label: 'Vistas de pacientes', icon: 'fa-eye', route: '/dashboard/vistas' },
+      ],
+    },
     {
       label: 'Resultados', icon: 'fa-file-medical', route: '/resultados',
       roles: ['ADMIN', 'RESULTADOS'], disponible: true,
@@ -61,8 +71,8 @@ export class MainLayoutComponent {
     },
     { label: 'Administración', icon: 'fa-users-gear', route: '/admin', roles: ['ADMIN'], disponible: true },
     { label: 'Gestión de usuarios', icon: 'fa-id-badge', route: '/gestion-usuarios', roles: ['ADMIN', 'RESULTADOS', 'ADMISION'], disponible: true },
-    { label: 'Mis resultados', icon: 'fa-notes-medical', route: '/paciente', roles: ['ADMIN', 'PACIENTE'], disponible: true }
-    //{ label: 'Call Center', icon: 'fa-headset', route: '/callcenter', roles: ['ADMIN', 'CALLCENTER'], disponible: false },
+    { label: 'Mis resultados', icon: 'fa-notes-medical', route: '/paciente', roles: ['ADMIN', 'PACIENTE'], disponible: true },
+    { label: 'Call Center', icon: 'fa-headset', route: '/callcenter', roles: ['ADMIN', 'CALLCENTER'], disponible: false },
   ];
 
   readonly menu = computed(() => this.items.filter((m) => this.auth.tieneAlgunRol(m.roles)));

@@ -1,0 +1,39 @@
+<app-seccion-generica
+  titulo="Vistas de pacientes"
+  subtitulo="Aperturas acumuladas del visor por paciente y por resultado."
+  [rangoTexto]="rangoTexto()"
+  [cargando]="cargando()"
+  [error]="error()"
+  [desde]="desde()"
+  [hasta]="hasta()"
+  [today]="today"
+  [preset]="preset()"
+  (presetChange)="aplicarPreset($event)"
+  (aplicar)="aplicar()"
+  (desdeChange)="onDesde($event)"
+  (hastaChange)="onHasta($event)">
+
+  <div graficos>
+    <article class="placeholder">
+      <i class="fas fa-eye placeholder__ico"></i>
+      <h2>Detalle de vistas, proximamente</h2>
+      <p>
+        Esta pestana mostrara el top 10 de resultados mas vistos, la distribucion
+        de vistas por rangos (1, 2-5, 6-10, 11+) y la curva temporal.
+      </p>
+      <p>
+        Requiere queries adicionales sobre <code>RESULTADO_CARGA.CONTADOR_VISTAS</code>
+        (order-by desc + group-by buckets). Se entregara en una iteracion posterior.
+      </p>
+    </article>
+  </div>
+
+  <div leyendas>
+    <div class="kpi-grid">
+      <article class="kpi-mini">
+        <span class="kpi-mini__label">Vistas acumuladas</span>
+        <span class="kpi-mini__value">{{ (data()?.totalVistas ?? 0) | number }}</span>
+      </article>
+    </div>
+  </div>
+</app-seccion-generica>

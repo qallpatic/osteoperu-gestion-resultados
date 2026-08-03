@@ -1,0 +1,44 @@
+<app-seccion-generica
+  titulo="Almacenamiento usado"
+  subtitulo="Peso total y cantidad de archivos registrados en el sistema."
+  [rangoTexto]="rangoTexto()"
+  [cargando]="cargando()"
+  [error]="error()"
+  [desde]="desde()"
+  [hasta]="hasta()"
+  [today]="today"
+  [preset]="preset()"
+  (presetChange)="aplicarPreset($event)"
+  (aplicar)="aplicar()"
+  (desdeChange)="onDesde($event)"
+  (hastaChange)="onHasta($event)">
+
+  <div graficos>
+    <article class="placeholder">
+      <i class="fas fa-hard-drive placeholder__ico"></i>
+      <h2>Distribucion y detalle, proximamente</h2>
+      <p>
+        Esta pestana mostrara la distribucion por tipo de archivo (PDF, JPG, PNG, MP4, ...),
+        el top 10 de archivos mas pesados y la curva acumulada de almacenamiento en el tiempo.
+      </p>
+      <p>
+        Requiere queries adicionales sobre <code>RESULTADO_ARCHIVO</code>
+        (group-by tipoContenido, order-by pesoMb desc, suma acumulada).
+        Se entregara en una iteracion posterior.
+      </p>
+    </article>
+  </div>
+
+  <div leyendas>
+    <div class="kpi-grid">
+      <article class="kpi-mini">
+        <span class="kpi-mini__label">Peso total usado</span>
+        <span class="kpi-mini__value">{{ pesoFormateado().texto }}</span>
+      </article>
+      <article class="kpi-mini">
+        <span class="kpi-mini__label">Archivos registrados</span>
+        <span class="kpi-mini__value">{{ (data()?.totalArchivos ?? 0) | number }}</span>
+      </article>
+    </div>
+  </div>
+</app-seccion-generica>

@@ -1,0 +1,36 @@
+.placeholder {
+  grid-column: 1 / -1;
+  background: #fff; border: 1.5px dashed var(--border); border-radius: 16px;
+  padding: 48px 32px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.placeholder__ico {
+  width: 64px; height: 64px; border-radius: 16px; display: grid; place-items: center;
+  background: var(--brand-050); color: var(--brand-700); font-size: 1.8rem;
+}
+.placeholder h2 {
+  color: var(--brand-900); font-size: 1.15rem; font-weight: 700; margin: 0;
+}
+.placeholder p {
+  color: var(--muted); font-size: 0.9rem; max-width: 540px; margin: 0;
+}
+.placeholder code {
+  background: var(--brand-050); padding: 2px 6px; border-radius: 4px;
+  font-family: ui-monospace, monospace; font-size: 0.85em; color: var(--brand-700);
+}
+
+.kpi-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.kpi-mini {
+  background: #fff; border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px 18px; display: flex; flex-direction: column; gap: 4px;
+}
+.kpi-mini__label {
+  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--muted); font-weight: 700;
+}
+.kpi-mini__value {
+  font-size: 1.5rem; font-weight: 700; color: var(--brand-900);
+}

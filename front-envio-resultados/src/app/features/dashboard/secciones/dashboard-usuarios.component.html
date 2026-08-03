@@ -1,0 +1,94 @@
+<app-seccion-generica
+  titulo="Usuarios registrados"
+  subtitulo="Curva de registros por dia, distribucion por dia de la semana y crecimiento mensual."
+  [rangoTexto]="rangoTexto()"
+  [cargando]="cargando()"
+  [error]="error()"
+  [desde]="desde()"
+  [hasta]="hasta()"
+  [today]="today"
+  [preset]="preset()"
+  (presetChange)="aplicarPreset($event)"
+  (aplicar)="aplicar()"
+  (desdeChange)="onDesde($event)"
+  (hastaChange)="onHasta($event)">
+
+  <div graficos>
+    <article class="chart">
+      <header class="chart__head">
+        <h2>Registros por dia</h2>
+        <span class="chart__sub">Curva dentro del rango seleccionado</span>
+      </header>
+      <div class="chart__body" [class.chart__body--loading]="cargando() && data()">
+        @if (esPrimerLoad()) {
+          <div class="chart__skel"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
+        } @else {
+          <canvas baseChart
+            [type]="'line'"
+            [data]="chartUsuarios"
+            [options]="chartOptions"></canvas>
+          @if (cargando()) {
+            <div class="chart__overlay"><i class="fas fa-spinner fa-spin"></i></div>
+          }
+        }
+      </div>
+    </article>
+
+    <article class="chart">
+      <header class="chart__head">
+        <h2>Distribucion por dia de la semana</h2>
+        <span class="chart__sub">Suma total agrupada por Lun-Dom en el rango</span>
+      </header>
+      <div class="chart__body">
+        @if (data()) {
+          <canvas baseChart
+            [type]="'bar'"
+            [data]="chartSemanal"
+            [options]="chartOptions"></canvas>
+        }
+      </div>
+    </article>
+
+    <article class="chart chart--full">
+      <header class="chart__head">
+        <h2>Crecimiento mensual</h2>
+        <span class="chart__sub">Cantidad de registros agrupados por mes</span>
+      </header>
+      <div class="chart__body">
+        @if (data()) {
+          <canvas baseChart
+            [type]="'bar'"
+            [data]="chartMensual"
+            [options]="chartOptions"></canvas>
+        }
+      </div>
+    </article>
+  </div>
+
+  <div leyendas>
+    <div class="kpi-grid">
+      <article class="kpi-mini">
+        <span class="kpi-mini__label">Total en el rango</span>
+        <span class="kpi-mini__value">{{ totalEnRango() | number }}</span>
+      </article>
+      <article class="kpi-mini">
+        <span class="kpi-mini__label">Promedio diario</span>
+        <span class="kpi-mini__value">{{ promedioDiario() | number: '1.1-1' }}</span>
+      </article>
+      <article class="kpi-mini">
+        <span class="kpi-mini__label">Pico historico</span>
+        <span class="kpi-mini__value">
+          @if (data()?.picoUsuarios; as pico) {
+            {{ pico.total | number }} <small>{{ pico.fecha | date: 'dd/MM/yyyy' }}</small>
+          } @else {
+            —
+          }
+        </span>
+      </article>
+      <article class="kpi-mini">
+        <span class="kpi-mini__label">Total acumulado plataforma</span>
+        <span class="kpi-mini__value">{{ (data()?.totalUsuarios ?? 0) | number }}</span>
+      </article>
+    </div>
+  </div>
+</app-seccion-generica>
