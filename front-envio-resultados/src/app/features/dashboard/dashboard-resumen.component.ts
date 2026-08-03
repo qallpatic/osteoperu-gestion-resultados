@@ -16,7 +16,7 @@ type Preset = '7d' | '30d' | '90d' | '365d';
 /** Vista "Resumen" del modulo Dashboard (4 KPIs + 2 charts principales). */
 @Component({
   selector: 'app-dashboard-resumen',
-  imports: [NgChartsModule, DatePipe, DecimalPipe],
+  imports: [NgChartsModule, DatePipe, DecimalPipe, FechaCortaPipe],
   templateUrl: './dashboard-resumen.component.html',
   styleUrl: './dashboard-resumen.component.css',
 })
@@ -50,7 +50,9 @@ export class DashboardResumenComponent implements OnInit {
     if (!d) {
       return '';
     }
-    return `${d.desde} → ${d.hasta}`;
+    const desde = fechaCortaPipeInstance.transform(d.desde);
+    const hasta = fechaCortaPipeInstance.transform(d.hasta);
+    return `${desde} → ${hasta}`;
   });
 
   /** Mientras data es null y se esta cargando, mostramos un spinner "primer load". */

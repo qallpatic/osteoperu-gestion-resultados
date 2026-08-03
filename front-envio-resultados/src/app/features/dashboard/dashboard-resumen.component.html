@@ -82,7 +82,7 @@
       <div class="kpi__value">{{ (data()?.totalUsuarios ?? 0) | number }}</div>
       <p class="kpi__sub">
         @if (data()?.picoUsuarios; as pico) {
-          Pico historico: <b>{{ pico.total | number }}</b> el {{ pico.fecha | date: 'dd/MM/yyyy' }}
+          Pico historico: <b>{{ pico.total | number }}</b> el {{ pico.fecha | fechaCorta }}
         } @else {
           Sin registros suficientes para calcular un pico
         }

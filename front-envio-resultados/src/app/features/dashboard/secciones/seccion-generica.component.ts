@@ -26,11 +26,11 @@ export type PresetSeccion = '7d' | '30d' | '90d' | '365d';
           }
         </div>
         <div class="page__head-actions">
-          <ng-content select="[acciones]" />
           <span class="page__rango">
             <i class="fas fa-calendar-range"></i>
             {{ rangoTexto || '—' }}
           </span>
+          <ng-content select="[acciones]" />
         </div>
       </header>
 

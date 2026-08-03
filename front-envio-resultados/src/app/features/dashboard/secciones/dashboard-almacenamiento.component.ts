@@ -8,6 +8,7 @@ import type { ChartData, ChartOptions } from 'chart.js';
 
 import { DashboardService } from '../dashboard.service';
 import { AlmacenamientoDetalle, ArchivoPesado, DistribucionTipoContenido } from '../dashboard.models';
+import { FechaCortaPipe } from '../pipes/fecha-corta.pipe';
 import { SeccionGenericaComponent, PresetSeccion } from './seccion-generica.component';
 import { formatearPeso } from '../util-format';
 
@@ -20,7 +21,7 @@ import { formatearPeso } from '../util-format';
  */
 @Component({
   selector: 'app-dashboard-almacenamiento',
-  imports: [NgChartsModule, DatePipe, DecimalPipe, SeccionGenericaComponent],
+  imports: [NgChartsModule, DatePipe, DecimalPipe, FechaCortaPipe, SeccionGenericaComponent],
   templateUrl: './dashboard-almacenamiento.component.html',
   styleUrl: './dashboard-almacenamiento.component.css',
 })
@@ -43,7 +44,12 @@ export class DashboardAlmacenamientoComponent implements OnInit {
 
   readonly rangoTexto = computed(() => {
     const d = this.data();
-    return d ? `${d.desde} -> ${d.hasta}` : '';
+    if (!d) {
+      return '';
+    }
+    const desde = fechaCortaPipeInstance.transform(d.desde);
+    const hasta = fechaCortaPipeInstance.transform(d.hasta);
+    return `${desde} → ${hasta}`;
   });
 
   readonly pesoTotalFormateado = computed(() =>
@@ -146,7 +152,17 @@ export class DashboardAlmacenamientoComponent implements OnInit {
       },
     },
     scales: {
-      x: { grid: { display: false }, ticks: { color: '#6c757d', maxTicksLimit: 12 } },
+      x: {
+        grid: { display: false },
+        ticks: {
+          color: '#6c757d',
+          maxTicksLimit: 12,
+          callback: function (this: { getLabelForValue: (v: number) => string }, value: string | number) {
+            const idx = typeof value === 'number' ? value : Number(value);
+            return fechaCortaPipeInstance.transform(this.getLabelForValue(idx));
+          },
+        },
+      },
       y: {
         beginAtZero: true,
         grid: { color: '#eef3f1' },
@@ -354,3 +370,8 @@ export class DashboardAlmacenamientoComponent implements OnInit {
       });
   }
 }
+
+// Instancia reusable del pipe para usarla dentro del callback de ticks
+// (Chart.js llama fuera del inyector de Angular, asi que no se puede usar
+// el pipe via | fechaCorta; se transforma manualmente).
+const fechaCortaPipeInstance = new FechaCortaPipe();

@@ -8,6 +8,7 @@ import type { ChartConfiguration, ChartData, ChartOptions } from 'chart.js';
 
 import { DashboardService } from '../dashboard.service';
 import { DashboardResumen, PuntoSerieDiaria } from '../dashboard.models';
+import { FechaCortaPipe } from '../pipes/fecha-corta.pipe';
 import { SeccionGenericaComponent, PresetSeccion } from './seccion-generica.component';
 
 const MESES_CORTO = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
@@ -22,7 +23,7 @@ const MESES_CORTO = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
  */
 @Component({
   selector: 'app-dashboard-usuarios',
-  imports: [NgChartsModule, DatePipe, DecimalPipe, SeccionGenericaComponent],
+  imports: [NgChartsModule, DatePipe, DecimalPipe, FechaCortaPipe, SeccionGenericaComponent],
   templateUrl: './dashboard-usuarios.component.html',
   styleUrl: './dashboard-usuarios.component.css',
 })
@@ -69,7 +70,12 @@ export class DashboardUsuariosComponent implements OnInit {
 
   readonly rangoTexto = computed(() => {
     const d = this.data();
-    return d ? `${d.desde} -> ${d.hasta}` : '';
+    if (!d) {
+      return '';
+    }
+    const desde = fechaCortaPipeInstance.transform(d.desde);
+    const hasta = fechaCortaPipeInstance.transform(d.hasta);
+    return `${desde} → ${hasta}`;
   });
 
   readonly esPrimerLoad = computed(() => this.cargando() && !this.data());
@@ -95,7 +101,16 @@ export class DashboardUsuariosComponent implements OnInit {
       },
     },
     scales: {
-      x: { grid: { display: false }, ticks: { color: '#6c757d' } },
+      x: {
+        grid: { display: false },
+        ticks: {
+          color: '#6c757d',
+          callback: function (this: { getLabelForValue: (v: number) => string }, value: string | number) {
+            const idx = typeof value === 'number' ? value : Number(value);
+            return fechaCortaPipeInstance.transform(this.getLabelForValue(idx));
+          },
+        },
+      },
       y: { beginAtZero: true, grid: { color: '#eef3f1' }, ticks: { color: '#6c757d', precision: 0 } },
     },
   };
@@ -316,3 +331,8 @@ export class DashboardUsuariosComponent implements OnInit {
 
 // Evita warning TS6133 si ChartConfiguration no se usa en este archivo.
 type _ChartCfgRef = ChartConfiguration;
+
+// Instancia reusable del pipe para usarla dentro del callback de ticks
+// (Chart.js llama fuera del inyector de Angular, asi que no se puede usar
+// el pipe via | fechaCorta; se transforma manualmente).
+const fechaCortaPipeInstance = new FechaCortaPipe();
