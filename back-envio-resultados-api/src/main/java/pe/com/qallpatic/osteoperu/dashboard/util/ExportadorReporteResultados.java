@@ -1,0 +1,267 @@
+package pe.com.qallpatic.osteoperu.dashboard.util;
+
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import pe.com.qallpatic.osteoperu.dashboard.dto.ReporteResultadoRow;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+/**
+ * Genera el .xlsx del reporte "Resultados cargados" a partir de una lista
+ * plana de {@link ReporteResultadoRow}. Mantiene la logica de export fuera
+ * del service para que este siga siendo un orquestador de queries.
+ *
+ * <p>Estructura del workbook:
+ * <ol>
+ *   <li><b>Resumen</b>: rango aplicado, total de filas, vivos vs anulados.</li>
+ *   <li><b>Resultados</b>: lista plana con 13 columnas (incluye campos de
+ *       eliminacion para los soft-deleted).</li>
+ * </ol>
+ */
+public final class ExportadorReporteResultados {
+
+	private static final DateTimeFormatter FMT_FECHA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+	private static final DateTimeFormatter FMT_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+	private static final String[] HEADERS = {
+			"Fecha carga", "DNI/CE", "Paciente", "Telefono",
+			"Cant. archivos", "Peso (MB)", "Estado SMS", "Estado",
+			"Fecha eliminacion", "Usuario eliminacion", "Motivo eliminacion",
+			"Cargado por"
+	};
+
+	private static final int[] WIDTHS = {
+			4_500, 4_000, 7_000, 4_000,
+			3_500, 3_500, 4_000, 3_500,
+			5_500, 5_500, 9_000, 5_000
+	};
+
+	private ExportadorReporteResultados() {
+	}
+
+	/**
+	 * Construye el workbook en memoria y lo serializa a bytes. El caller se
+	 * encarga de devolverlo como descarga HTTP.
+	 *
+	 * @param filas   lista plana de cabeceras (vivas + soft-deleted).
+	 * @param desde   fecha de inicio del rango (efectiva, ya normalizada).
+	 * @param hasta   fecha de fin del rango (efectiva, ya normalizada).
+	 */
+	public static byte[] generar(List<ReporteResultadoRow> filas, String desde, String hasta) {
+		try (XSSFWorkbook wb = new XSSFWorkbook();
+				ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+			EstilosReporte estilos = new EstilosReporte(wb);
+			llenarHojaResumen(wb, estilos, filas, desde, hasta);
+			llenarHojaResultados(wb, estilos, filas);
+			wb.write(baos);
+			return baos.toByteArray();
+		} catch (IOException e) {
+			throw new IllegalStateException("No se pudo serializar el Excel de resultados", e);
+		}
+	}
+
+	private static void llenarHojaResumen(Workbook wb, EstilosReporte e,
+			List<ReporteResultadoRow> filas, String desde, String hasta) {
+		Sheet sh = wb.createSheet("Resumen");
+		sh.setColumnWidth(0, 9_000);
+		sh.setColumnWidth(1, 14_000);
+
+		long activos = filas.stream().filter(f -> f.estado() != null && f.estado() == 1).count();
+		long anulados = filas.size() - activos;
+
+		int fila = 0;
+		titulo(sh, e, "Reporte de resultados cargados", fila++);
+		fila++;
+		fila = par(sh, e, fila, "Rango aplicado", "Desde " + desde + " hasta " + hasta);
+		fila = par(sh, e, fila, "Total de cabeceras", String.format("%,d", filas.size()));
+		fila = par(sh, e, fila, "Activos", String.format("%,d", activos));
+		fila = par(sh, e, fila, "Anulados (soft-delete)", String.format("%,d", anulados));
+		fila++;
+		fila = par(sh, e, fila, "Detalle",
+				"Lista plana de cabeceras en la hoja 'Resultados'.");
+	}
+
+	private static void llenarHojaResultados(Workbook wb, EstilosReporte e,
+			List<ReporteResultadoRow> filas) {
+		Sheet sh = wb.createSheet("Resultados");
+		for (int i = 0; i < WIDTHS.length; i++) {
+			sh.setColumnWidth(i, WIDTHS[i]);
+		}
+
+		int fila = 0;
+		Row header = sh.createRow(fila++);
+		header.setHeightInPoints(20);
+		for (int i = 0; i < HEADERS.length; i++) {
+			Cell c = header.createCell(i);
+			c.setCellValue(HEADERS[i]);
+			c.setCellStyle(e.encabezado);
+		}
+
+		for (ReporteResultadoRow r : filas) {
+			Row row = sh.createRow(fila++);
+			celdaFechaHora(row, e.fechaHora, 0, r.fechaHoraCarga());
+			celdaTexto(row, e.texto, 1, r.documentoIdentidad());
+			celdaTexto(row, e.texto, 2, r.nombrePaciente());
+			celdaTexto(row, e.texto, 3, r.telefono());
+			celdaNumero(row, e.numero, 4, r.cantidadArchivos());
+			celdaDecimal(row, e.decimal, 5, r.pesoTotalMb());
+			celdaTexto(row, e.texto, 6, r.estadoSms());
+			celdaTexto(row, e.texto, 7, estadoLegible(r.estado()));
+			celdaFechaHora(row, e.fechaHora, 8, r.fechaEliminacion());
+			celdaTexto(row, e.texto, 9, r.usuarioEliminacion());
+			celdaTexto(row, e.texto, 10, r.motivoEliminacion());
+			celdaTexto(row, e.texto, 11, r.usuarioCreacion());
+		}
+	}
+
+	private static String estadoLegible(Integer estado) {
+		if (estado == null) {
+			return "";
+		}
+		return estado == 1 ? "Activo" : "Anulado";
+	}
+
+	// ===== helpers =====
+
+	private static void titulo(Sheet sh, EstilosReporte e, String texto, int fila) {
+		Row row = sh.createRow(fila);
+		row.setHeightInPoints(20);
+		Cell c = row.createCell(0);
+		c.setCellValue(texto);
+		c.setCellStyle(e.titulo);
+		sh.addMergedRegion(new CellRangeAddress(fila, fila, 0, 1));
+	}
+
+	private static int par(Sheet sh, EstilosReporte e, int fila, String label, String valor) {
+		Row row = sh.createRow(fila);
+		celda(row, e.etiqueta, 0, label);
+		celda(row, e.texto, 1, valor);
+		return fila + 1;
+	}
+
+	private static void celdaTexto(Row row, CellStyle estilo, int col, String valor) {
+		celda(row, estilo, col, valor == null ? "" : valor);
+	}
+
+	private static void celdaNumero(Row row, CellStyle estilo, int col, Integer valor) {
+		Cell c = row.createCell(col);
+		if (valor != null) {
+			c.setCellValue(valor.doubleValue());
+		}
+		c.setCellStyle(estilo);
+	}
+
+	private static void celdaDecimal(Row row, CellStyle estilo, int col, BigDecimal valor) {
+		Cell c = row.createCell(col);
+		if (valor != null) {
+			c.setCellValue(valor.setScale(2, RoundingMode.HALF_UP).doubleValue());
+		}
+		c.setCellStyle(estilo);
+	}
+
+	private static void celdaFechaHora(Row row, CellStyle estilo, int col,
+			java.time.LocalDateTime valor) {
+		Cell c = row.createCell(col);
+		if (valor != null) {
+			c.setCellValue(valor.format(FMT_FECHA_HORA));
+		}
+		c.setCellStyle(estilo);
+	}
+
+	private static void celda(Row row, CellStyle estilo, int col, String valor) {
+		Cell c = row.createCell(col);
+		c.setCellValue(valor);
+		c.setCellStyle(estilo);
+	}
+
+	/**
+	 * Conjunto de estilos reutilizados por todas las hojas. Se construyen una
+	 * sola vez por workbook para no recrear fuentes/estilos celda por celda.
+	 */
+	private static final class EstilosReporte {
+		final CellStyle titulo;
+		final CellStyle encabezado;
+		final CellStyle etiqueta;
+		final CellStyle texto;
+		final CellStyle numero;
+		final CellStyle decimal;
+		final CellStyle fechaHora;
+
+		EstilosReporte(Workbook wb) {
+			Font fTitulo = wb.createFont();
+			fTitulo.setBold(true);
+			fTitulo.setFontHeightInPoints((short) 14);
+			fTitulo.setColor(IndexedColors.WHITE.getIndex());
+
+			Font fEnc = wb.createFont();
+			fEnc.setBold(true);
+			fEnc.setColor(IndexedColors.WHITE.getIndex());
+
+			Font fLabel = wb.createFont();
+			fLabel.setBold(true);
+			fLabel.setColor(IndexedColors.GREY_80_PERCENT.getIndex());
+
+			titulo = wb.createCellStyle();
+			titulo.setFont(fTitulo);
+			titulo.setFillForegroundColor(IndexedColors.GREY_50_PERCENT.getIndex());
+			titulo.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+			titulo.setAlignment(HorizontalAlignment.LEFT);
+
+			encabezado = wb.createCellStyle();
+			encabezado.setFont(fEnc);
+			encabezado.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+			encabezado.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+			encabezado.setAlignment(HorizontalAlignment.LEFT);
+			encabezado.setWrapText(true);
+			conBordes(encabezado);
+
+			etiqueta = wb.createCellStyle();
+			etiqueta.setFont(fLabel);
+			etiqueta.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+			etiqueta.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+			etiqueta.setAlignment(HorizontalAlignment.LEFT);
+			conBordes(etiqueta);
+
+			texto = wb.createCellStyle();
+			texto.setAlignment(HorizontalAlignment.LEFT);
+			conBordes(texto);
+
+			numero = wb.createCellStyle();
+			numero.setAlignment(HorizontalAlignment.RIGHT);
+			numero.setDataFormat(wb.createDataFormat().getFormat("#,##0"));
+			conBordes(numero);
+
+			decimal = wb.createCellStyle();
+			decimal.setAlignment(HorizontalAlignment.RIGHT);
+			decimal.setDataFormat(wb.createDataFormat().getFormat("#,##0.00"));
+			conBordes(decimal);
+
+			fechaHora = wb.createCellStyle();
+			fechaHora.setAlignment(HorizontalAlignment.CENTER);
+			conBordes(fechaHora);
+		}
+
+		private static void conBordes(CellStyle s) {
+			s.setBorderBottom(BorderStyle.THIN);
+			s.setBorderTop(BorderStyle.THIN);
+			s.setBorderLeft(BorderStyle.THIN);
+			s.setBorderRight(BorderStyle.THIN);
+		}
+	}
+}

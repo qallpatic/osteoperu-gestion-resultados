@@ -40,4 +40,11 @@ public interface DashboardService {
 	 * EVENTO_VISTA.
 	 */
 	VistasDetalleResponse obtenerVistasDetalle(LocalDate desde, LocalDate hasta);
+
+	/**
+	 * Genera el .xlsx con el detalle plano de "Resultados cargados" del rango.
+	 * Incluye TODOS los registros (vivos + soft-deleted) con columna Estado
+	 * y campos de eliminacion cuando aplica.
+	 */
+	byte[] generarExcelResultados(LocalDate desde, LocalDate hasta);
 }

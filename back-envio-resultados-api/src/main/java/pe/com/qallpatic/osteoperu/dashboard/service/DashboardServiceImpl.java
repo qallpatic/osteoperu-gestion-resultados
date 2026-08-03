@@ -17,9 +17,11 @@ import pe.com.qallpatic.osteoperu.dashboard.dto.PicoRegistrosResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoAcumuladoMb;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoSerieDiaria;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoVistaDiaria;
+import pe.com.qallpatic.osteoperu.dashboard.dto.ReporteResultadoRow;
 import pe.com.qallpatic.osteoperu.dashboard.dto.ResultadoMasVistoResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.VistasDetalleResponse;
 import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorDashboardExcel;
+import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorReporteResultados;
 import pe.com.qallpatic.osteoperu.resultados.repository.EventoVistaRepository;
 import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoArchivoRepository;
 import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoCargaRepository;
@@ -159,6 +161,40 @@ public class DashboardServiceImpl implements DashboardService {
 		// con lo que el ADMIN ve en pantalla.
 		DashboardResumenResponse resumen = obtenerResumen(desde, hasta);
 		return ExportadorDashboardExcel.generar(resumen);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public byte[] generarExcelResultados(LocalDate desde, LocalDate hasta) {
+		// Reporte operativo: SIN cache (lista potencialmente grande + queremos
+		// datos frescos siempre que el ADMIN descargue). La normalizacion del
+		// rango se hace localmente para devolver al frontend el rango efectivo
+		// que efectivamente usamos.
+		RangoNormalizado rango = normalizar(desde, hasta);
+		LocalDateTime desdeDt = rango.desde().atStartOfDay();
+		LocalDateTime hastaDt = rango.hasta().atTime(LocalTime.MAX);
+
+		List<Object[]> filas = resultadoCargaRepository.listarParaReporte(desdeDt, hastaDt);
+		List<ReporteResultadoRow> reporte = new ArrayList<>(filas.size());
+		for (Object[] f : filas) {
+			reporte.add(new ReporteResultadoRow(
+					(LocalDateTime) f[0],
+					(String) f[1],
+					(String) f[2],
+					(String) f[3],
+					((Number) f[4]).intValue(),
+					(BigDecimal) f[5],
+					f[6] == null ? null : f[6].toString(),
+					((Number) f[7]).intValue(),
+					(LocalDateTime) f[8],
+					(String) f[9],
+					(String) f[10],
+					(String) f[11]));
+		}
+
+		log.info("Reporte resultados exportado. rango=[{}, {}], filas={}",
+				rango.desde(), rango.hasta(), reporte.size());
+		return ExportadorReporteResultados.generar(reporte, rango.desde().toString(), rango.hasta().toString());
 	}
 
 	@Override

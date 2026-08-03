@@ -52,6 +52,17 @@ export class DashboardService {
       .pipe(map((r) => r.data));
   }
 
+  /**
+   * Descarga el .xlsx con el detalle plano de "Resultados cargados" para el
+   * mismo rango que las demas vistas del dashboard.
+   */
+  exportarExcelResultados(p: DashboardParams = {}): Observable<Blob> {
+    return this.http.get(`${this.base}/resultados/exportar`, {
+      params: this.toParams(p),
+      responseType: 'blob',
+    });
+  }
+
   /** Construye HttpParams a partir de los strings desde/hasta (omite campos null/undefined). */
   private toParams(p: DashboardParams): HttpParams {
     let params = new HttpParams();

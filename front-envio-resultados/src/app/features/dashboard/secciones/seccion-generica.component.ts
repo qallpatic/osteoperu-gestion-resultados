@@ -25,10 +25,13 @@ export type PresetSeccion = '7d' | '30d' | '90d' | '365d';
             <p>{{ subtitulo }}</p>
           }
         </div>
-        <span class="page__rango">
-          <i class="fas fa-calendar-range"></i>
-          {{ rangoTexto || '—' }}
-        </span>
+        <div class="page__head-actions">
+          <ng-content select="[acciones]" />
+          <span class="page__rango">
+            <i class="fas fa-calendar-range"></i>
+            {{ rangoTexto || '—' }}
+          </span>
+        </div>
       </header>
 
       @if (error) {
@@ -103,6 +106,9 @@ export type PresetSeccion = '7d' | '30d' | '90d' | '365d';
     }
     .page__head h1 { color: var(--brand-900); font-size: 1.55rem; font-weight: 700; }
     .page__head p { color: var(--muted); margin-top: 4px; font-size: 0.92rem; }
+    .page__head-actions {
+      display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
     .page__rango {
       display: inline-flex; align-items: center; gap: 8px;
       background: #fff; border: 1px solid var(--border); border-radius: 999px;
@@ -151,6 +157,8 @@ export type PresetSeccion = '7d' | '30d' | '90d' | '365d';
     .btn:disabled { opacity: 0.55; cursor: not-allowed; }
     .btn--primary { background: linear-gradient(135deg, var(--brand-700), var(--brand-500)); color: #fff; box-shadow: 0 5px 16px rgba(7, 94, 84, 0.3); }
     .btn--primary:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn--ghost { background: #fff; color: var(--brand-700); border: 1.5px solid var(--border); box-shadow: none; }
+    .btn--ghost:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--brand-300); }
 
     .charts--seccion {
       display: grid; gap: 18px;
