@@ -54,4 +54,19 @@ public interface DashboardService {
 	 * de auditoria (creado por / modificado por).
 	 */
 	byte[] generarExcelUsuarios(LocalDate desde, LocalDate hasta);
+
+	/**
+	 * Genera el .xlsx con el detalle plano de "Almacenamiento usado" del rango.
+	 * Una fila por archivo con metadatos (nombre, tipo MIME, extension, peso)
+	 * + datos del paciente del cabecere (DNI, nombre) + auditoria (cargado
+	 * por / eliminado por).
+	 */
+	byte[] generarExcelAlmacenamiento(LocalDate desde, LocalDate hasta);
+
+	/**
+	 * Genera el .xlsx con el detalle plano de "Vistas de pacientes" del rango.
+	 * Una fila por evento (CLICK / VISTA / DESCARGA) con datos del paciente
+	 * del cabecere y metadata de la peticion (IP, user agent).
+	 */
+	byte[] generarExcelVistas(LocalDate desde, LocalDate hasta);
 }

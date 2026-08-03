@@ -74,6 +74,29 @@ export class DashboardService {
     });
   }
 
+  /**
+   * Descarga el .xlsx con el detalle plano de "Almacenamiento usado" para el
+   * mismo rango que las demas vistas del dashboard.
+   */
+  exportarExcelAlmacenamiento(p: DashboardParams = {}): Observable<Blob> {
+    return this.http.get(`${this.base}/almacenamiento/exportar`, {
+      params: this.toParams(p),
+      responseType: 'blob',
+    });
+  }
+
+  /**
+   * Descarga el .xlsx con el detalle plano de "Vistas de pacientes" para el
+   * mismo rango que las demas vistas del dashboard. Una fila por evento
+   * (CLICK / VISTA / DESCARGA).
+   */
+  exportarExcelVistas(p: DashboardParams = {}): Observable<Blob> {
+    return this.http.get(`${this.base}/vistas/exportar`, {
+      params: this.toParams(p),
+      responseType: 'blob',
+    });
+  }
+
   /** Construye HttpParams a partir de los strings desde/hasta (omite campos null/undefined). */
   private toParams(p: DashboardParams): HttpParams {
     let params = new HttpParams();

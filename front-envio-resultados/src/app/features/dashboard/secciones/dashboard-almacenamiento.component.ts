@@ -29,6 +29,7 @@ export class DashboardAlmacenamientoComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly cargando = signal(false);
+  readonly exportando = signal(false);
   readonly error = signal<string | null>(null);
   readonly data = signal<AlmacenamientoDetalle | null>(null);
 
@@ -317,5 +318,39 @@ export class DashboardAlmacenamientoComponent implements OnInit {
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
+  }
+
+  /**
+   * Pide el .xlsx con el detalle plano de archivos al backend y dispara la
+   * descarga en el navegador. Reutiliza el rango activo.
+   */
+  exportarExcel(): void {
+    if (this.exportando()) {
+      return;
+    }
+    this.exportando.set(true);
+    this.srv
+      .exportarExcelAlmacenamiento({ desde: this.desde() || undefined, hasta: this.hasta() || undefined })
+      .subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `dashboard_almacenamiento_${this.desde() || ''}_${this.hasta() || ''}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          this.exportando.set(false);
+        },
+        error: (e: HttpErrorResponse) => {
+          this.exportando.set(false);
+          this.error.set(
+            e.status === 0
+              ? 'No se pudo conectar con el servidor.'
+              : (e.error?.message ?? 'Error al exportar almacenamiento.'),
+          );
+        },
+      });
   }
 }

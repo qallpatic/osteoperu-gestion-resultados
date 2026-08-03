@@ -132,6 +132,38 @@ public class DashboardController {
 		return descargaExcel(bytes, "dashboard_usuarios_" + sufijoRango(desde, hasta) + ".xlsx");
 	}
 
+	@Operation(
+			summary = "Exportar detalle de archivos almacenados a Excel",
+			description = "Genera un .xlsx con dos hojas (Resumen + Archivos) listando TODOS los "
+					+ "archivos del rango (vivos + soft-deleted) con metadatos del archivo "
+					+ "(nombre, tipo MIME, extension, peso) + datos del paciente del cabecere "
+					+ "(DNI, nombre) + campos de auditoria.")
+	@GetMapping("/almacenamiento/exportar")
+	public ResponseEntity<byte[]> exportarAlmacenamiento(
+			@Parameter(description = "Fecha de inicio del rango (inclusive). Default: hoy - 29 dias.")
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@Parameter(description = "Fecha de fin del rango (inclusive). Default: hoy. Maximo 365 dias.")
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+		byte[] bytes = dashboardService.generarExcelAlmacenamiento(desde, hasta);
+		return descargaExcel(bytes, "dashboard_almacenamiento_" + sufijoRango(desde, hasta) + ".xlsx");
+	}
+
+	@Operation(
+			summary = "Exportar detalle de eventos de vista a Excel",
+			description = "Genera un .xlsx con dos hojas (Resumen + Eventos) listando TODOS los "
+					+ "eventos del rango (CLICK / VISTA / DESCARGA) con metadata de la "
+					+ "peticion (IP, user agent) y datos del paciente del cabecere "
+					+ "(DNI, nombre). Pensado para auditoria de accesos.")
+	@GetMapping("/vistas/exportar")
+	public ResponseEntity<byte[]> exportarVistas(
+			@Parameter(description = "Fecha de inicio del rango (inclusive). Default: hoy - 29 dias.")
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@Parameter(description = "Fecha de fin del rango (inclusive). Default: hoy. Maximo 365 dias.")
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+		byte[] bytes = dashboardService.generarExcelVistas(desde, hasta);
+		return descargaExcel(bytes, "dashboard_vistas_" + sufijoRango(desde, hasta) + ".xlsx");
+	}
+
 	/**
 	 * Construye la respuesta HTTP para una descarga de .xlsx. Centraliza el
 	 * Content-Disposition UTF-8 y los headers (Content-Type, Content-Length).

@@ -17,13 +17,18 @@ import pe.com.qallpatic.osteoperu.dashboard.dto.PicoRegistrosResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoAcumuladoMb;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoSerieDiaria;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoVistaDiaria;
+import pe.com.qallpatic.osteoperu.dashboard.dto.ReporteArchivoRow;
+import pe.com.qallpatic.osteoperu.dashboard.dto.ReporteEventoVistaRow;
 import pe.com.qallpatic.osteoperu.dashboard.dto.ReporteResultadoRow;
 import pe.com.qallpatic.osteoperu.dashboard.dto.ReporteUsuarioRow;
 import pe.com.qallpatic.osteoperu.dashboard.dto.ResultadoMasVistoResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.VistasDetalleResponse;
 import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorDashboardExcel;
+import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorReporteAlmacenamiento;
 import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorReporteResultados;
 import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorReporteUsuarios;
+import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorReporteVistas;
+import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoCarga;
 import pe.com.qallpatic.osteoperu.seguridad.entity.Usuario;
 import pe.com.qallpatic.osteoperu.resultados.repository.EventoVistaRepository;
 import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoArchivoRepository;
@@ -38,9 +43,11 @@ import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -230,6 +237,83 @@ public class DashboardServiceImpl implements DashboardService {
 		log.info("Reporte usuarios exportado. rango=[{}, {}], filas={}",
 				rango.desde(), rango.hasta(), reporte.size());
 		return ExportadorReporteUsuarios.generar(reporte, rango.desde().toString(), rango.hasta().toString());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public byte[] generarExcelAlmacenamiento(LocalDate desde, LocalDate hasta) {
+		RangoNormalizado rango = normalizar(desde, hasta);
+		LocalDateTime desdeDt = rango.desde().atStartOfDay();
+		LocalDateTime hastaDt = rango.hasta().atTime(LocalTime.MAX);
+
+		List<Object[]> filas = resultadoArchivoRepository.listarParaReporte(desdeDt, hastaDt);
+		List<ReporteArchivoRow> reporte = new ArrayList<>(filas.size());
+		for (Object[] f : filas) {
+			reporte.add(new ReporteArchivoRow(
+					(LocalDateTime) f[0],
+					(String) f[1],
+					(String) f[2],
+					(String) f[3],
+					(String) f[4],
+					(String) f[5],
+					(BigDecimal) f[6],
+					f[7] == null ? null : f[7].toString(),
+					((Number) f[8]).intValue(),
+					(LocalDateTime) f[9],
+					(String) f[10],
+					(String) f[11],
+					(String) f[12]));
+		}
+
+		log.info("Reporte almacenamiento exportado. rango=[{}, {}], filas={}",
+				rango.desde(), rango.hasta(), reporte.size());
+		return ExportadorReporteAlmacenamiento.generar(reporte, rango.desde().toString(), rango.hasta().toString());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public byte[] generarExcelVistas(LocalDate desde, LocalDate hasta) {
+		RangoNormalizado rango = normalizar(desde, hasta);
+		LocalDateTime desdeDt = rango.desde().atStartOfDay();
+		LocalDateTime hastaDt = rango.hasta().atTime(LocalTime.MAX);
+
+		List<Object[]> filas = eventoVistaRepository.listarParaReporte(desdeDt, hastaDt);
+
+		// EventoVista guarda idResultado como Long escalar (sin @ManyToOne),
+		// asi que resolvemos el join a ResultadoCarga en Java con un solo
+		// findAllById sobre los IDs unicos del rango. Dataset chico (decenas
+		// o cientos), no amerita un query N+1 ni un join declarativo.
+		Set<Long> idsUnicos = new HashSet<>();
+		for (Object[] f : filas) {
+			if (f[3] != null) {
+				idsUnicos.add(((Number) f[3]).longValue());
+			}
+		}
+		Map<Long, ResultadoCarga> cabeceras = new HashMap<>();
+		if (!idsUnicos.isEmpty()) {
+			for (ResultadoCarga c : resultadoCargaRepository.findAllById(idsUnicos)) {
+				cabeceras.put(c.getIdResultadoCarga(), c);
+			}
+		}
+
+		List<ReporteEventoVistaRow> reporte = new ArrayList<>(filas.size());
+		for (Object[] f : filas) {
+			Long idRes = f[3] == null ? null : ((Number) f[3]).longValue();
+			ResultadoCarga c = idRes == null ? null : cabeceras.get(idRes);
+			reporte.add(new ReporteEventoVistaRow(
+					(LocalDateTime) f[0],
+					f[1] == null ? null : f[1].toString(),
+					(String) f[2],
+					idRes,
+					c == null ? null : c.getDocumentoIdentidad(),
+					c == null ? null : c.getNombrePaciente(),
+					(String) f[4],
+					(String) f[5]));
+		}
+
+		log.info("Reporte vistas exportado. rango=[{}, {}], eventos={}, cabecerasDistintas={}",
+				rango.desde(), rango.hasta(), reporte.size(), cabeceras.size());
+		return ExportadorReporteVistas.generar(reporte, rango.desde().toString(), rango.hasta().toString());
 	}
 
 	@Override

@@ -65,4 +65,45 @@ public interface ResultadoArchivoRepository extends JpaRepository<ResultadoArchi
 			ORDER BY FUNCTION('DATE', a.fechaCreacion) ASC
 			""")
 	List<Object[]> mbSubidosPorDia();
+
+	/**
+	 * Lista plana para el reporte Excel de "Almacenamiento". Devuelve TODOS
+	 * los archivos del rango (vivos + soft-deleted) con un join a
+	 * {@code ResultadoCarga} para traer el DNI, nombre del paciente del
+	 * cabecere y "creado por" (porque {@code ResultadoArchivo} no hereda
+	 * de {@code EntidadAuditable}: su auditoria vive a nivel cabecera).
+	 *
+	 * <p>Orden de columnas (debe coincidir con el mapeo en el service):
+	 * <pre>
+	 * [0]  fechaCreacion
+	 * [1]  documentoIdentidad  (de ResultadoCarga)
+	 * [2]  nombrePaciente      (de ResultadoCarga)
+	 * [3]  nombreOriginal
+	 * [4]  tipoContenido
+	 * [5]  extension
+	 * [6]  pesoMb
+	 * [7]  tipoMedio
+	 * [8]  estado
+	 * [9]  fechaEliminacion
+	 * [10] usuarioEliminacion
+	 * [11] motivoEliminacion
+	 * [12] usuarioCreacion     (de ResultadoCarga)
+	 * </pre>
+	 *
+	 * <p>Usa INNER JOIN porque la relacion es {@code optional=false} y
+	 * {@code orphanRemoval=true}: un archivo sin cabecere es un estado
+	 * invalido que no deberia existir.
+	 */
+	@Query("""
+			SELECT a.fechaCreacion, c.documentoIdentidad, c.nombrePaciente,
+			       a.nombreOriginal, a.tipoContenido, a.extension, a.pesoMb,
+			       a.tipoMedio, a.estado, a.fechaEliminacion,
+			       a.usuarioEliminacion, a.motivoEliminacion, c.usuarioCreacion
+			FROM ResultadoArchivo a
+			JOIN a.resultadoCarga c
+			WHERE a.fechaCreacion BETWEEN :desde AND :hasta
+			ORDER BY a.fechaCreacion DESC
+			""")
+	List<Object[]> listarParaReporte(java.time.LocalDateTime desde,
+			java.time.LocalDateTime hasta);
 }

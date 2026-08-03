@@ -13,6 +13,20 @@
   (desdeChange)="onDesde($event)"
   (hastaChange)="onHasta($event)">
 
+  <button
+    type="button"
+    acciones
+    class="btn btn--ghost"
+    (click)="exportarExcel()"
+    [disabled]="exportando() || cargando()"
+    title="Descargar el detalle de eventos (CLICK/VISTA/DESCARGA) en Excel (.xlsx)">
+    @if (exportando()) {
+      <i class="fas fa-spinner fa-spin"></i> Exportando...
+    } @else {
+      <i class="fas fa-file-excel"></i> Exportar Excel
+    }
+  </button>
+
   <div graficos>
     <article class="chart">
       <header class="chart__head">
