@@ -40,14 +40,14 @@ public final class ExportadorReporteAlmacenamiento {
 
 	private static final String[] HEADERS = {
 			"Fecha carga", "DNI/CE", "Paciente", "Nombre original",
-			"Tipo (MIME)", "Extension", "Peso (MB)", "Tipo medio",
+			"Tipo (MIME)", "Peso (MB)",
 			"Estado", "Fecha eliminacion", "Usuario eliminacion", "Motivo eliminacion",
 			"Cargado por"
 	};
 
 	private static final int[] WIDTHS = {
 			5_000, 4_000, 7_000, 8_000,
-			5_500, 2_500, 3_500, 3_500,
+			5_500, 3_500,
 			3_500, 5_500, 5_500, 9_000, 5_000
 	};
 
@@ -116,14 +116,12 @@ public final class ExportadorReporteAlmacenamiento {
 			celdaTexto(row, e.texto, 2, r.nombrePaciente());
 			celdaTexto(row, e.texto, 3, r.nombreOriginal());
 			celdaTexto(row, e.texto, 4, r.tipoContenido());
-			celdaTexto(row, e.texto, 5, r.extension());
-			celdaDecimal(row, e.decimal, 6, r.pesoMb());
-			celdaTexto(row, e.texto, 7, r.tipoMedio());
-			celdaTexto(row, e.texto, 8, estadoLegible(r.estado()));
-			celdaFechaHora(row, e.fechaHora, 9, r.fechaEliminacion());
-			celdaTexto(row, e.texto, 10, r.usuarioEliminacion());
-			celdaTexto(row, e.texto, 11, r.motivoEliminacion());
-			celdaTexto(row, e.texto, 12, r.usuarioCreacion());
+			celdaDecimal(row, e.decimal, 5, r.pesoMb());
+			celdaTexto(row, e.texto, 6, estadoLegible(r.estado()));
+			celdaFechaHora(row, e.fechaHora, 7, r.fechaEliminacion());
+			celdaTexto(row, e.texto, 8, r.usuarioEliminacion());
+			celdaTexto(row, e.texto, 9, r.motivoEliminacion());
+			celdaTexto(row, e.texto, 10, r.usuarioCreacion());
 		}
 	}
 

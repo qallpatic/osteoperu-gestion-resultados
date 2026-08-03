@@ -39,14 +39,13 @@ public interface EventoVistaRepository extends JpaRepository<EventoVista, Long> 
 	 * <pre>
 	 * [0] fechaCreacion
 	 * [1] tipoEvento
-	 * [2] codigoCorto
-	 * [3] idResultado
-	 * [4] ip
-	 * [5] userAgent
+	 * [2] idResultado
+	 * [3] ip
+	 * [4] userAgent
 	 * </pre>
 	 */
 	@Query("""
-			SELECT e.fechaCreacion, e.tipoEvento, e.codigoCorto, e.idResultado,
+			SELECT e.fechaCreacion, e.tipoEvento, e.idResultado,
 			       e.ip, e.userAgent
 			FROM EventoVista e
 			WHERE e.fechaCreacion BETWEEN :desde AND :hasta

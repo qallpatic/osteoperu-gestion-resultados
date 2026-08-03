@@ -39,13 +39,13 @@ public final class ExportadorReporteVistas {
 	private static final DateTimeFormatter FMT_FECHA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
 	private static final String[] HEADERS = {
-			"Fecha", "Tipo evento", "Codigo corto", "ID Resultado",
-			"DNI/CE", "Paciente", "IP", "User agent"
+			"Fecha", "Tipo evento", "ID Resultado",
+			"DNI/CE", "Paciente", "IP", "Cliente"
 	};
 
 	private static final int[] WIDTHS = {
-			5_000, 3_500, 5_000, 5_500,
-			4_000, 7_000, 4_000, 9_000
+			5_000, 3_500, 5_500,
+			4_000, 7_000, 4_000, 6_000
 	};
 
 	private ExportadorReporteVistas() {
@@ -115,12 +115,11 @@ public final class ExportadorReporteVistas {
 			Row row = sh.createRow(fila++);
 			celdaFechaHora(row, e.fechaHora, 0, r.fechaCreacion());
 			celdaTexto(row, e.texto, 1, r.tipoEvento());
-			celdaTexto(row, e.texto, 2, r.codigoCorto());
-			celdaNumero(row, e.numero, 3, r.idResultado());
-			celdaTexto(row, e.texto, 4, r.documentoIdentidad());
-			celdaTexto(row, e.texto, 5, r.nombrePaciente());
-			celdaTexto(row, e.texto, 6, r.ip());
-			celdaTexto(row, e.texto, 7, r.userAgent());
+			celdaNumero(row, e.numero, 2, r.idResultado());
+			celdaTexto(row, e.texto, 3, r.documentoIdentidad());
+			celdaTexto(row, e.texto, 4, r.nombrePaciente());
+			celdaTexto(row, e.texto, 5, r.ip());
+			celdaTexto(row, e.texto, 6, r.userAgent());
 		}
 	}
 

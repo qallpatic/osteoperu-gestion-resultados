@@ -80,14 +80,12 @@ public interface ResultadoArchivoRepository extends JpaRepository<ResultadoArchi
 	 * [2]  nombrePaciente      (de ResultadoCarga)
 	 * [3]  nombreOriginal
 	 * [4]  tipoContenido
-	 * [5]  extension
-	 * [6]  pesoMb
-	 * [7]  tipoMedio
-	 * [8]  estado
-	 * [9]  fechaEliminacion
-	 * [10] usuarioEliminacion
-	 * [11] motivoEliminacion
-	 * [12] usuarioCreacion     (de ResultadoCarga)
+	 * [5]  pesoMb
+	 * [6]  estado
+	 * [7]  fechaEliminacion
+	 * [8]  usuarioEliminacion
+	 * [9]  motivoEliminacion
+	 * [10] usuarioCreacion     (de ResultadoCarga)
 	 * </pre>
 	 *
 	 * <p>Usa INNER JOIN porque la relacion es {@code optional=false} y
@@ -96,8 +94,8 @@ public interface ResultadoArchivoRepository extends JpaRepository<ResultadoArchi
 	 */
 	@Query("""
 			SELECT a.fechaCreacion, c.documentoIdentidad, c.nombrePaciente,
-			       a.nombreOriginal, a.tipoContenido, a.extension, a.pesoMb,
-			       a.tipoMedio, a.estado, a.fechaEliminacion,
+			       a.nombreOriginal, a.tipoContenido, a.pesoMb,
+			       a.estado, a.fechaEliminacion,
 			       a.usuarioEliminacion, a.motivoEliminacion, c.usuarioCreacion
 			FROM ResultadoArchivo a
 			JOIN a.resultadoCarga c

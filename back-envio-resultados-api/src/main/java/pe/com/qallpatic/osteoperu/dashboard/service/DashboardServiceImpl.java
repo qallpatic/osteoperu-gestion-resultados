@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import pe.com.qallpatic.osteoperu.compartido.proyeccion.ConteoPorFechaProjection;
 import pe.com.qallpatic.osteoperu.compartido.proyeccion.PicoPorFechaProjection;
+import pe.com.qallpatic.osteoperu.compartido.util.UserAgentParser;
 import pe.com.qallpatic.osteoperu.dashboard.dto.AlmacenamientoDetalleResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.ArchivoPesadoResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.BucketVistasResponse;
@@ -255,14 +256,12 @@ public class DashboardServiceImpl implements DashboardService {
 					(String) f[2],
 					(String) f[3],
 					(String) f[4],
-					(String) f[5],
-					(BigDecimal) f[6],
-					f[7] == null ? null : f[7].toString(),
-					((Number) f[8]).intValue(),
-					(LocalDateTime) f[9],
-					(String) f[10],
-					(String) f[11],
-					(String) f[12]));
+					(BigDecimal) f[5],
+					((Number) f[6]).intValue(),
+					(LocalDateTime) f[7],
+					(String) f[8],
+					(String) f[9],
+					(String) f[10]));
 		}
 
 		log.info("Reporte almacenamiento exportado. rango=[{}, {}], filas={}",
@@ -285,8 +284,8 @@ public class DashboardServiceImpl implements DashboardService {
 		// o cientos), no amerita un query N+1 ni un join declarativo.
 		Set<Long> idsUnicos = new HashSet<>();
 		for (Object[] f : filas) {
-			if (f[3] != null) {
-				idsUnicos.add(((Number) f[3]).longValue());
+			if (f[2] != null) {
+				idsUnicos.add(((Number) f[2]).longValue());
 			}
 		}
 		Map<Long, ResultadoCarga> cabeceras = new HashMap<>();
@@ -298,17 +297,16 @@ public class DashboardServiceImpl implements DashboardService {
 
 		List<ReporteEventoVistaRow> reporte = new ArrayList<>(filas.size());
 		for (Object[] f : filas) {
-			Long idRes = f[3] == null ? null : ((Number) f[3]).longValue();
+			Long idRes = f[2] == null ? null : ((Number) f[2]).longValue();
 			ResultadoCarga c = idRes == null ? null : cabeceras.get(idRes);
 			reporte.add(new ReporteEventoVistaRow(
 					(LocalDateTime) f[0],
 					f[1] == null ? null : f[1].toString(),
-					(String) f[2],
 					idRes,
 					c == null ? null : c.getDocumentoIdentidad(),
 					c == null ? null : c.getNombrePaciente(),
-					(String) f[4],
-					(String) f[5]));
+					(String) f[3],
+					UserAgentParser.resumir((String) f[4])));
 		}
 
 		log.info("Reporte vistas exportado. rango=[{}, {}], eventos={}, cabecerasDistintas={}",
