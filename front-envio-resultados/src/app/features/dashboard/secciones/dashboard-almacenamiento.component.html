@@ -1,6 +1,6 @@
 <app-seccion-generica
   titulo="Almacenamiento usado"
-  subtitulo="Peso total y cantidad de archivos registrados en el sistema."
+  subtitulo="Distribucion por tipo de archivo, archivos mas pesados y crecimiento del almacenamiento en el tiempo."
   [rangoTexto]="rangoTexto()"
   [cargando]="cargando()"
   [error]="error()"
@@ -14,30 +14,102 @@
   (hastaChange)="onHasta($event)">
 
   <div graficos>
-    <article class="placeholder">
-      <i class="fas fa-hard-drive placeholder__ico"></i>
-      <h2>Distribucion y detalle, proximamente</h2>
-      <p>
-        Esta pestana mostrara la distribucion por tipo de archivo (PDF, JPG, PNG, MP4, ...),
-        el top 10 de archivos mas pesados y la curva acumulada de almacenamiento en el tiempo.
-      </p>
-      <p>
-        Requiere queries adicionales sobre <code>RESULTADO_ARCHIVO</code>
-        (group-by tipoContenido, order-by pesoMb desc, suma acumulada).
-        Se entregara en una iteracion posterior.
-      </p>
+    <article class="chart">
+      <header class="chart__head">
+        <h2>Distribucion por tipo de archivo</h2>
+        <span class="chart__sub">Peso (MB) agrupado por MIME type</span>
+      </header>
+      <div class="chart__body" [class.chart__body--loading]="cargando() && data()">
+        @if (esPrimerLoad()) {
+          <div class="chart__skel"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
+        } @else if (chartDistribucion.datasets[0]?.data?.length) {
+          <canvas
+            baseChart
+            [type]="'doughnut'"
+            [data]="chartDistribucion"
+            [options]="chartDistribucionOptions">
+          </canvas>
+          @if (cargando()) {
+            <div class="chart__overlay" aria-label="Actualizando">
+              <i class="fas fa-spinner fa-spin"></i>
+            </div>
+          }
+        } @else {
+          <div class="chart__skel">Sin datos en el rango.</div>
+        }
+      </div>
+    </article>
+
+    <article class="chart">
+      <header class="chart__head">
+        <h2>Top 10 archivos mas pesados</h2>
+        <span class="chart__sub">Los archivos individuales que mas espacio ocupan</span>
+      </header>
+      <div class="chart__body chart__body--tall" [class.chart__body--loading]="cargando() && data()">
+        @if (esPrimerLoad()) {
+          <div class="chart__skel"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
+        } @else if (chartTopArchivos.datasets[0]?.data?.length) {
+          <canvas
+            baseChart
+            [type]="'bar'"
+            [data]="chartTopArchivos"
+            [options]="chartTopOptions">
+          </canvas>
+          @if (cargando()) {
+            <div class="chart__overlay" aria-label="Actualizando">
+              <i class="fas fa-spinner fa-spin"></i>
+            </div>
+          }
+        } @else {
+          <div class="chart__skel">Sin archivos registrados.</div>
+        }
+      </div>
+    </article>
+
+    <article class="chart chart--wide">
+      <header class="chart__head">
+        <h2>Almacenamiento acumulado en el tiempo</h2>
+        <span class="chart__sub">MB totales a lo largo del tiempo (curva monotona creciente)</span>
+      </header>
+      <div class="chart__body" [class.chart__body--loading]="cargando() && data()">
+        @if (esPrimerLoad()) {
+          <div class="chart__skel"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
+        } @else if (chartAcumulado.datasets[0]?.data?.length) {
+          <canvas
+            baseChart
+            [type]="'line'"
+            [data]="chartAcumulado"
+            [options]="chartAcumuladoOptions">
+          </canvas>
+          @if (cargando()) {
+            <div class="chart__overlay" aria-label="Actualizando">
+              <i class="fas fa-spinner fa-spin"></i>
+            </div>
+          }
+        } @else {
+          <div class="chart__skel">Aun no hay archivos.</div>
+        }
+      </div>
     </article>
   </div>
 
   <div leyendas>
-    <div class="kpi-grid">
+    <div class="kpi-grid kpi-grid--wide">
       <article class="kpi-mini">
-        <span class="kpi-mini__label">Peso total usado</span>
-        <span class="kpi-mini__value">{{ pesoFormateado().texto }}</span>
+        <span class="kpi-mini__label">Peso total acumulado</span>
+        <span class="kpi-mini__value">{{ pesoTotalFormateado().texto }}</span>
       </article>
       <article class="kpi-mini">
-        <span class="kpi-mini__label">Archivos registrados</span>
-        <span class="kpi-mini__value">{{ (data()?.totalArchivos ?? 0) | number }}</span>
+        <span class="kpi-mini__label">Archivos en el sistema</span>
+        <span class="kpi-mini__value">{{ totalArchivosEnRango() | number }}</span>
+      </article>
+      <article class="kpi-mini">
+        <span class="kpi-mini__label">Tipos de archivo distintos</span>
+        <span class="kpi-mini__value">{{ (data()?.distribucionPorTipo?.length ?? 0) | number }}</span>
+      </article>
+      <article class="kpi-mini">
+        <span class="kpi-mini__label">Dias con archivos subidos</span>
+        <span class="kpi-mini__value">{{ (data()?.acumuladoMb?.length ?? 0) | number }}</span>
       </article>
     </div>
   </div>

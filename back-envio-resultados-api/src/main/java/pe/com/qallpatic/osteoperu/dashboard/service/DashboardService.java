@@ -1,6 +1,8 @@
 package pe.com.qallpatic.osteoperu.dashboard.service;
 
+import pe.com.qallpatic.osteoperu.dashboard.dto.AlmacenamientoDetalleResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.DashboardResumenResponse;
+import pe.com.qallpatic.osteoperu.dashboard.dto.VistasDetalleResponse;
 
 import java.time.LocalDate;
 
@@ -24,4 +26,18 @@ public interface DashboardService {
 	 *         application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.
 	 */
 	byte[] generarExcel(LocalDate desde, LocalDate hasta);
+
+	/**
+	 * Detalle de la pestana Almacenamiento: distribucion por tipoContenido,
+	 * top archivos mas pesados y curva acumulada de MB. Cuenta TODOS los
+	 * registros sin filtrar soft-delete (mismo criterio que el KPI global).
+	 */
+	AlmacenamientoDetalleResponse obtenerAlmacenamientoDetalle(LocalDate desde, LocalDate hasta);
+
+	/**
+	 * Detalle de la pestana Vistas: top resultados mas vistos, distribucion
+	 * por buckets (1, 2-5, 6-10, 11+) y curva temporal de aperturas desde
+	 * EVENTO_VISTA.
+	 */
+	VistasDetalleResponse obtenerVistasDetalle(LocalDate desde, LocalDate hasta);
 }

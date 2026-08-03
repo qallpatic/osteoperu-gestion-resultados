@@ -1,23 +1,25 @@
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { DecimalPipe } from '@angular/common';
+import { NgChartsModule } from 'ng2-charts';
 import { Subject, debounceTime, interval } from 'rxjs';
+import type { ChartData, ChartOptions } from 'chart.js';
 
 import { DashboardService } from '../dashboard.service';
-import { DashboardResumen } from '../dashboard.models';
+import { ResultadoMasVisto, VistasDetalle } from '../dashboard.models';
 import { SeccionGenericaComponent, PresetSeccion } from './seccion-generica.component';
 
 /**
  * Seccion "Vistas de pacientes" del Dashboard.
  *
- * Implementacion actual: placeholder "Proximamente". El endpoint detallado
- * requiere queries nuevas (top 10 resultados mas vistos + distribucion de
- * vistas por rangos) que se entregaran en un PR posterior.
+ * Grafica: top 10 resultados mas vistos (barras horizontales) + distribucion
+ * por buckets de vistas (barras) + curva temporal de aperturas desde
+ * EVENTO_VISTA (linea). Reutiliza el shell `SeccionGenericaComponent`.
  */
 @Component({
   selector: 'app-dashboard-vistas',
-  imports: [SeccionGenericaComponent, DecimalPipe],
+  imports: [NgChartsModule, DatePipe, DecimalPipe, SeccionGenericaComponent],
   templateUrl: './dashboard-vistas.component.html',
   styleUrl: './dashboard-vistas.component.css',
 })
@@ -27,7 +29,7 @@ export class DashboardVistasComponent implements OnInit {
 
   readonly cargando = signal(false);
   readonly error = signal<string | null>(null);
-  readonly data = signal<DashboardResumen | null>(null);
+  readonly data = signal<VistasDetalle | null>(null);
 
   readonly desde = signal<string>('');
   readonly hasta = signal<string>('');
@@ -41,6 +43,99 @@ export class DashboardVistasComponent implements OnInit {
     const d = this.data();
     return d ? `${d.desde} -> ${d.hasta}` : '';
   });
+
+  readonly totalVistasEnRango = computed(() => {
+    const curva = this.data()?.curvaTemporal ?? [];
+    return curva.reduce((acc, p) => acc + p.total, 0);
+  });
+
+  readonly picoCurva = computed(() => {
+    const curva = this.data()?.curvaTemporal ?? [];
+    if (curva.length === 0) {
+      return null;
+    }
+    return curva.reduce((acc, p) => (p.total > acc.total ? p : acc));
+  });
+
+  readonly promedioDiarioVistas = computed(() => {
+    const curva = this.data()?.curvaTemporal ?? [];
+    if (curva.length === 0) {
+      return 0;
+    }
+    const total = curva.reduce((acc, p) => acc + p.total, 0);
+    return Math.round((total / curva.length) * 10) / 10;
+  });
+
+  readonly esPrimerLoad = computed(() => this.cargando() && !this.data());
+
+  chartTopVistos: ChartData<'bar'> = { labels: [], datasets: [] };
+  chartBuckets: ChartData<'bar'> = { labels: [], datasets: [] };
+  chartCurva: ChartData<'line'> = { labels: [], datasets: [] };
+
+  readonly chartTopOptions: ChartOptions<'bar'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: 'y',
+    animation: { duration: 300 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#043d36',
+        titleColor: '#fff',
+        bodyColor: '#e6f2f0',
+        borderColor: '#075e54',
+        borderWidth: 1,
+        padding: 10,
+      },
+    },
+    scales: {
+      x: { beginAtZero: true, grid: { color: '#eef3f1' }, ticks: { color: '#6c757d', precision: 0 } },
+      y: { grid: { display: false }, ticks: { color: '#6c757d', autoSkip: false } },
+    },
+  };
+
+  readonly chartBucketsOptions: ChartOptions<'bar'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 300 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#043d36',
+        titleColor: '#fff',
+        bodyColor: '#e6f2f0',
+        borderColor: '#075e54',
+        borderWidth: 1,
+        padding: 10,
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#6c757d' } },
+      y: { beginAtZero: true, grid: { color: '#eef3f1' }, ticks: { color: '#6c757d', precision: 0 } },
+    },
+  };
+
+  readonly chartCurvaOptions: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    animation: { duration: 300 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#043d36',
+        titleColor: '#fff',
+        bodyColor: '#e6f2f0',
+        borderColor: '#075e54',
+        borderWidth: 1,
+        padding: 10,
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#6c757d', maxTicksLimit: 12 } },
+      y: { beginAtZero: true, grid: { color: '#eef3f1' }, ticks: { color: '#6c757d', precision: 0 } },
+    },
+  };
 
   constructor() {
     this.rangoCambiado$
@@ -111,13 +206,14 @@ export class DashboardVistasComponent implements OnInit {
     this.error.set(null);
     const seq = ++this.peticionSeq;
     this.srv
-      .resumen({ desde: this.desde() || undefined, hasta: this.hasta() || undefined })
+      .vistasDetalle({ desde: this.desde() || undefined, hasta: this.hasta() || undefined })
       .subscribe({
         next: (d) => {
           if (seq !== this.peticionSeq) {
             return;
           }
           this.data.set(d);
+          this.aplicarCharts(d);
           this.cargando.set(false);
         },
         error: (e: HttpErrorResponse) => {
@@ -128,10 +224,66 @@ export class DashboardVistasComponent implements OnInit {
           this.error.set(
             e.status === 0
               ? 'No se pudo conectar con el servidor.'
-              : (e.error?.message ?? 'Error al cargar la seccion.'),
+              : (e.error?.message ?? 'Error al cargar el detalle de vistas.'),
           );
         },
       });
+  }
+
+  private aplicarCharts(d: VistasDetalle): void {
+    // ===== Top 10 mas vistos (barras horizontales) =====
+    const top: ResultadoMasVisto[] = d.resultadosMasVistos;
+    this.chartTopVistos = {
+      labels: top.map((r) => this.recortarEtiqueta(r)),
+      datasets: [
+        {
+          data: top.map((r) => r.contadorVistas),
+          label: 'Vistas',
+          backgroundColor: 'rgba(37, 211, 102, 0.7)',
+          hoverBackgroundColor: 'rgba(15, 122, 67, 0.95)',
+          borderRadius: 6,
+        },
+      ],
+    };
+
+    // ===== Distribucion buckets (barras verticales) =====
+    this.chartBuckets = {
+      labels: d.distribucionBuckets.map((b) => b.etiqueta),
+      datasets: [
+        {
+          data: d.distribucionBuckets.map((b) => b.cantidad),
+          label: 'Resultados',
+          backgroundColor: ['#075e54', '#128c7e', '#25d366', '#fdcb6e'],
+          hoverBackgroundColor: ['#043d36', '#075e54', '#128c7e', '#b88a3c'],
+          borderRadius: 6,
+          maxBarThickness: 80,
+        },
+      ],
+    };
+
+    // ===== Curva temporal (linea) =====
+    this.chartCurva = {
+      labels: d.curvaTemporal.map((p) => p.fecha),
+      datasets: [
+        {
+          data: d.curvaTemporal.map((p) => p.total),
+          label: 'Vistas',
+          borderColor: '#25d366',
+          backgroundColor: 'rgba(37, 211, 102, 0.15)',
+          pointBackgroundColor: '#075e54',
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          tension: 0.35,
+          fill: true,
+        },
+      ],
+    };
+  }
+
+  /** Etiqueta corta para el top 10: dni + primeras letras del nombre. */
+  private recortarEtiqueta(r: ResultadoMasVisto): string {
+    const dni = r.documentoIdentidad ?? '';
+    return dni.length > 0 ? `DNI ${dni.slice(-6)}` : r.idGenerado.slice(0, 8);
   }
 
   private toIso(d: Date): string {

@@ -4,7 +4,21 @@
       <h1>Dashboard</h1>
       <p>Metricas e indicadores de la plataforma. Visible solo para administradores.</p>
     </div>
-    <span class="page__rango"><i class="fas fa-calendar-range"></i> {{ rangoTexto() || '—' }}</span>
+    <div class="page__head-actions">
+      <span class="page__rango"><i class="fas fa-calendar-range"></i> {{ rangoTexto() || '—' }}</span>
+      <button
+        type="button"
+        class="btn btn--ghost"
+        (click)="exportarExcel()"
+        [disabled]="exportando() || cargando() || !data()"
+        title="Descargar el resumen actual en Excel (.xlsx)">
+        @if (exportando()) {
+          <i class="fas fa-spinner fa-spin"></i> Exportando...
+        } @else {
+          <i class="fas fa-file-excel"></i> Exportar Excel
+        }
+      </button>
+    </div>
   </header>
 
   @if (error(); as e) {

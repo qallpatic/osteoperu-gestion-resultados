@@ -17,7 +17,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import pe.com.qallpatic.osteoperu.compartido.respuesta.RespuestaApi;
+import pe.com.qallpatic.osteoperu.dashboard.dto.AlmacenamientoDetalleResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.DashboardResumenResponse;
+import pe.com.qallpatic.osteoperu.dashboard.dto.VistasDetalleResponse;
 import pe.com.qallpatic.osteoperu.dashboard.service.DashboardService;
 
 import java.nio.charset.StandardCharsets;
@@ -78,5 +80,36 @@ public class DashboardController {
 
 		log.info("Dashboard exportado. nombre={}, bytes={}", nombre, bytes.length);
 		return new ResponseEntity<>(bytes, headers, ResponseEntity.ok().build().getStatusCode());
+	}
+
+	@Operation(
+			summary = "Detalle de la pestana Almacenamiento",
+			description = "Distribucion por tipo de contenido (torta), top 10 archivos mas pesados "
+					+ "(tabla) y curva acumulada de MB (linea) para el rango pedido. Considera TODOS "
+					+ "los registros sin filtrar soft-delete, igual que el KPI global de almacenamiento.")
+	@GetMapping("/almacenamiento/detalle")
+	public ResponseEntity<RespuestaApi<AlmacenamientoDetalleResponse>> almacenamientoDetalle(
+			@Parameter(description = "Fecha de inicio del rango (inclusive). Default: hoy - 29 dias.")
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@Parameter(description = "Fecha de fin del rango (inclusive). Default: hoy. Maximo 365 dias.")
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+		AlmacenamientoDetalleResponse data = dashboardService.obtenerAlmacenamientoDetalle(desde, hasta);
+		return ResponseEntity.ok(RespuestaApi.ok(data));
+	}
+
+	@Operation(
+			summary = "Detalle de la pestana Vistas",
+			description = "Top 10 resultados mas vistos (tabla), distribucion por buckets de "
+					+ "vistas 1/2-5/6-10/11+ (barras) y curva temporal de aperturas (linea, densa) "
+					+ "para el rango pedido. Las cabeceras se filtran por estado=vivo; la curva "
+					+ "temporal se calcula desde la tabla EVENTO_VISTA.")
+	@GetMapping("/vistas/detalle")
+	public ResponseEntity<RespuestaApi<VistasDetalleResponse>> vistasDetalle(
+			@Parameter(description = "Fecha de inicio del rango (inclusive). Default: hoy - 29 dias.")
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@Parameter(description = "Fecha de fin del rango (inclusive). Default: hoy. Maximo 365 dias.")
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+		VistasDetalleResponse data = dashboardService.obtenerVistasDetalle(desde, hasta);
+		return ResponseEntity.ok(RespuestaApi.ok(data));
 	}
 }

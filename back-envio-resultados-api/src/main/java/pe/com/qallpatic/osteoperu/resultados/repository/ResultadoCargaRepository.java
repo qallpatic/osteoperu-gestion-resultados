@@ -70,4 +70,26 @@ public interface ResultadoCargaRepository
 	/** Suma de vistas (CONTADOR_VISTAS) de cabeceras vivas. */
 	@Query("SELECT COALESCE(SUM(r.contadorVistas), 0) FROM ResultadoCarga r WHERE r.estado = :estado")
 	long sumContadorVistasByEstado(@Param("estado") Integer estado);
+
+	/**
+	 * Top N cabeceras vivas con mayor CONTADOR_VISTAS. Devuelve filas crudas
+	 * (Object[]) para evitar proyecciones intermedias:
+	 * [idGenerado, documentoIdentidad, nombrePaciente, contadorVistas, fechaHoraCarga].
+	 * El service mapea al DTO ResultadoMasVistoResponse.
+	 */
+	@Query("""
+			SELECT r.idGenerado, r.documentoIdentidad, r.nombrePaciente, r.contadorVistas, r.fechaHoraCarga
+			FROM ResultadoCarga r
+			WHERE r.estado = 1 AND r.contadorVistas > 0
+			ORDER BY r.contadorVistas DESC, r.fechaHoraCarga DESC
+			""")
+	List<Object[]> topCabecerasMasVistas(Pageable pageable);
+
+	/**
+	 * Todas las cabeceras vivas con su contador, para que el service arme los
+	 * buckets (1, 2-5, 6-10, 11+) en Java. Es mas simple que un CASE WHEN
+	 * en SQL y el dataset es chico (~50 cabeceras).
+	 */
+	@Query("SELECT r.contadorVistas FROM ResultadoCarga r WHERE r.estado = 1")
+	List<Integer> contadoresVistasCabecerasVivas();
 }
