@@ -30,6 +30,10 @@ export interface PacienteAdmision {
   totalResultados: number;
   ultimaFecha: string | null;
   estadoCuenta: 'SIN_CUENTA' | 'ACTIVO' | 'ANULADO';
+  usuarioCreacion: string | null;
+  fechaCreacionCuenta: string | null;
+  usuarioModificacion: string | null;
+  fechaModificacionCuenta: string | null;
 }
 
 /** Admision: listado de pacientes y alta/baja de su cuenta (/api/admision). */
@@ -40,6 +44,9 @@ export class AdmisionService {
 
   listarPacientes(p: {
     dni?: string;
+    nombre?: string;
+    desde?: string;
+    hasta?: string;
     pagina: number;
     tamano: number;
     ordenarPor?: string;
@@ -48,6 +55,15 @@ export class AdmisionService {
     let params = new HttpParams().set('pagina', p.pagina).set('tamano', p.tamano);
     if (p.dni) {
       params = params.set('dni', p.dni);
+    }
+    if (p.nombre) {
+      params = params.set('nombre', p.nombre);
+    }
+    if (p.desde) {
+      params = params.set('desde', p.desde);
+    }
+    if (p.hasta) {
+      params = params.set('hasta', p.hasta);
     }
     if (p.ordenarPor) {
       params = params.set('ordenarPor', p.ordenarPor);

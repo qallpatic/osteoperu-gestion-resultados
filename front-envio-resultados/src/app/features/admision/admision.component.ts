@@ -44,6 +44,9 @@ export class AdmisionComponent implements OnInit {
   readonly tamano = 10;
 
   fdni = '';
+  fnombre = '';
+  fdesde = '';
+  fhasta = '';
   readonly notice = signal<{ type: 'ok' | 'error'; text: string } | null>(null);
 
   /** Orden: null = default backend (fechaCreacion desc). */
@@ -101,6 +104,9 @@ export class AdmisionComponent implements OnInit {
     this.cargando.set(true);
     this.srv.listarPacientes({
       dni: this.fdni.trim() || undefined,
+      nombre: this.fnombre.trim() || undefined,
+      desde: this.fdesde || undefined,
+      hasta: this.fhasta || undefined,
       pagina: this.pagina(),
       tamano: this.tamano,
       ordenarPor: this.ordenarPor() ?? undefined,
@@ -120,8 +126,40 @@ export class AdmisionComponent implements OnInit {
   }
 
   aplicar(): void {
+    if (this.fdesde && this.fhasta && this.fdesde > this.fhasta) {
+      this.notice.set({
+        type: 'error',
+        text: 'La fecha Desde no puede ser posterior a la fecha Hasta.',
+      });
+      return;
+    }
+    this.notice.set(null);
     this.pagina.set(0);
     this.cargar();
+  }
+
+  auditoriaTitle(p: PacienteAdmision): string {
+    if (!p.fechaCreacionCuenta) {
+      return 'Este paciente todavía no tiene una cuenta creada.';
+    }
+    const creado = `Creación: ${p.usuarioCreacion || '—'} · ${this.formatearFecha(p.fechaCreacionCuenta)}`;
+    if (!p.usuarioModificacion) {
+      return creado;
+    }
+    return `${creado}\nÚltima modificación: ${p.usuarioModificacion} · ${this.formatearFecha(p.fechaModificacionCuenta)}`;
+  }
+
+  private formatearFecha(fecha: string | null): string {
+    if (!fecha) {
+      return '—';
+    }
+    return new Intl.DateTimeFormat('es-PE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(fecha));
   }
 
   irPagina(delta: number): void {

@@ -21,10 +21,11 @@
   }
 
   <div class="toolbar">
-    <div class="search">
-      <i class="fas fa-magnifying-glass"></i>
-      <input type="text" placeholder="Buscar por DNI" [(ngModel)]="fdni" (input)="onFiltroDniInput($event)" (keyup.enter)="aplicar()" maxlength="12" />
-    </div>
+    <input class="in" type="text" placeholder="DNI/CE" [(ngModel)]="fdni" (input)="onFiltroDniInput($event)"
+      (keyup.enter)="aplicar()" maxlength="12" />
+    <input class="in" type="text" placeholder="Nombre o apellidos" [(ngModel)]="fnombre" (keyup.enter)="aplicar()" />
+    <label class="fecha">Desde <input type="date" [(ngModel)]="fdesde" [max]="fhasta || null" /></label>
+    <label class="fecha">Hasta <input type="date" [(ngModel)]="fhasta" [min]="fdesde || null" /></label>
     <button class="btn btn--primary" (click)="aplicar()"><i class="fas fa-magnifying-glass"></i> Buscar</button>
     @if (puedeEditarCuenta()) {
     <button class="btn btn--primary" (click)="abrirGenerarNuevo()">
@@ -63,6 +64,7 @@
           </th>
           <th>Resultados</th>
           <th>Últ. Generación</th>
+          <th>Creado por</th>
           <th>Estado</th>
           <th class="acc">Acciones</th>
         </tr>
@@ -70,11 +72,11 @@
       <tbody>
         @if (cargando()) {
         <tr>
-          <td colspan="7" class="vacia"><i class="fas fa-spinner fa-spin"></i> Cargando...</td>
+          <td colspan="8" class="vacia"><i class="fas fa-spinner fa-spin"></i> Cargando...</td>
         </tr>
         } @else if (pacientes().length === 0) {
         <tr>
-          <td colspan="7" class="vacia">No hay pacientes con resultados cargados.</td>
+          <td colspan="8" class="vacia">No hay pacientes que coincidan con los filtros.</td>
         </tr>
         } @else {
         @for (p of pacientes(); track p.dni) {
@@ -84,6 +86,14 @@
           <td class="telefono">{{ (p.telefono | telefono) || '—' }}</td>
           <td>{{ p.totalResultados }}</td>
           <td>{{ p.ultimaFecha | date:'dd/MM/yyyy HH:mm' }}</td>
+          <td>
+            <div class="creado-por" [title]="auditoriaTitle(p)">
+              <span class="creado-por__usuario">{{ p.usuarioCreacion || '—' }}</span>
+              @if (p.fechaCreacionCuenta) {
+              <span class="creado-por__fecha">{{ p.fechaCreacionCuenta | date:'dd/MM/yyyy HH:mm' }}</span>
+              }
+            </div>
+          </td>
           <td>
             <span class="estado" [class.estado--sin]="p.estadoCuenta === 'SIN_CUENTA'"
               [class.estado--ok]="p.estadoCuenta === 'ACTIVO'" [class.estado--anu]="p.estadoCuenta === 'ANULADO'">

@@ -14,6 +14,7 @@ import pe.com.qallpatic.osteoperu.admision.dto.CredencialResponse;
 import pe.com.qallpatic.osteoperu.admision.dto.GenerarUsuarioRequest;
 import pe.com.qallpatic.osteoperu.admision.dto.PacienteAdmisionResponse;
 import pe.com.qallpatic.osteoperu.compartido.excepcion.RecursoNoEncontradoException;
+import pe.com.qallpatic.osteoperu.compartido.excepcion.SolicitudInvalidaException;
 import pe.com.qallpatic.osteoperu.compartido.respuesta.PaginaResponse;
 import pe.com.qallpatic.osteoperu.compartido.util.GeneradorCodigos;
 import pe.com.qallpatic.osteoperu.compartido.util.OrdenamientoUtil;
@@ -34,10 +35,11 @@ import pe.com.qallpatic.osteoperu.usuarios.exception.UsuarioYaExisteException;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.Set;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -60,14 +62,18 @@ public class AdmisionServiceImpl implements AdmisionService {
 
 	@Override
 	@Transactional(readOnly = true)
-	public PaginaResponse<PacienteAdmisionResponse> listarPacientes(String dni, int pagina, int tamano,
-			String ordenarPor, String direccion) {
+	public PaginaResponse<PacienteAdmisionResponse> listarPacientes(String dni, String nombre, String apellidos,
+			LocalDate desde, LocalDate hasta, int pagina, int tamano, String ordenarPor, String direccion) {
+		if (desde != null && hasta != null && desde.isAfter(hasta)) {
+			throw new SolicitudInvalidaException("La fecha Desde no puede ser posterior a la fecha Hasta.");
+		}
 		Sort sort = OrdenamientoUtil.resolver(ordenarPor, direccion,
 				Map.of(), CAMPOS_PACIENTE_ADMISION, "fechaCreacion");
 		Pageable pageable = PageRequest.of(Math.max(pagina, 0), tamano <= 0 ? 10 : tamano, sort);
-		// Desde PACIENTE: incluye a los creados por Admision aunque aun no tengan resultados.
 		Page<PacienteResumenProj> page = pacienteRepository.resumenDesdePacientes(
-				(dni == null || dni.isBlank()) ? null : dni.trim(), pageable);
+				normalizarFiltro(dni), normalizarFiltro(nombre), normalizarFiltro(apellidos),
+				desde == null ? null : desde.atStartOfDay(),
+				hasta == null ? null : hasta.atTime(LocalTime.MAX), pageable);
 
 		List<PacienteAdmisionResponse> contenido = page.getContent().stream()
 				.map(p -> new PacienteAdmisionResponse(
@@ -76,7 +82,11 @@ public class AdmisionServiceImpl implements AdmisionService {
 						p.getTelefono(),
 						p.getTotalResultados() == null ? 0 : p.getTotalResultados(),
 						p.getUltimaFecha(),
-						estadoCuenta(p.getDni())))
+						estadoCuenta(p.getEstadoUsuario()),
+						p.getUsuarioCreacion(),
+						p.getFechaCreacionCuenta(),
+						p.getUsuarioModificacion(),
+						p.getFechaModificacionCuenta()))
 				.toList();
 
 		return new PaginaResponse<>(contenido, page.getNumber(), page.getSize(),
@@ -162,10 +172,15 @@ public class AdmisionServiceImpl implements AdmisionService {
 		log.info("Cuenta anulada. dni={}, por={}", d, actor);
 	}
 
-	private String estadoCuenta(String dni) {
-		return usuarioRepository.findByUsuario(dni)
-				.map(u -> u.isEstado() ? "ACTIVO" : "ANULADO")
-				.orElse("SIN_CUENTA");
+	private String estadoCuenta(Boolean estado) {
+		if (estado == null) {
+			return "SIN_CUENTA";
+		}
+		return estado ? "ACTIVO" : "ANULADO";
+	}
+
+	private String normalizarFiltro(String valor) {
+		return valor == null || valor.isBlank() ? null : valor.trim();
 	}
 
 	private void upsertPaciente(String dni, NombreParser parser, String telefono, Long idUsuario,

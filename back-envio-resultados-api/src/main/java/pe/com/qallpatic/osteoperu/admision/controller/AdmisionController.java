@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -23,6 +24,8 @@ import pe.com.qallpatic.osteoperu.admision.service.AdmisionService;
 import pe.com.qallpatic.osteoperu.compartido.respuesta.PaginaResponse;
 import pe.com.qallpatic.osteoperu.compartido.respuesta.RespuestaApi;
 
+import java.time.LocalDate;
+
 /** Admision: alta y baja de la cuenta de acceso del paciente. Roles: ADMIN, ADMISION, RESULTADOS. */
 @RestController
 @RequestMapping("/api/admision")
@@ -34,16 +37,21 @@ public class AdmisionController {
 	private final AdmisionService admisionService;
 
 	@Operation(summary = "Listar pacientes con resultados",
-			description = "Muestra los pacientes (por DNI) y el estado de su cuenta de acceso (paginado, ordenable).")
+			description = "Muestra los pacientes y el estado/auditoria de su cuenta. Permite filtrar por DNI, nombre, apellidos y fecha de creacion de la cuenta.")
 	@GetMapping("/pacientes")
 	public ResponseEntity<RespuestaApi<PaginaResponse<PacienteAdmisionResponse>>> listarPacientes(
 			@RequestParam(required = false) String dni,
+			@RequestParam(required = false) String nombre,
+			@RequestParam(required = false) String apellidos,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
 			@RequestParam(defaultValue = "0") int pagina,
 			@RequestParam(defaultValue = "10") int tamano,
 			@RequestParam(required = false) String ordenarPor,
 			@RequestParam(required = false) String direccion) {
 		return ResponseEntity.ok(RespuestaApi.ok(
-				admisionService.listarPacientes(dni, pagina, tamano, ordenarPor, direccion)));
+				admisionService.listarPacientes(dni, nombre, apellidos, desde, hasta,
+						pagina, tamano, ordenarPor, direccion)));
 	}
 
 	@Operation(summary = "Generar usuario del paciente",

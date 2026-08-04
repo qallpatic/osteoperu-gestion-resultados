@@ -14,4 +14,14 @@ public interface PacienteResumenProj {
 	Long getTotalResultados();
 
 	LocalDateTime getUltimaFecha();
+
+	Boolean getEstadoUsuario();
+
+	String getUsuarioCreacion();
+
+	LocalDateTime getFechaCreacionCuenta();
+
+	String getUsuarioModificacion();
+
+	LocalDateTime getFechaModificacionCuenta();
 }
