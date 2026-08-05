@@ -123,13 +123,14 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  align-items: flex-end;
   margin: 18px 0;
 }
 
 .search {
   position: relative;
-  flex: 1;
-  min-width: 220px;
+  flex: 1 1 180px;
+  min-width: 160px;
 }
 
 .search i {
@@ -155,6 +156,40 @@
   box-shadow: 0 0 0 3px rgba(7, 94, 84, 0.12);
 }
 
+.in {
+  flex: 1 1 180px;
+  min-width: 150px;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.in:focus,
+.fecha input:focus {
+  outline: none;
+  border-color: var(--brand-700);
+  box-shadow: 0 0 0 3px rgba(7, 94, 84, 0.12);
+}
+
+.fecha {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted-2);
+  font-size: 0.75rem;
+}
+
+.fecha input {
+  min-width: 150px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
 .tabla-wrap {
   overflow: auto;
   max-height: calc(100dvh - 240px);
@@ -166,7 +201,7 @@
 .tabla {
   width: 100%;
   border-collapse: collapse;
-  min-width: 860px;
+  min-width: 1080px;
 }
 
 .tabla th,
@@ -232,6 +267,25 @@
 .telefono {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+.creado-por {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 125px;
+  cursor: help;
+}
+
+.creado-por__usuario {
+  color: var(--brand-900);
+  font-weight: 600;
+}
+
+.creado-por__fecha {
+  color: var(--muted);
+  font-size: 0.76rem;
+  white-space: nowrap;
 }
 
 .vacia {

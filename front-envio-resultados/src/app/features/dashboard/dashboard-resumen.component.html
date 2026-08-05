@@ -4,7 +4,21 @@
       <h1>Dashboard</h1>
       <p>Metricas e indicadores de la plataforma. Visible solo para administradores.</p>
     </div>
-    <span class="page__rango"><i class="fas fa-calendar-range"></i> {{ rangoTexto() || '—' }}</span>
+    <div class="page__head-actions">
+      <span class="page__rango"><i class="fas fa-calendar-range"></i> {{ rangoTexto() || '—' }}</span>
+      <button
+        type="button"
+        class="btn btn--ghost"
+        (click)="exportarExcel()"
+        [disabled]="exportando() || cargando() || !data()"
+        title="Descargar el resumen actual en Excel (.xlsx)">
+        @if (exportando()) {
+          <i class="fas fa-spinner fa-spin"></i> Exportando...
+        } @else {
+          <i class="fas fa-file-excel"></i> Exportar Excel
+        }
+      </button>
+    </div>
   </header>
 
   @if (error(); as e) {
@@ -57,7 +71,7 @@
         <span class="kpi__ico"><i class="fas fa-file-medical"></i></span>
       </header>
       <div class="kpi__value">{{ (data()?.totalResultados ?? 0) | number }}</div>
-      <p class="kpi__sub">Cabeceras vivas en la plataforma</p>
+      <p class="kpi__sub">Resultados cargados en la plataforma</p>
     </article>
 
     <article class="kpi kpi--green">
@@ -68,7 +82,7 @@
       <div class="kpi__value">{{ (data()?.totalUsuarios ?? 0) | number }}</div>
       <p class="kpi__sub">
         @if (data()?.picoUsuarios; as pico) {
-          Pico historico: <b>{{ pico.total | number }}</b> el {{ pico.fecha | date: 'dd/MM/yyyy' }}
+          Pico historico: <b>{{ pico.total | number }}</b> el {{ pico.fecha | fechaCorta }}
         } @else {
           Sin registros suficientes para calcular un pico
         }
@@ -77,11 +91,13 @@
 
     <article class="kpi kpi--cyan">
       <header>
-        <span class="kpi__label">Archivos subidos</span>
-        <span class="kpi__ico"><i class="fas fa-cloud-arrow-up"></i></span>
+        <span class="kpi__label">Almacenamiento usado</span>
+        <span class="kpi__ico"><i class="fas fa-hard-drive"></i></span>
       </header>
-      <div class="kpi__value">{{ (data()?.totalArchivos ?? 0) | number }}</div>
-      <p class="kpi__sub">Archivos activos (no eliminados)</p>
+      <div class="kpi__value">{{ pesoFormateado().texto }}</div>
+      <p class="kpi__sub">
+        {{ (data()?.totalArchivos ?? 0) | number }} archivos registrados
+      </p>
     </article>
 
     <article class="kpi kpi--amber">

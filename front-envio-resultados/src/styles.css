@@ -30,3 +30,29 @@ body {
 a { color: var(--brand-700); }
 
 button { font-family: inherit; }
+
+/* ===== Variantes de boton (.btn base + modificadores) =====
+ * Globales para que apliquen al contenido proyectado via <ng-content>
+ * (las estilos de @Component styles: no alcanzan al contenido proyectado
+ * por el model de encapsulacion Emulated de Angular). */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: 10px; border: none;
+  font-weight: 600; font-size: 0.9rem; cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s, opacity 0.15s;
+}
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn--primary {
+  background: linear-gradient(135deg, var(--brand-700), var(--brand-500));
+  color: #fff;
+  box-shadow: 0 5px 16px rgba(7, 94, 84, 0.3);
+}
+.btn--primary:hover:not(:disabled) { transform: translateY(-1px); }
+.btn--ghost {
+  background: #fff;
+  color: var(--brand-700);
+  border: 1.5px solid var(--border);
+  box-shadow: none;
+}
+.btn--ghost:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--brand-300); }

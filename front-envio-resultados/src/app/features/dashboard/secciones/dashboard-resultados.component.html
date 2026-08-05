@@ -1,0 +1,93 @@
+<app-seccion-generica
+  titulo="Resultados cargados"
+  subtitulo="Cabeceras de resultados creadas por dia y distribucion por dia de la semana."
+  [rangoTexto]="rangoTexto()"
+  [cargando]="cargando()"
+  [error]="error()"
+  [desde]="desde()"
+  [hasta]="hasta()"
+  [today]="today"
+  [preset]="preset()"
+  (presetChange)="aplicarPreset($event)"
+  (aplicar)="aplicar()"
+  (desdeChange)="onDesde($event)"
+  (hastaChange)="onHasta($event)">
+
+  <button
+    type="button"
+    acciones
+    class="btn btn--primary"
+    (click)="exportarExcel()"
+    [disabled]="exportando() || cargando() || !data()"
+    title="Descargar el detalle de resultados cargados en Excel (.xlsx)">
+    @if (exportando()) {
+      <i class="fas fa-spinner fa-spin"></i> Exportando...
+    } @else {
+      <i class="fas fa-file-excel"></i> Exportar Excel
+    }
+  </button>
+
+  <div graficos>
+    <article class="chart">
+      <header class="chart__head">
+        <h2>Cantidad por dia</h2>
+        <span class="chart__sub">Serie diaria dentro del rango seleccionado</span>
+      </header>
+      <div class="chart__body" [class.chart__body--loading]="cargando() && data()">
+        @if (esPrimerLoad()) {
+          <div class="chart__skel"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
+        } @else {
+          <canvas baseChart
+            [type]="'bar'"
+            [data]="chartResultados"
+            [options]="chartOptions"></canvas>
+          @if (cargando()) {
+            <div class="chart__overlay"><i class="fas fa-spinner fa-spin"></i></div>
+          }
+        }
+      </div>
+    </article>
+
+    <article class="chart">
+      <header class="chart__head">
+        <h2>Distribucion por dia de la semana</h2>
+        <span class="chart__sub">Suma total agrupada por Lun-Dom en el rango</span>
+      </header>
+      <div class="chart__body">
+        @if (data()) {
+          <canvas baseChart
+            [type]="'bar'"
+            [data]="chartSemanal"
+            [options]="chartSemanalOptions"></canvas>
+        }
+      </div>
+    </article>
+  </div>
+
+  <div leyendas>
+    <div class="kpi-grid">
+      <article class="kpi-mini">
+        <span class="kpi-mini__label">Total en el rango</span>
+        <span class="kpi-mini__value">{{ totalEnRango() | number }}</span>
+      </article>
+      <article class="kpi-mini">
+        <span class="kpi-mini__label">Promedio diario</span>
+        <span class="kpi-mini__value">{{ promedioDiario() | number: '1.1-1' }}</span>
+      </article>
+      <article class="kpi-mini">
+        <span class="kpi-mini__label">Dia pico</span>
+        <span class="kpi-mini__value">
+          @if (diaPico(); as p) {
+            {{ p.total | number }} <small>{{ p.fecha | fechaCorta }}</small>
+          } @else {
+            —
+          }
+        </span>
+      </article>
+      <article class="kpi-mini">
+        <span class="kpi-mini__label">Dias sin actividad</span>
+        <span class="kpi-mini__value">{{ diasSinActividad() | number }}</span>
+      </article>
+    </div>
+  </div>
+</app-seccion-generica>

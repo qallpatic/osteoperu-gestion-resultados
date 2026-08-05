@@ -70,4 +70,61 @@ public interface ResultadoCargaRepository
 	/** Suma de vistas (CONTADOR_VISTAS) de cabeceras vivas. */
 	@Query("SELECT COALESCE(SUM(r.contadorVistas), 0) FROM ResultadoCarga r WHERE r.estado = :estado")
 	long sumContadorVistasByEstado(@Param("estado") Integer estado);
+
+	/**
+	 * Top N cabeceras vivas con mayor CONTADOR_VISTAS. Devuelve filas crudas
+	 * (Object[]) para evitar proyecciones intermedias:
+	 * [idGenerado, documentoIdentidad, nombrePaciente, contadorVistas, fechaHoraCarga].
+	 * El service mapea al DTO ResultadoMasVistoResponse.
+	 */
+	@Query("""
+			SELECT r.idGenerado, r.documentoIdentidad, r.nombrePaciente, r.contadorVistas, r.fechaHoraCarga
+			FROM ResultadoCarga r
+			WHERE r.estado = 1 AND r.contadorVistas > 0
+			ORDER BY r.contadorVistas DESC, r.fechaHoraCarga DESC
+			""")
+	List<Object[]> topCabecerasMasVistas(Pageable pageable);
+
+	/**
+	 * Todas las cabeceras vivas con su contador, para que el service arme los
+	 * buckets (1, 2-5, 6-10, 11+) en Java. Es mas simple que un CASE WHEN
+	 * en SQL y el dataset es chico (~50 cabeceras).
+	 */
+	@Query("SELECT r.contadorVistas FROM ResultadoCarga r WHERE r.estado = 1")
+	List<Integer> contadoresVistasCabecerasVivas();
+
+	/**
+	 * Lista plana para el reporte Excel de "Resultados cargados". Devuelve
+	 * TODAS las cabeceras del rango (vivas + soft-deleted) ordenadas por
+	 * fechaHoraCarga descendente para que el ADMIN vea primero lo mas
+	 * reciente. El service mapea los {@code Object[]} a
+	 * {@link pe.com.qallpatic.osteoperu.dashboard.dto.ReporteResultadoRow}.
+	 *
+	 * <p>Orden de columnas (debe coincidir con el mapeo en el service):
+	 * <pre>
+	 * [0]  fechaHoraCarga
+	 * [1]  documentoIdentidad
+	 * [2]  nombrePaciente
+	 * [3]  telefono
+	 * [4]  cantidadArchivos
+	 * [5]  pesoTotalMb
+	 * [6]  estadoSms
+	 * [7]  estado
+	 * [8]  fechaEliminacion
+	 * [9]  usuarioEliminacion
+	 * [10] motivoEliminacion
+	 * [11] usuarioCreacion
+	 * </pre>
+	 */
+	@Query("""
+			SELECT r.fechaHoraCarga, r.documentoIdentidad, r.nombrePaciente, r.telefono,
+			       r.cantidadArchivos, r.pesoTotalMb, r.estadoSms, r.estado,
+			       r.fechaEliminacion, r.usuarioEliminacion, r.motivoEliminacion,
+			       r.usuarioCreacion
+			FROM ResultadoCarga r
+			WHERE r.fechaHoraCarga BETWEEN :desde AND :hasta
+			ORDER BY r.fechaHoraCarga DESC
+			""")
+	List<Object[]> listarParaReporte(@Param("desde") LocalDateTime desde,
+			@Param("hasta") LocalDateTime hasta);
 }

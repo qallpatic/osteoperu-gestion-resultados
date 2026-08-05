@@ -13,5 +13,9 @@ public record PacienteAdmisionResponse(
 		String telefono,
 		long totalResultados,
 		LocalDateTime ultimaFecha,
-		String estadoCuenta) {
+		String estadoCuenta,
+		String usuarioCreacion,
+		LocalDateTime fechaCreacionCuenta,
+		String usuarioModificacion,
+		LocalDateTime fechaModificacionCuenta) {
 }
