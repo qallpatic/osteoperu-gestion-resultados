@@ -219,6 +219,7 @@ logging:
     root: INFO
     pe.com.qallpatic.osteoperu: DEBUG
     org.flywaydb: INFO
+    org.apache.pdfbox.pdmodel.font: ERROR
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36}.%M:%L - %msg%n"
 
