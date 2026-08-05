@@ -416,7 +416,7 @@ export class AdmisionComponent implements OnInit {
     <div class="k">Usuario</div><div class="v cred-big">${c.usuario}</div>
     <div class="k">Clave</div><div class="v cred-big">${c.clave}</div>
   </div>
-  <div class="qr-wrap"><img src="assets/qr-osteoperu.png" alt="QR" /></div>
+  <div class="qr-wrap"><img src="assets/qr-osteoperu-1.png" alt="QR" /></div>
   <div class="footer">
     Sus resultados estar&aacute;n disponibles hasta el <b> ${fechaVigenciaEsc}</b>.
     Aseg&uacute;rese de descargarlos dentro de este plazo.
