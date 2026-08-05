@@ -128,6 +128,12 @@
   margin-bottom: 20px;
 }
 
+.alert--info {
+  background: #e0f2fe;
+  color: #075985;
+  border-left-color: #0ea5e9;
+}
+
 .foot { color: var(--muted-2); font-size: 0.8rem; }
 
 .forgot {

@@ -29,6 +29,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ServicioAutenticacionImpl implements ServicioAutenticacion {
 
+	/** Caracteres permitidos en cualquier tipo de username (operario interno o paciente).
+ *  El back es laxo con el formato porque la BD distingue el rol del usuario
+ *  (RESULTADOS/ADMISION/CALLCENTER son username corto; PACIENTE usa DNI/CE).
+ *  Solo se filtran entradas claramente basura (correos, espacios, símbolos). */
+	private static final java.util.regex.Pattern USERNAME_LIMPIO = java.util.regex.Pattern.compile("^[A-Za-z0-9]{3,30}$");
+
 	private final AuthenticationManager authenticationManager;
 	private final ProveedorJwt proveedorJwt;
 	private final TokenRefrescoRepository tokenRefrescoRepository;
@@ -40,6 +46,16 @@ public class ServicioAutenticacionImpl implements ServicioAutenticacion {
 	@Transactional
 	public TokenResponse login(LoginRequest solicitud, String ip) {
 		String usuario = solicitud.usuario() == null ? "" : solicitud.usuario().trim();
+
+		// El operador interno (ADMIN) se loguea con su username no-DNI; el resto
+		// de usuarios son pacientes y deben tipiar su número de DNI.
+		String adminUsername = propiedades.getAdmin().getUsername();
+		if (adminUsername == null || !adminUsername.equalsIgnoreCase(usuario)) {
+			if (!USERNAME_LIMPIO.matcher(usuario).matches()) {
+				throw new SolicitudInvalidaException(
+						"El usuario debe ser alfanumerico, sin espacios ni simbolos (ejemplo: 12345678, E1234567, resultados).");
+			}
+		}
 
 		// Rate-limit ANTES de delegar a Spring Security. Si la dupla
 		// ip+usuario esta bloqueada, devolvemos 429 sin enumerar usuarios.
