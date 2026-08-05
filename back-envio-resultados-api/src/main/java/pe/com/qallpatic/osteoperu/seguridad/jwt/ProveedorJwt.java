@@ -59,7 +59,7 @@ public class ProveedorJwt {
 					.getPayload();
 			return Optional.of(claims);
 		} catch (JwtException | IllegalArgumentException e) {
-			log.debug("Token JWT invalido: {}", e.getMessage());
+			log.trace("Token JWT invalido: {}", e.getMessage());
 			return Optional.empty();
 		}
 	}

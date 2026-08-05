@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
@@ -54,6 +55,15 @@ public class ManejadorGlobalExcepciones {
 	@ExceptionHandler(MaxUploadSizeExceededException.class)
 	public ResponseEntity<RespuestaError> manejarTamano(MaxUploadSizeExceededException ex, HttpServletRequest req) {
 		return construir(HttpStatus.PAYLOAD_TOO_LARGE, "El archivo supera el tamano maximo permitido.", req);
+	}
+
+	@ExceptionHandler(MissingServletRequestParameterException.class)
+	public ResponseEntity<RespuestaError> manejarParametroFaltante(
+			MissingServletRequestParameterException ex, HttpServletRequest req) {
+		log.warn("Parametro obligatorio ausente: {} (request={})",
+				ex.getParameterName(), req == null ? "?" : req.getRequestURI());
+		return construir(HttpStatus.BAD_REQUEST,
+				"Parametro obligatorio ausente: " + ex.getParameterName(), req);
 	}
 
 	@ExceptionHandler(Exception.class)

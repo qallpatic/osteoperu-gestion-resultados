@@ -158,8 +158,9 @@ seguridad:
   jwt:
     # Clave HS256 (minimo 32 bytes). En produccion SIEMPRE via variable de entorno.
     secret: ${JWT_SECRET:osteoperu-cambia-esta-clave-secreta-jwt-hs256-minimo-32-bytes-2026}
-    # Duracion del access token (15 min) y del refresh token (7 dias), en milisegundos.
-    access-expiration-ms: ${JWT_ACCESS_MS:900000}
+    # Duracion del access token (4 horas para soportar jornadas de carga continuas)
+    # y del refresh token (7 dias), en milisegundos.
+    access-expiration-ms: ${JWT_ACCESS_MS:14400000}
     refresh-expiration-ms: ${JWT_REFRESH_MS:604800000}
     issuer: osteoperu
   # Usuario ADMIN que se crea al arrancar si aun no existe (idempotente).
@@ -219,6 +220,7 @@ logging:
     root: INFO
     pe.com.qallpatic.osteoperu: DEBUG
     org.flywaydb: INFO
+    org.apache.pdfbox.pdmodel.font: ERROR
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36}.%M:%L - %msg%n"
 

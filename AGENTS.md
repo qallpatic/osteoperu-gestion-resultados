@@ -199,11 +199,21 @@ GET /r/{token}/descargar/{fileId}  ViewerController.download()
 ### 5.3 Login + refresh
 
 ```
-/api/auth/login    → { accessToken (15 min), refreshToken (7 días) }
+/api/auth/login    → { accessToken (4 h), refreshToken (7 días) }
 [access expira]    → 401 → authInterceptor → AuthService.refresh() (single-flight)
                     → /api/auth/refresh { refreshToken } → reintenta request
-[refresh expira]   → 401 → limpiaSesion() → redirect a /login
+[refresh expira]   → 401 → limpiaSesion() → redirect a /login?motivo=sesion-expirada
 ```
+
+> **T-10 (válido desde 2026-08-04)**: `ServicioAutenticacionImpl.login()` valida
+> que el username sea **alfanumérico puro** de 3-30 caracteres
+> (`^[A-Za-z0-9]{3,30}$`), aceptando tanto usernames de operario interno
+> (`resultados`, `admision`, `callcenter`) como DNI/CE de paciente
+> (`12345678`, `E1234567`). Rechaza con `SolicitudInvalidaException`
+> cualquier cosa con `@`, espacios o símbolos (correos tipeados como
+> username). Excepción: el admin interno (`seguridad.admin.username`,
+> default `admin`) conserva su login sin importar el formato. La
+> autorización real la hace `AuthenticationManager` + tabla USUARIO.
 
 ### 5.4 Validación RENIEC vs PDF
 

@@ -18,9 +18,14 @@ public class SeguridadProperties {
 	public static class Jwt {
 		/** Clave HS256 (minimo 32 bytes). */
 		private String secret;
-		/** Duracion del access token en milisegundos. */
-		private long accessExpirationMs = 900_000L;
-		/** Duracion del refresh token en milisegundos. */
+		/**
+		 * Duracion del access token en milisegundos. Default 4 horas para soportar
+		 * jornadas continuas de carga (RESULTADOS/ADMISION), reduciendo a la minima
+		 * expresion los ciclos 401 -> refresh -> retry que se observaban con 15 min.
+		 * Override por env JWT_ACCESS_MS.
+		 */
+		private long accessExpirationMs = 14_400_000L;
+		/** Duracion del refresh token en milisegundos (default 7 dias). */
 		private long refreshExpirationMs = 604_800_000L;
 		private String issuer = "osteoperu";
 	}

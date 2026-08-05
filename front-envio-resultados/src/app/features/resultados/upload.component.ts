@@ -342,7 +342,12 @@ export class UploadComponent implements OnInit {
         },
         error: (err: HttpErrorResponse) => {
           this.sending.set(false);
-          this.notice.set({ type: 'error', text: this.errorMessage(err) });
+          const mensaje = this.errorMessage(err);
+          if (!mensaje) {
+            this.notice.set(null);
+            return;
+          }
+          this.notice.set({ type: 'error', text: mensaje });
         },
       });
   }
@@ -371,12 +376,32 @@ export class UploadComponent implements OnInit {
   }
 
   private errorMessage(err: HttpErrorResponse): string {
+    const m = (err.error?.message ?? '').toString();
     if (err.status === 0) {
-      return 'No se pudo conectar con el servidor. Verifica tu conexión.';
+      // Cancelaciones explicitas del cliente (navegacion, doble-click) no deben
+      // mostrar snackbar: ya que el backend no respondio por decision del usuario.
+      if (/cancel|abort|aborted|errored|unknown/i.test(err.message || m)) {
+        return '';
+      }
+      return 'No se pudo conectar con el servidor. Verifica tu conexion.';
     }
-    if (err.status === 401 || err.status === 403) {
+    if (err.status === 401) {
+      // El errorInterceptor maneja 401 con refresh + retry. Si llegamos aca es que
+      // el refresh fallo o que el endpoint es publico: en ambos casos la sesion expiro.
+      return 'Tu sesion expiro. Vuelve a iniciar sesion para continuar.';
+    }
+    if (err.status === 403) {
       return 'No tienes permisos para cargar resultados.';
     }
-    return err.error?.message ?? 'Ocurrió un error al enviar los resultados.';
+    if (err.status === 413) {
+      return 'Uno o mas archivos superan el limite de 50 MB.';
+    }
+    if (err.status === 429) {
+      return 'Demasiadas solicitudes. Espera unos segundos y vuelve a intentarlo.';
+    }
+    if (err.status >= 500 && err.status < 600) {
+      return `Error del servidor (${err.status}). ${m || 'Reintenta en unos segundos.'}`.trim();
+    }
+    return m || 'Ocurrio un error al enviar los resultados.';
   }
 }
