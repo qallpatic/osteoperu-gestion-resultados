@@ -39,7 +39,7 @@ export class LoginComponent implements OnInit {
     }
     try {
       const cfg = await this.captcha.config();
-      this.captchaHabilitado = cfg.habilitado;
+      this.captchaHabilitado = cfg.enabled;
     } catch {
       this.captchaHabilitado = false;
     }
@@ -56,6 +56,7 @@ export class LoginComponent implements OnInit {
     if (this.captchaHabilitado) {
       try {
         token = await this.captcha.obtenerToken('login');
+        console.log('Token captcha obtenido', token);
       } catch {
         this.cargando.set(false);
         this.error.set('No se pudo completar la verificacion de seguridad. Recarga la pagina.');
@@ -68,6 +69,7 @@ export class LoginComponent implements OnInit {
         this.cargando.set(false);
         // Limpiamos el query param tras un login exitoso.
         this.router.navigate(['/'], { replaceUrl: true });
+        console.log('Login exitoso-1', token);
       },
       error: (err: HttpErrorResponse) => {
         this.cargando.set(false);

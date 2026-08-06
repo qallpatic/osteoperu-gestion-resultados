@@ -44,7 +44,7 @@ export class CaptchaService {
 
   async obtenerToken(accion: string): Promise<string> {
     const cfg = await this.config();
-    if (!cfg.habilitado) {
+    if (!cfg.enabled) {
       return '';
     }
     if (!cfg.siteKey) {

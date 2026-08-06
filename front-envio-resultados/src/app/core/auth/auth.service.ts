@@ -72,6 +72,7 @@ export class AuthService implements OnDestroy {
   }
 
   login(usuario: string, contrasena: string, recaptchaToken: string | null = null): Observable<void> {
+    console.log('Login con usuario:', usuario, 'con recaptchaToken:', recaptchaToken);
     const body: { usuario: string; contrasena: string; recaptchaToken?: string } = {
       usuario,
       contrasena,

@@ -1,5 +1,5 @@
 export interface ConfigCaptcha {
-  habilitado: boolean;
+  enabled: boolean;
   siteKey: string | null;
 }
 
