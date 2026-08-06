@@ -622,6 +622,7 @@
 
   .shell--movil .sidebar {
     transform: translateX(0);
+    z-index: 30;
   }
 
   .shell--movil .overlay {
