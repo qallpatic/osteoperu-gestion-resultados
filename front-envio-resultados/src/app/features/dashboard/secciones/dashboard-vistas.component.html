@@ -1,6 +1,6 @@
 <app-seccion-generica
   titulo="Vistas de pacientes"
-  subtitulo="Engagement diario (aperturas + descargas) y distribucion horaria para detectar ventanas pico."
+  subtitulo="Curva temporal diaria con desglose de aperturas y descargas, y heatmap dia-de-la-semana x hora-del-dia para detectar ventanas pico."
   [rangoTexto]="rangoTexto()"
   [cargando]="cargando()"
   [error]="error()"
@@ -56,26 +56,57 @@
 
     <article class="chart chart--wide">
       <header class="chart__head">
-        <h2>Distribucion horaria de actividad</h2>
-        <span class="chart__sub">A que hora del dia concentran los pacientes la revision de sus resultados (la barra oscura es la hora pico)</span>
+        <h2>Heatmap de actividad</h2>
+        <span class="chart__sub">Cada celda = total de interacciones en ese dia de la semana y hora del dia. Mas oscuro = mas actividad.</span>
       </header>
-      <div class="chart__body" [class.chart__body--loading]="cargando() && data()">
+      <div class="chart__body heatmap-body" [class.chart__body--loading]="cargando() && data()">
         @if (esPrimerLoad()) {
           <div class="chart__skel"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
-        } @else if (chartDistribucionHoraria.datasets[0]?.data?.length) {
-          <canvas
-            baseChart
-            [type]="'bar'"
-            [data]="chartDistribucionHoraria"
-            [options]="chartDistribucionHorariaOptions">
-          </canvas>
+        } @else if (data()) {
+          <div class="heatmap-wrapper">
+            <div class="heatmap">
+              <div class="heatmap__corner"></div>
+              @for (h of horasLabels; track h) {
+                <div class="heatmap__hour-label" [class.heatmap__hour-label--major]="($index % 3) === 0">
+                  {{ h }}
+                </div>
+              }
+              @for (fila of heatmapMatrix(); track $index; let filaIdx = $index) {
+                <div class="heatmap__day-label">{{ diasLabels[filaIdx] }}</div>
+                @for (valor of fila; track $index; let horaIdx = $index) {
+                  <div
+                    class="heatmap__cell"
+                    [style.background-color]="colorPara(valor)"
+                    (mouseenter)="onCeldaEnter(filaIdx, horaIdx, $event)"
+                    (mousemove)="onCeldaMove($event)"
+                    (mouseleave)="onCeldaLeave()">
+                  </div>
+                }
+              }
+            </div>
+            @if (celdaHover(); as h) {
+              <div
+                class="heatmap__tooltip"
+                [style.left.px]="h.x + 12"
+                [style.top.px]="h.y + 12">
+                {{ tooltipTexto() }}
+              </div>
+            }
+            <div class="heatmap-legend">
+              <span class="heatmap-legend__label">Menos</span>
+              @for (valor of heatmapLeyenda(); track $index) {
+                <span class="heatmap-legend__cell" [style.background-color]="colorPara(valor)"></span>
+              }
+              <span class="heatmap-legend__label">Mas</span>
+            </div>
+          </div>
           @if (cargando()) {
             <div class="chart__overlay" aria-label="Actualizando">
               <i class="fas fa-spinner fa-spin"></i>
             </div>
           }
         } @else {
-          <div class="chart__skel">Sin actividad en el rango.</div>
+          <div class="chart__skel">Sin datos para mostrar.</div>
         }
       </div>
     </article>

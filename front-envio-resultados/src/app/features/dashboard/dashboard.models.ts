@@ -67,8 +67,13 @@ export interface PuntoVistaDiaria {
   total: number;
 }
 
-/** Punto de la distribucion horaria (0-23). Eje Y = interacciones en esa hora. */
-export interface PuntoHorario {
+/**
+ * Celda del heatmap dia-de-la-semana x hora-del-dia.
+ * `diaSemana` usa la convencion MySQL DAYOFWEEK default: 1=Dom, 7=Sab.
+ * El componente reordena para mostrar L M M J V S D.
+ */
+export interface PuntoHeatmap {
+  diaSemana: number;
   hora: number;
   total: number;
 }
@@ -88,10 +93,10 @@ export interface VistasDetalle {
   totalDescargas: number;
   /** descargas / aperturas * 100, redondeado a 1 decimal. 0 si no hay aperturas. */
   ratioDescargaPorApertura: number;
-  /** 24 puntos (0-23) con el total de interacciones por hora. */
-  distribucionHoraria: PuntoHorario[];
   /** Hora del dia con mas interacciones (0-23). null si no hubo actividad. */
   horaPico: number | null;
-  /** Cantidad de interacciones registradas en la hora pico. */
+  /** Cantidad de interacciones registradas en la hora pico (sumadas todos los dias). */
   totalHoraPico: number | null;
+  /** 168 puntos (7x24) densificados con el total de interacciones por celda. */
+  heatmap: PuntoHeatmap[];
 }

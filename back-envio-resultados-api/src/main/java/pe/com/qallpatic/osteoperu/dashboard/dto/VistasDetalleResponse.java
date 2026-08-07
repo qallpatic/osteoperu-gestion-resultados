@@ -12,8 +12,9 @@ import java.util.List;
  *       descargas/apertura, hora pico de actividad.</li>
  *   <li>Curva temporal densa con dos series: aperturas del visor y
  *       descargas de archivos (stacked bar).</li>
- *   <li>Distribucion horaria (24 puntos, 0-23) para identificar la
- *       ventana del dia en que los pacientes revisan sus resultados.</li>
+ *   <li>Heatmap dia-de-la-semana x hora-del-dia (grilla 7x24 = 168
+ *       puntos, 0 si no hubo actividad) para detectar patrones
+ *       circadianos y semanales en una sola mirada.</li>
  * </ul>
  *
  * <p>Datos: cabecera viva de {@code RESULTADO_CARGA.CONTADOR_VISTAS}
@@ -47,17 +48,20 @@ public record VistasDetalleResponse(
 		 */
 		BigDecimal ratioDescargaPorApertura,
 
-		/**
-		 * Distribucion horaria densa (24 puntos, hora 0-23) con el total
-		 * de interacciones por hora en todo el rango. Las horas sin
-		 * actividad vienen con total=0 para que el chart tenga eje X
-		 * completo.
-		 */
-		List<PuntoHorario> distribucionHoraria,
-
 		/** Hora del dia con mas interacciones (0-23). null si no hubo actividad. */
 		Integer horaPico,
 
 		/** Cantidad de interacciones registradas en la hora pico. */
-		Long totalHoraPico) {
+		Long totalHoraPico,
+
+		/**
+		 * Heatmap dia-de-la-semana x hora (7x24 = 168 puntos densos).
+		 * Cada punto = total de interacciones en esa franja del rango.
+		 * Las celdas sin actividad vienen con total=0.
+		 *
+		 * <p>{@code diaSemana} usa la convencion MySQL DAYOFWEEK default:
+		 * 1=Domingo, 2=Lunes, ..., 7=Sabado. El front la reordena para
+		 * mostrar L M M J V S D.
+		 */
+		List<PuntoHeatmap> heatmap) {
 }

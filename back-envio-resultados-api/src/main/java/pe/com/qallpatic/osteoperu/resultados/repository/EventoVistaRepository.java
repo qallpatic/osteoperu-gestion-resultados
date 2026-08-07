@@ -108,6 +108,20 @@ public interface EventoVistaRepository extends JpaRepository<EventoVista, Long> 
 			@Param("hasta") LocalDateTime hasta);
 
 	/**
+	 * Total historico de eventos agrupados por tipo (CLICK / VISTA /
+	 * DESCARGA) sin filtro de fecha. Alimenta el KPI "Vistas de pacientes"
+	 * del dashboard resumen, que muestra el engagement acumulado de la
+	 * plataforma (numero estable, no cambia con el rango seleccionado).
+	 * Devuelve filas crudas [tipoEvento, total (Long)].
+	 */
+	@Query("""
+			SELECT e.tipoEvento, COUNT(e)
+			FROM EventoVista e
+			GROUP BY e.tipoEvento
+			""")
+	List<Object[]> conteoTotalPorTipo();
+
+	/**
 	 * Cantidad de cabeceras DISTINTAS que tuvieron al menos un evento
 	 * (apertura o descarga) en el rango. Alimenta la tasa de adopcion del
 	 * dashboard: cabecerasConActividad / cabecerasVivasTotales.
@@ -124,22 +138,26 @@ public interface EventoVistaRepository extends JpaRepository<EventoVista, Long> 
 			@Param("hasta") LocalDateTime hasta);
 
 	/**
-	 * Conteo de interacciones (aperturas + descargas) agrupadas por hora
-	 * del dia (0-23). Alimenta el chart de distribucion horaria del
-	 * dashboard: a que hora del dia concentran los pacientes la revision
-	 * de sus resultados. Devuelve filas crudas [hora (Integer), total
-	 * (Long)]; el service densifica las 24 horas rellenando con 0 las
-	 * horas sin actividad.
+	 * Conteo de interacciones agrupadas por dia-de-la-semana (1-7, convencion
+	 * MySQL DAYOFWEEK default: 1=Domingo, 7=Sabado) y hora (0-23). Alimenta
+	 * el heatmap del dashboard. Devuelve filas crudas
+	 * [diaSemana (Integer), hora (Integer), total (Long)]; el service
+	 * densifica la grilla 7x24 (168 celdas) rellenando con 0 las celdas
+	 * sin actividad. La hora pico y el total de la hora pico se derivan
+	 * de estos datos en Java.
 	 */
 	@Query("""
-			SELECT FUNCTION('HOUR', e.fechaCreacion) AS hora, COUNT(e) AS total
+			SELECT FUNCTION('DAYOFWEEK', e.fechaCreacion) AS diaSemana,
+			       FUNCTION('HOUR', e.fechaCreacion) AS hora,
+			       COUNT(e) AS total
 			FROM EventoVista e
 			WHERE e.tipoEvento IN (
 			       pe.com.qallpatic.osteoperu.resultados.entity.TipoEvento.VISTA,
 			       pe.com.qallpatic.osteoperu.resultados.entity.TipoEvento.DESCARGA)
 			  AND e.fechaCreacion BETWEEN :desde AND :hasta
-			GROUP BY FUNCTION('HOUR', e.fechaCreacion)
+			GROUP BY FUNCTION('DAYOFWEEK', e.fechaCreacion),
+			         FUNCTION('HOUR', e.fechaCreacion)
 			""")
-	List<Object[]> conteoPorHoraEnRango(@Param("desde") LocalDateTime desde,
+	List<Object[]> conteoPorDiaSemanaYHoraEnRango(@Param("desde") LocalDateTime desde,
 			@Param("hasta") LocalDateTime hasta);
 }

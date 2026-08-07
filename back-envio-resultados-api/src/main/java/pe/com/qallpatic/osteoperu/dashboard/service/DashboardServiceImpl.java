@@ -15,7 +15,7 @@ import pe.com.qallpatic.osteoperu.dashboard.dto.DashboardResumenResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.DistribucionTipoContenidoResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PicoRegistrosResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoAcumuladoMb;
-import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoHorario;
+import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoHeatmap;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoSerieDiaria;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoVistaDiaria;
 import pe.com.qallpatic.osteoperu.dashboard.dto.ReporteArchivoRow;
@@ -131,11 +131,20 @@ public class DashboardServiceImpl implements DashboardService {
 		// espacio en el bucket corresponde al total de filas en la tabla.
 		long totalArchivos = resultadoArchivoRepository.count();
 		BigDecimal pesoTotalMb = resultadoArchivoRepository.sumPesoMb();
-		// Engagement total: aperturas del visor (CONTADOR_VISTAS) + descargas
-		// de archivos (eventos DESCARGA). Excluye CLICK porque ocurre antes
-		// del contacto con los resultados.
-		long totalVistas = resultadoCargaRepository.sumContadorVistasByEstado(ESTADO_VIVO)
-				+ resultadoCargaRepository.countDescargasByEstado(ESTADO_VIVO);
+		// Engagement total historico de la plataforma: aperturas del visor +
+		// descargas de archivos (eventos en EVENTO_VISTA, sin filtro de fecha).
+		// Este KPI del resumen es estable y NO responde al rango seleccionado:
+		// refleja el estado global de la plataforma. El analisis del rango vive
+		// en la seccion "Vistas de pacientes" (obtenerVistasDetalle), que
+		// filtra por desde/hasta. Excluye CLICK porque ocurre antes del
+		// contacto con los resultados.
+		long totalVistas = 0L;
+		for (Object[] fila : eventoVistaRepository.conteoTotalPorTipo()) {
+			TipoEvento tipo = (TipoEvento) fila[0];
+			if (tipo == TipoEvento.VISTA || tipo == TipoEvento.DESCARGA) {
+				totalVistas += ((Number) fila[1]).longValue();
+			}
+		}
 
 		// ===== Pico historico de usuarios (top 1) =====
 		PicoRegistrosResponse picoUsuarios = null;
@@ -443,20 +452,33 @@ public class DashboardServiceImpl implements DashboardService {
 			curvaDescargas.add(new PuntoVistaDiaria(dia.toString(), descarga));
 		}
 
-		// ===== Distribucion horaria (24 puntos densos) =====
-		Map<Integer, Long> mapaPorHora = new HashMap<>();
-		for (Object[] fila : eventoVistaRepository.conteoPorHoraEnRango(desdeDt, hastaDt)) {
-			mapaPorHora.put(((Number) fila[0]).intValue(),
-					((Number) fila[1]).longValue());
+		// ===== Heatmap 7x24 + derivacion de hora pico (sumando todos los dias) =====
+		Map<Long, Long> mapaCal = new HashMap<>();
+		for (Object[] fila : eventoVistaRepository.conteoPorDiaSemanaYHoraEnRango(desdeDt, hastaDt)) {
+			int dia = ((Number) fila[0]).intValue();
+			int hora = ((Number) fila[1]).intValue();
+			long n = ((Number) fila[2]).longValue();
+			mapaCal.put((long) dia * 24L + hora, n);
 		}
-		List<PuntoHorario> distribucionHoraria = new ArrayList<>(24);
+		List<PuntoHeatmap> heatmap = new ArrayList<>(168);
+		// Para el KPI "Hora pico" sumamos todas las celdas de cada hora (a
+		// traves de todos los dias). Asi responde "¿a que hora conviene
+		// mandar SMS?" en lugar de "¿que celda tuvo mas eventos?".
+		long[] totalPorHora = new long[24];
+		// Convencion MySQL: 1=Dom..7=Sab. Densificamos en orden Dom..Sab,
+		// el front reordena para L M M J V S D.
+		for (int dia = 1; dia <= 7; dia++) {
+			for (int hora = 0; hora < 24; hora++) {
+				long n = mapaCal.getOrDefault((long) dia * 24L + hora, 0L);
+				heatmap.add(new PuntoHeatmap(dia, hora, n));
+				totalPorHora[hora] += n;
+			}
+		}
 		int horaPico = -1;
 		long totalHoraPico = 0L;
 		for (int h = 0; h < 24; h++) {
-			long n = mapaPorHora.getOrDefault(h, 0L);
-			distribucionHoraria.add(new PuntoHorario(h, n));
-			if (n > totalHoraPico) {
-				totalHoraPico = n;
+			if (totalPorHora[h] > totalHoraPico) {
+				totalHoraPico = totalPorHora[h];
 				horaPico = h;
 			}
 		}
@@ -474,7 +496,8 @@ public class DashboardServiceImpl implements DashboardService {
 				curva,
 				curvaAperturas, curvaDescargas,
 				totalAperturas, totalDescargas, ratioDescargaPorApertura,
-				distribucionHoraria, horaPicoNullable, totalHoraPicoNullable);
+				horaPicoNullable, totalHoraPicoNullable,
+				heatmap);
 
 		cacheVistas.put(key, new EntradaCacheDashboard<>(respuesta,
 				Instant.now().plusSeconds(CACHE_TTL_SEGUNDOS)));
