@@ -11,18 +11,17 @@ import pe.com.qallpatic.osteoperu.compartido.proyeccion.PicoPorFechaProjection;
 import pe.com.qallpatic.osteoperu.compartido.util.UserAgentParser;
 import pe.com.qallpatic.osteoperu.dashboard.dto.AlmacenamientoDetalleResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.ArchivoPesadoResponse;
-import pe.com.qallpatic.osteoperu.dashboard.dto.BucketVistasResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.DashboardResumenResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.DistribucionTipoContenidoResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PicoRegistrosResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoAcumuladoMb;
+import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoHorario;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoSerieDiaria;
 import pe.com.qallpatic.osteoperu.dashboard.dto.PuntoVistaDiaria;
 import pe.com.qallpatic.osteoperu.dashboard.dto.ReporteArchivoRow;
 import pe.com.qallpatic.osteoperu.dashboard.dto.ReporteEventoVistaRow;
 import pe.com.qallpatic.osteoperu.dashboard.dto.ReporteResultadoRow;
 import pe.com.qallpatic.osteoperu.dashboard.dto.ReporteUsuarioRow;
-import pe.com.qallpatic.osteoperu.dashboard.dto.ResultadoMasVistoResponse;
 import pe.com.qallpatic.osteoperu.dashboard.dto.VistasDetalleResponse;
 import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorDashboardExcel;
 import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorReporteAlmacenamiento;
@@ -30,6 +29,7 @@ import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorReporteResultados;
 import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorReporteUsuarios;
 import pe.com.qallpatic.osteoperu.dashboard.util.ExportadorReporteVistas;
 import pe.com.qallpatic.osteoperu.resultados.entity.ResultadoCarga;
+import pe.com.qallpatic.osteoperu.resultados.entity.TipoEvento;
 import pe.com.qallpatic.osteoperu.seguridad.entity.Usuario;
 import pe.com.qallpatic.osteoperu.resultados.repository.EventoVistaRepository;
 import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoArchivoRepository;
@@ -37,6 +37,7 @@ import pe.com.qallpatic.osteoperu.resultados.repository.ResultadoCargaRepository
 import pe.com.qallpatic.osteoperu.seguridad.repository.UsuarioRepository;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -130,7 +131,11 @@ public class DashboardServiceImpl implements DashboardService {
 		// espacio en el bucket corresponde al total de filas en la tabla.
 		long totalArchivos = resultadoArchivoRepository.count();
 		BigDecimal pesoTotalMb = resultadoArchivoRepository.sumPesoMb();
-		long totalVistas = resultadoCargaRepository.sumContadorVistasByEstado(ESTADO_VIVO);
+		// Engagement total: aperturas del visor (CONTADOR_VISTAS) + descargas
+		// de archivos (eventos DESCARGA). Excluye CLICK porque ocurre antes
+		// del contacto con los resultados.
+		long totalVistas = resultadoCargaRepository.sumContadorVistasByEstado(ESTADO_VIVO)
+				+ resultadoCargaRepository.countDescargasByEstado(ESTADO_VIVO);
 
 		// ===== Pico historico de usuarios (top 1) =====
 		PicoRegistrosResponse picoUsuarios = null;
@@ -276,6 +281,11 @@ public class DashboardServiceImpl implements DashboardService {
 		LocalDateTime desdeDt = rango.desde().atStartOfDay();
 		LocalDateTime hastaDt = rango.hasta().atTime(LocalTime.MAX);
 
+		// Reutilizamos el calculo del detalle (cacheado en memoria) para que
+		// la hoja Resumen del Excel muestre los mismos KPIs accionables que
+		// el front.
+		VistasDetalleResponse detalle = obtenerVistasDetalle(rango.desde(), rango.hasta());
+
 		List<Object[]> filas = eventoVistaRepository.listarParaReporte(desdeDt, hastaDt);
 
 		// EventoVista guarda idResultado como Long escalar (sin @ManyToOne),
@@ -309,9 +319,13 @@ public class DashboardServiceImpl implements DashboardService {
 					UserAgentParser.resumir((String) f[4])));
 		}
 
-		log.info("Reporte vistas exportado. rango=[{}, {}], eventos={}, cabecerasDistintas={}",
-				rango.desde(), rango.hasta(), reporte.size(), cabeceras.size());
-		return ExportadorReporteVistas.generar(reporte, rango.desde().toString(), rango.hasta().toString());
+		log.info("Reporte vistas exportado. rango=[{}, {}], eventos={}, cabecerasDistintas={}, "
+				+ "aperturas={}, descargas={}, ratio={}%, horaPico={} ({})",
+				rango.desde(), rango.hasta(), reporte.size(), cabeceras.size(),
+				detalle.totalAperturas(), detalle.totalDescargas(),
+				detalle.ratioDescargaPorApertura(),
+				detalle.horaPico(), detalle.totalHoraPico());
+		return ExportadorReporteVistas.generar(detalle, reporte);
 	}
 
 	@Override
@@ -386,78 +400,89 @@ public class DashboardServiceImpl implements DashboardService {
 		LocalDateTime desdeDt = rango.desde().atStartOfDay();
 		LocalDateTime hastaDt = rango.hasta().atTime(LocalTime.MAX);
 
-		// ===== Top N cabeceras mas vistas (tabla) =====
-		List<ResultadoMasVistoResponse> top = new ArrayList<>();
-		List<Object[]> filasTop = resultadoCargaRepository.topCabecerasMasVistas(PageRequest.of(0, TOP_N));
-		for (Object[] fila : filasTop) {
-			top.add(new ResultadoMasVistoResponse(
-					(String) fila[0],
-					(String) fila[1],
-					(String) fila[2],
-					((Number) fila[3]).longValue(),
-					(LocalDateTime) fila[4]));
+		// ===== KPIs accionables: aperturas, descargas, ratio =====
+		long totalAperturas = 0L;
+		long totalDescargas = 0L;
+		for (Object[] fila : eventoVistaRepository.conteoPorTipoEnRango(desdeDt, hastaDt)) {
+			TipoEvento tipo = (TipoEvento) fila[0];
+			long n = ((Number) fila[1]).longValue();
+			if (tipo == TipoEvento.VISTA) {
+				totalAperturas = n;
+			} else if (tipo == TipoEvento.DESCARGA) {
+				totalDescargas = n;
+			}
 		}
+		BigDecimal ratioDescargaPorApertura = totalAperturas > 0
+				? BigDecimal.valueOf(totalDescargas)
+						.multiply(BigDecimal.valueOf(100))
+						.divide(BigDecimal.valueOf(totalAperturas), 1, RoundingMode.HALF_UP)
+				: BigDecimal.ZERO;
 
-		// ===== Distribucion por buckets (1, 2-5, 6-10, 11+) =====
-		List<BucketVistasResponse> buckets = calcularBuckets(
-				resultadoCargaRepository.contadoresVistasCabecerasVivas());
-
-		// ===== Curva temporal de aperturas (EVENTO_VISTA) =====
-		Map<LocalDate, Long> mapaVistas = new HashMap<>();
+		// ===== Curva temporal densa (total + aperturas + descargas) =====
+		// Reutilizamos las dos queries separadas (aperturas y descargas) y
+		// sumamos en Java para el total. Asi tenemos el desglose por serie
+		// sin multiplicar queries.
+		Map<LocalDate, Long> mapaAperturas = new HashMap<>();
 		for (Object[] fila : eventoVistaRepository.conteoVistasPorDia(desdeDt, hastaDt)) {
-			java.sql.Date diaSql = (java.sql.Date) fila[0];
-			Long total = ((Number) fila[1]).longValue();
-			mapaVistas.put(diaSql.toLocalDate(), total);
+			mapaAperturas.put(((java.sql.Date) fila[0]).toLocalDate(),
+					((Number) fila[1]).longValue());
+		}
+		Map<LocalDate, Long> mapaDescargas = new HashMap<>();
+		for (Object[] fila : eventoVistaRepository.conteoDescargasPorDia(desdeDt, hastaDt)) {
+			mapaDescargas.put(((java.sql.Date) fila[0]).toLocalDate(),
+					((Number) fila[1]).longValue());
 		}
 		List<PuntoVistaDiaria> curva = new ArrayList<>();
+		List<PuntoVistaDiaria> curvaAperturas = new ArrayList<>();
+		List<PuntoVistaDiaria> curvaDescargas = new ArrayList<>();
 		for (LocalDate dia = rango.desde(); !dia.isAfter(rango.hasta()); dia = dia.plusDays(1)) {
-			curva.add(new PuntoVistaDiaria(dia.toString(),
-					mapaVistas.getOrDefault(dia, 0L)));
+			long apertura = mapaAperturas.getOrDefault(dia, 0L);
+			long descarga = mapaDescargas.getOrDefault(dia, 0L);
+			curva.add(new PuntoVistaDiaria(dia.toString(), apertura + descarga));
+			curvaAperturas.add(new PuntoVistaDiaria(dia.toString(), apertura));
+			curvaDescargas.add(new PuntoVistaDiaria(dia.toString(), descarga));
 		}
 
-		log.debug("Vistas detalle generado. rango=[{}, {}], top={}, buckets={}, curvaDias={}",
-				rango.desde(), rango.hasta(), top.size(), buckets.size(), curva.size());
+		// ===== Distribucion horaria (24 puntos densos) =====
+		Map<Integer, Long> mapaPorHora = new HashMap<>();
+		for (Object[] fila : eventoVistaRepository.conteoPorHoraEnRango(desdeDt, hastaDt)) {
+			mapaPorHora.put(((Number) fila[0]).intValue(),
+					((Number) fila[1]).longValue());
+		}
+		List<PuntoHorario> distribucionHoraria = new ArrayList<>(24);
+		int horaPico = -1;
+		long totalHoraPico = 0L;
+		for (int h = 0; h < 24; h++) {
+			long n = mapaPorHora.getOrDefault(h, 0L);
+			distribucionHoraria.add(new PuntoHorario(h, n));
+			if (n > totalHoraPico) {
+				totalHoraPico = n;
+				horaPico = h;
+			}
+		}
+		Integer horaPicoNullable = totalHoraPico > 0 ? horaPico : null;
+		Long totalHoraPicoNullable = totalHoraPico > 0 ? totalHoraPico : null;
+
+		log.debug("Vistas detalle generado. rango=[{}, {}], curvaDias={}, "
+				+ "aperturas={}, descargas={}, ratio={}%, horaPico={} ({})",
+				rango.desde(), rango.hasta(), curva.size(),
+				totalAperturas, totalDescargas, ratioDescargaPorApertura,
+				horaPicoNullable, totalHoraPicoNullable);
 
 		VistasDetalleResponse respuesta = new VistasDetalleResponse(
 				rango.desde().toString(), rango.hasta().toString(),
-				top, buckets, curva);
+				curva,
+				curvaAperturas, curvaDescargas,
+				totalAperturas, totalDescargas, ratioDescargaPorApertura,
+				distribucionHoraria, horaPicoNullable, totalHoraPicoNullable);
 
 		cacheVistas.put(key, new EntradaCacheDashboard<>(respuesta,
 				Instant.now().plusSeconds(CACHE_TTL_SEGUNDOS)));
 		return respuesta;
 	}
 
-	/**
-	 * Distribuye los contadores de vistas en buckets canonicos. Mantiene el
-	 * orden estable (1, 2-5, 6-10, 11+) aunque haya ceros intermedios.
-	 */
-	private List<BucketVistasResponse> calcularBuckets(List<Integer> contadores) {
-		Map<String, Long> acum = new LinkedHashMap<>();
-		for (String et : BUCKET_ETIQUETAS) {
-			acum.put(et, 0L);
-		}
-		for (Integer v : contadores) {
-			if (v == null || v <= 0) {
-				continue;
-			}
-			String et;
-			if (v == 1) {
-				et = "1";
-			} else if (v <= 5) {
-				et = "2-5";
-			} else if (v <= 10) {
-				et = "6-10";
-			} else {
-				et = "11+";
-			}
-			acum.merge(et, 1L, Long::sum);
-		}
-		List<BucketVistasResponse> salida = new ArrayList<>(acum.size());
-		for (Map.Entry<String, Long> e : acum.entrySet()) {
-			salida.add(new BucketVistasResponse(e.getKey(), e.getValue()));
-		}
-		return salida;
-	}
+	/** Tupla inmutable (desde, hasta) efectiva devuelta por {@link #normalizar}. */
+	private record RangoNormalizado(LocalDate desde, LocalDate hasta) {}
 
 	/**
 	 * Normaliza un rango de fechas con defaults consistentes entre endpoints:
@@ -497,7 +522,4 @@ public class DashboardServiceImpl implements DashboardService {
 		}
 		return salida;
 	}
-
-	/** Tupla inmutable (desde, hasta) efectiva devuelta por {@link #normalizar}. */
-	private record RangoNormalizado(LocalDate desde, LocalDate hasta) {}
 }

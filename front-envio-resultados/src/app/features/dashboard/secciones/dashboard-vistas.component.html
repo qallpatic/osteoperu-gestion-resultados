@@ -1,6 +1,6 @@
 <app-seccion-generica
   titulo="Vistas de pacientes"
-  subtitulo="Aperturas acumuladas del visor: top resultados, distribucion por buckets y curva temporal."
+  subtitulo="Engagement diario (aperturas + descargas) y distribucion horaria para detectar ventanas pico."
   [rangoTexto]="rangoTexto()"
   [cargando]="cargando()"
   [error]="error()"
@@ -28,62 +28,10 @@
   </button>
 
   <div graficos>
-    <article class="chart">
-      <header class="chart__head">
-        <h2>Top 10 resultados mas vistos</h2>
-        <span class="chart__sub">Cabeceras con mayor contador de aperturas</span>
-      </header>
-      <div class="chart__body chart__body--tall" [class.chart__body--loading]="cargando() && data()">
-        @if (esPrimerLoad()) {
-          <div class="chart__skel"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
-        } @else if (chartTopVistos.datasets[0]?.data?.length) {
-          <canvas
-            baseChart
-            [type]="'bar'"
-            [data]="chartTopVistos"
-            [options]="chartTopOptions">
-          </canvas>
-          @if (cargando()) {
-            <div class="chart__overlay" aria-label="Actualizando">
-              <i class="fas fa-spinner fa-spin"></i>
-            </div>
-          }
-        } @else {
-          <div class="chart__skel">Aun no hay vistas registradas.</div>
-        }
-      </div>
-    </article>
-
-    <article class="chart">
-      <header class="chart__head">
-        <h2>Distribucion por buckets de vistas</h2>
-        <span class="chart__sub">Cuantos resultados tienen 1, 2-5, 6-10 o 11+ aperturas</span>
-      </header>
-      <div class="chart__body" [class.chart__body--loading]="cargando() && data()">
-        @if (esPrimerLoad()) {
-          <div class="chart__skel"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
-        } @else if (chartBuckets.datasets[0]?.data?.length) {
-          <canvas
-            baseChart
-            [type]="'bar'"
-            [data]="chartBuckets"
-            [options]="chartBucketsOptions">
-          </canvas>
-          @if (cargando()) {
-            <div class="chart__overlay" aria-label="Actualizando">
-              <i class="fas fa-spinner fa-spin"></i>
-            </div>
-          }
-        } @else {
-          <div class="chart__skel">Sin datos para mostrar.</div>
-        }
-      </div>
-    </article>
-
     <article class="chart chart--wide">
       <header class="chart__head">
-        <h2>Curva temporal de aperturas</h2>
-        <span class="chart__sub">Vistas reales por dia (densas; 0 si no hubo aperturas)</span>
+        <h2>Curva temporal de interacciones</h2>
+        <span class="chart__sub">Stacked bar diario: aperturas del visor (base) + descargas de archivos (segmento superior)</span>
       </header>
       <div class="chart__body" [class.chart__body--loading]="cargando() && data()">
         @if (esPrimerLoad()) {
@@ -91,7 +39,7 @@
         } @else if (chartCurva.datasets[0]?.data?.length) {
           <canvas
             baseChart
-            [type]="'line'"
+            [type]="'bar'"
             [data]="chartCurva"
             [options]="chartCurvaOptions">
           </canvas>
@@ -105,31 +53,51 @@
         }
       </div>
     </article>
+
+    <article class="chart chart--wide">
+      <header class="chart__head">
+        <h2>Distribucion horaria de actividad</h2>
+        <span class="chart__sub">A que hora del dia concentran los pacientes la revision de sus resultados (la barra oscura es la hora pico)</span>
+      </header>
+      <div class="chart__body" [class.chart__body--loading]="cargando() && data()">
+        @if (esPrimerLoad()) {
+          <div class="chart__skel"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
+        } @else if (chartDistribucionHoraria.datasets[0]?.data?.length) {
+          <canvas
+            baseChart
+            [type]="'bar'"
+            [data]="chartDistribucionHoraria"
+            [options]="chartDistribucionHorariaOptions">
+          </canvas>
+          @if (cargando()) {
+            <div class="chart__overlay" aria-label="Actualizando">
+              <i class="fas fa-spinner fa-spin"></i>
+            </div>
+          }
+        } @else {
+          <div class="chart__skel">Sin actividad en el rango.</div>
+        }
+      </div>
+    </article>
   </div>
 
   <div leyendas>
     <div class="kpi-grid kpi-grid--wide">
       <article class="kpi-mini">
-        <span class="kpi-mini__label">Vistas en el rango</span>
-        <span class="kpi-mini__value">{{ totalVistasEnRango() | number }}</span>
+        <span class="kpi-mini__label">Aperturas del visor</span>
+        <span class="kpi-mini__value">{{ totalAperturasEnRango() | number }}</span>
       </article>
       <article class="kpi-mini">
-        <span class="kpi-mini__label">Promedio diario</span>
-        <span class="kpi-mini__value">{{ promedioDiarioVistas() | number: '1.0-1' }}</span>
+        <span class="kpi-mini__label">Descargas de archivos</span>
+        <span class="kpi-mini__value">{{ totalDescargasEnRango() | number }}</span>
       </article>
       <article class="kpi-mini">
-        <span class="kpi-mini__label">Dia pico</span>
-        <span class="kpi-mini__value">
-          @if (picoCurva(); as p) {
-            {{ p.total | number }} <small>({{ p.fecha | fechaCorta }})</small>
-          } @else {
-            —
-          }
-        </span>
+        <span class="kpi-mini__label">Ratio descarga / apertura</span>
+        <span class="kpi-mini__value">{{ ratioDescargasPorApertura() | number: '1.1-1' }}%</span>
       </article>
       <article class="kpi-mini">
-        <span class="kpi-mini__label">Resultados vistos</span>
-        <span class="kpi-mini__value">{{ (data()?.resultadosMasVistos?.length ?? 0) | number }}</span>
+        <span class="kpi-mini__label">Hora pico</span>
+        <span class="kpi-mini__value">{{ horaPicoTexto() }}</span>
       </article>
     </div>
   </div>

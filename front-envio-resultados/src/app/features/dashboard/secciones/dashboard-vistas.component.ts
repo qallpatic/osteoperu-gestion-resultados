@@ -7,16 +7,27 @@ import { Subject, debounceTime, interval } from 'rxjs';
 import type { ChartData, ChartOptions } from 'chart.js';
 
 import { DashboardService } from '../dashboard.service';
-import { ResultadoMasVisto, VistasDetalle } from '../dashboard.models';
+import { VistasDetalle } from '../dashboard.models';
 import { FechaCortaPipe } from '../pipes/fecha-corta.pipe';
 import { SeccionGenericaComponent, PresetSeccion } from './seccion-generica.component';
 
 /**
  * Seccion "Vistas de pacientes" del Dashboard.
  *
- * Grafica: top 10 resultados mas vistos (barras horizontales) + distribucion
- * por buckets de vistas (barras) + curva temporal de aperturas desde
- * EVENTO_VISTA (linea). Reutiliza el shell `SeccionGenericaComponent`.
+ * Muestra 2 graficos:
+ * 1. Curva temporal stacked bar (aperturas del visor abajo + descargas
+ *    arriba): actividad diaria desglosada para detectar picos/caidas.
+ * 2. Distribucion horaria (24 barras, 0-23): a que hora del dia concentran
+ *    los pacientes la revision de sus resultados. Util para optimizar la
+ *    ventana de envio de SMS.
+ *
+ * KPIs accionables:
+ * - Aperturas del visor
+ * - Descargas de archivos
+ * - Ratio descarga / apertura
+ * - Hora pico (ej: "14:00 · 14 interacciones")
+ *
+ * Reutiliza el shell `SeccionGenericaComponent`.
  */
 @Component({
   selector: 'app-dashboard-vistas',
@@ -51,84 +62,37 @@ export class DashboardVistasComponent implements OnInit {
     return `${desde} → ${hasta}`;
   });
 
-  readonly totalVistasEnRango = computed(() => {
-    const curva = this.data()?.curvaTemporal ?? [];
-    return curva.reduce((acc, p) => acc + p.total, 0);
-  });
+  readonly totalAperturasEnRango = computed(() => this.data()?.totalAperturas ?? 0);
+  readonly totalDescargasEnRango = computed(() => this.data()?.totalDescargas ?? 0);
+  readonly ratioDescargasPorApertura = computed(() => this.data()?.ratioDescargaPorApertura ?? 0);
 
-  readonly picoCurva = computed(() => {
-    const curva = this.data()?.curvaTemporal ?? [];
-    if (curva.length === 0) {
-      return null;
+  /** Hora pico formateada "HH:00 · N interacciones" o "—" si no hubo actividad. */
+  readonly horaPicoTexto = computed(() => {
+    const d = this.data();
+    if (!d || d.horaPico === null || d.totalHoraPico === null) {
+      return '—';
     }
-    return curva.reduce((acc, p) => (p.total > acc.total ? p : acc));
-  });
-
-  readonly promedioDiarioVistas = computed(() => {
-    const curva = this.data()?.curvaTemporal ?? [];
-    if (curva.length === 0) {
-      return 0;
-    }
-    const total = curva.reduce((acc, p) => acc + p.total, 0);
-    return Math.round((total / curva.length) * 10) / 10;
+    const hh = String(d.horaPico).padStart(2, '0');
+    return `${hh}:00 · ${d.totalHoraPico.toLocaleString('es-PE')} interacciones`;
   });
 
   readonly esPrimerLoad = computed(() => this.cargando() && !this.data());
 
-  chartTopVistos: ChartData<'bar'> = { labels: [], datasets: [] };
-  chartBuckets: ChartData<'bar'> = { labels: [], datasets: [] };
-  chartCurva: ChartData<'line'> = { labels: [], datasets: [] };
+  /** Stacked bar: aperturas abajo + descargas arriba. */
+  chartCurva: ChartData<'bar'> = { labels: [], datasets: [] };
+  chartDistribucionHoraria: ChartData<'bar'> = { labels: [], datasets: [] };
 
-  readonly chartTopOptions: ChartOptions<'bar'> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    indexAxis: 'y',
-    animation: { duration: 300 },
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: '#043d36',
-        titleColor: '#fff',
-        bodyColor: '#e6f2f0',
-        borderColor: '#075e54',
-        borderWidth: 1,
-        padding: 10,
-      },
-    },
-    scales: {
-      x: { beginAtZero: true, grid: { color: '#eef3f1' }, ticks: { color: '#6c757d', precision: 0 } },
-      y: { grid: { display: false }, ticks: { color: '#6c757d', autoSkip: false } },
-    },
-  };
-
-  readonly chartBucketsOptions: ChartOptions<'bar'> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: { duration: 300 },
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: '#043d36',
-        titleColor: '#fff',
-        bodyColor: '#e6f2f0',
-        borderColor: '#075e54',
-        borderWidth: 1,
-        padding: 10,
-      },
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: '#6c757d' } },
-      y: { beginAtZero: true, grid: { color: '#eef3f1' }, ticks: { color: '#6c757d', precision: 0 } },
-    },
-  };
-
-  readonly chartCurvaOptions: ChartOptions<'line'> = {
+  readonly chartCurvaOptions: ChartOptions<'bar'> = {
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
     animation: { duration: 300 },
     plugins: {
-      legend: { display: false },
+      legend: {
+        display: true,
+        position: 'bottom',
+        labels: { color: '#6c757d', boxWidth: 12, padding: 12 },
+      },
       tooltip: {
         backgroundColor: '#043d36',
         titleColor: '#fff',
@@ -140,6 +104,7 @@ export class DashboardVistasComponent implements OnInit {
     },
     scales: {
       x: {
+        stacked: true,
         grid: { display: false },
         ticks: {
           color: '#6c757d',
@@ -150,6 +115,42 @@ export class DashboardVistasComponent implements OnInit {
           },
         },
       },
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        grid: { color: '#eef3f1' },
+        ticks: { color: '#6c757d', precision: 0 },
+      },
+    },
+  };
+
+  readonly chartDistribucionHorariaOptions: ChartOptions<'bar'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 300 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#043d36',
+        titleColor: '#fff',
+        bodyColor: '#e6f2f0',
+        borderColor: '#075e54',
+        borderWidth: 1,
+        padding: 10,
+        callbacks: {
+          title: (items) => {
+            const hora = items[0]?.label ?? '';
+            return `${hora}:00`;
+          },
+          label: (item) => {
+            const n = item.parsed.y ?? 0;
+            return ` ${n} ${n === 1 ? 'interacción' : 'interacciones'}`;
+          },
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#6c757d', autoSkip: true, maxTicksLimit: 12 } },
       y: { beginAtZero: true, grid: { color: '#eef3f1' }, ticks: { color: '#6c757d', precision: 0 } },
     },
   };
@@ -248,59 +249,46 @@ export class DashboardVistasComponent implements OnInit {
   }
 
   private aplicarCharts(d: VistasDetalle): void {
-    // ===== Top 10 mas vistos (barras horizontales) =====
-    const top: ResultadoMasVisto[] = d.resultadosMasVistos;
-    this.chartTopVistos = {
-      labels: top.map((r) => this.recortarEtiqueta(r)),
-      datasets: [
-        {
-          data: top.map((r) => r.contadorVistas),
-          label: 'Vistas',
-          backgroundColor: 'rgba(37, 211, 102, 0.7)',
-          hoverBackgroundColor: 'rgba(15, 122, 67, 0.95)',
-          borderRadius: 6,
-        },
-      ],
-    };
-
-    // ===== Distribucion buckets (barras verticales) =====
-    this.chartBuckets = {
-      labels: d.distribucionBuckets.map((b) => b.etiqueta),
-      datasets: [
-        {
-          data: d.distribucionBuckets.map((b) => b.cantidad),
-          label: 'Resultados',
-          backgroundColor: ['#075e54', '#128c7e', '#25d366', '#fdcb6e'],
-          hoverBackgroundColor: ['#043d36', '#075e54', '#128c7e', '#b88a3c'],
-          borderRadius: 6,
-          maxBarThickness: 80,
-        },
-      ],
-    };
-
-    // ===== Curva temporal (linea) =====
+    // ===== Curva temporal (stacked bar: aperturas abajo + descargas arriba) =====
     this.chartCurva = {
       labels: d.curvaTemporal.map((p) => p.fecha),
       datasets: [
         {
-          data: d.curvaTemporal.map((p) => p.total),
-          label: 'Vistas',
-          borderColor: '#25d366',
-          backgroundColor: 'rgba(37, 211, 102, 0.15)',
-          pointBackgroundColor: '#075e54',
-          pointRadius: 3,
-          pointHoverRadius: 5,
-          tension: 0.35,
-          fill: true,
+          data: d.curvaTemporalAperturas.map((p) => p.total),
+          label: 'Aperturas del visor',
+          backgroundColor: 'rgba(37, 211, 102, 0.75)',
+          hoverBackgroundColor: 'rgba(15, 122, 67, 0.95)',
+          borderRadius: 4,
+          stack: 'interacciones',
+        },
+        {
+          data: d.curvaTemporalDescargas.map((p) => p.total),
+          label: 'Descargas de archivos',
+          backgroundColor: 'rgba(253, 203, 110, 0.85)',
+          hoverBackgroundColor: 'rgba(184, 138, 60, 0.95)',
+          borderRadius: 4,
+          stack: 'interacciones',
         },
       ],
     };
-  }
 
-  /** Etiqueta corta para el top 10: dni + primeras letras del nombre. */
-  private recortarEtiqueta(r: ResultadoMasVisto): string {
-    const dni = r.documentoIdentidad ?? '';
-    return dni.length > 0 ? `DNI ${dni.slice(-6)}` : r.idGenerado.slice(0, 8);
+    // ===== Distribucion horaria (24 barras, 0-23) =====
+    this.chartDistribucionHoraria = {
+      labels: d.distribucionHoraria.map((p) => String(p.hora).padStart(2, '0')),
+      datasets: [
+        {
+          data: d.distribucionHoraria.map((p) => p.total),
+          label: 'Interacciones por hora',
+          backgroundColor: d.distribucionHoraria.map((p) =>
+            d.horaPico !== null && p.hora === d.horaPico
+              ? 'rgba(7, 94, 84, 0.95)'
+              : 'rgba(37, 211, 102, 0.65)',
+          ),
+          hoverBackgroundColor: 'rgba(15, 122, 67, 0.95)',
+          borderRadius: 4,
+        },
+      ],
+    };
   }
 
   private toIso(d: Date): string {

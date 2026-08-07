@@ -62,28 +62,36 @@ export interface AlmacenamientoDetalle {
 
 // ===== Pestana Vistas =====
 
-export interface ResultadoMasVisto {
-  idGenerado: string;
-  documentoIdentidad: string;
-  nombrePaciente: string;
-  contadorVistas: number;
-  fechaHoraCarga: string;
-}
-
-export interface BucketVistas {
-  etiqueta: string;
-  cantidad: number;
-}
-
 export interface PuntoVistaDiaria {
   fecha: string;
+  total: number;
+}
+
+/** Punto de la distribucion horaria (0-23). Eje Y = interacciones en esa hora. */
+export interface PuntoHorario {
+  hora: number;
   total: number;
 }
 
 export interface VistasDetalle {
   desde: string;
   hasta: string;
-  resultadosMasVistos: ResultadoMasVisto[];
-  distribucionBuckets: BucketVistas[];
+  /** Total combinado (aperturas + descargas). Conservado para back-compat. */
   curvaTemporal: PuntoVistaDiaria[];
+  /** Solo aperturas del visor (base del stacked bar). */
+  curvaTemporalAperturas: PuntoVistaDiaria[];
+  /** Solo descargas de archivos (segmento superior del stacked bar). */
+  curvaTemporalDescargas: PuntoVistaDiaria[];
+  /** Eventos VISTA en el rango. */
+  totalAperturas: number;
+  /** Eventos DESCARGA en el rango. */
+  totalDescargas: number;
+  /** descargas / aperturas * 100, redondeado a 1 decimal. 0 si no hay aperturas. */
+  ratioDescargaPorApertura: number;
+  /** 24 puntos (0-23) con el total de interacciones por hora. */
+  distribucionHoraria: PuntoHorario[];
+  /** Hora del dia con mas interacciones (0-23). null si no hubo actividad. */
+  horaPico: number | null;
+  /** Cantidad de interacciones registradas en la hora pico. */
+  totalHoraPico: number | null;
 }
