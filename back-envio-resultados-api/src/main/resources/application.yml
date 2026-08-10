@@ -172,14 +172,16 @@ seguridad:
 # ------------------------------------------------------------
 #  Integracion RENIEC (validacion DNI -> nombre)
 #  enabled=false -> modo mock (sin proveedor real).
-#  Para produccion: enabled=true + url + token de un proveedor
-#  (apis.net.pe, apidni.com, decolecta.com, etc.).
+#  Proveedor actual: apiperu.dev (POST con JSON {"dni": "..."}).
+#  En .env.prod/.env.dev se sobreescriben RENIEC_URL y RENIEC_TOKEN.
+#  Cuando cambie el proveedor, actualizar el campo url, el token y la
+#  estructura de respuesta en ClienteReniecHttp.
 # ------------------------------------------------------------
 reniec:
   enabled: ${RENIEC_ENABLED:true}
-  url: ${RENIEC_URL:https://api.decolecta.com/v1/reniec/dni}
-  # En produccion mover el token a la variable de entorno RENIEC_TOKEN.
-  token: ${RENIEC_TOKEN:sk_10724.CaV0hlik8qjqno2Opn8FZA7mzlLegx43}
+  url: ${RENIEC_URL:https://apiperu.dev/api/dni}
+  # En produccion sobrescribir SIEMPRE via RENIEC_TOKEN (no usar este default).
+  token: ${RENIEC_TOKEN:}
   timeout-ms: ${RENIEC_TIMEOUT_MS:6000}
   # TTL del cache local RENIEC_CACHE (dias). Por defecto medio ano: 180.
   cache-dias: ${RENIEC_CACHE_DIAS:180}
