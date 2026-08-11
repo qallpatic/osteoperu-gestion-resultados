@@ -52,6 +52,14 @@ public interface ResultadoCargaRepository
 	/** Total de cabeceras por estado (1 = vivas, 0 = eliminadas por soft delete). */
 	long countByEstado(Integer estado);
 
+	/**
+	 * Total de cabeceras con estado=vivo. Usado como denominador de la
+	 * "tasa de adopcion" del dashboard de vistas (cabezeras engagemented
+	 * sobre total de cabeceras vivas).
+	 */
+	@Query("SELECT COUNT(r) FROM ResultadoCarga r WHERE r.estado = 1")
+	long countVivas();
+
 	/** Total de cabeceras vivas creadas dentro de un rango. */
 	@Query("SELECT COUNT(r) FROM ResultadoCarga r "
 			+ "WHERE r.estado = :estado AND r.fechaHoraCarga BETWEEN :desde AND :hasta")
@@ -67,31 +75,79 @@ public interface ResultadoCargaRepository
 	List<ConteoPorFechaProjection> conteoPorFechaCarga(@Param("desde") LocalDateTime desde,
 			@Param("hasta") LocalDateTime hasta, @Param("estado") Integer estado);
 
-	/** Suma de vistas (CONTADOR_VISTAS) de cabeceras vivas. */
+	/** Suma de vistas (CONTADOR_VISTAS) de cabeceras vivas. Solo aperturas del visor. */
 	@Query("SELECT COALESCE(SUM(r.contadorVistas), 0) FROM ResultadoCarga r WHERE r.estado = :estado")
 	long sumContadorVistasByEstado(@Param("estado") Integer estado);
 
 	/**
-	 * Top N cabeceras vivas con mayor CONTADOR_VISTAS. Devuelve filas crudas
-	 * (Object[]) para evitar proyecciones intermedias:
-	 * [idGenerado, documentoIdentidad, nombrePaciente, contadorVistas, fechaHoraCarga].
-	 * El service mapea al DTO ResultadoMasVistoResponse.
+	 * Total de eventos DESCARGA asociados a cabeceras con el estado pedido.
+	 * Se suma en Java al {@link #sumContadorVistasByEstado(Integer)} para
+	 * obtener el engagement total del paciente (aperturas + descargas).
 	 */
 	@Query("""
-			SELECT r.idGenerado, r.documentoIdentidad, r.nombrePaciente, r.contadorVistas, r.fechaHoraCarga
-			FROM ResultadoCarga r
-			WHERE r.estado = 1 AND r.contadorVistas > 0
-			ORDER BY r.contadorVistas DESC, r.fechaHoraCarga DESC
+			SELECT COUNT(e)
+			FROM EventoVista e
+			WHERE e.tipoEvento = pe.com.qallpatic.osteoperu.resultados.entity.TipoEvento.DESCARGA
+			  AND e.idResultado IN (SELECT r.idResultadoCarga FROM ResultadoCarga r WHERE r.estado = :estado)
 			""")
-	List<Object[]> topCabecerasMasVistas(Pageable pageable);
+	long countDescargasByEstado(@Param("estado") Integer estado);
 
 	/**
-	 * Todas las cabeceras vivas con su contador, para que el service arme los
-	 * buckets (1, 2-5, 6-10, 11+) en Java. Es mas simple que un CASE WHEN
-	 * en SQL y el dataset es chico (~50 cabeceras).
+	 * Cabeceras vivas con algun tipo de actividad (apertura del visor o
+	 * descarga), con su {@code CONTADOR_VISTAS} sin sumar descargas. El
+	 * service mergea contra {@link #descargasPorCabecera()} y ordena por
+	 * engagement total (vistas + descargas) antes de truncar al top N.
+	 * Dataset chico (~50 cabeceras), por eso no hace falta paginar.
+	 *
+	 * <p>Orden de columnas (debe coincidir con el mapeo en el service):
+	 * <pre>
+	 * [0] idResultadoCarga
+	 * [1] idGenerado
+	 * [2] documentoIdentidad
+	 * [3] nombrePaciente
+	 * [4] contadorVistas
+	 * [5] fechaHoraCarga
+	 * </pre>
 	 */
-	@Query("SELECT r.contadorVistas FROM ResultadoCarga r WHERE r.estado = 1")
-	List<Integer> contadoresVistasCabecerasVivas();
+	@Query("""
+			SELECT r.idResultadoCarga, r.idGenerado, r.documentoIdentidad, r.nombrePaciente,
+			       r.contadorVistas, r.fechaHoraCarga
+			FROM ResultadoCarga r
+			WHERE r.estado = 1
+			  AND (r.contadorVistas > 0
+			       OR EXISTS (SELECT 1 FROM EventoVista e
+			                  WHERE e.tipoEvento = pe.com.qallpatic.osteoperu.resultados.entity.TipoEvento.DESCARGA
+			                    AND e.idResultado = r.idResultadoCarga))
+			""")
+	List<Object[]> cabecerasVivasConActividad();
+
+	/**
+	 * Descargas agrupadas por cabecera (idResultado + count de eventos
+	 * DESCARGA). Alimenta la suma engagement total en el dashboard. Una
+	 * cabecera sin descargas no aparece en el resultado.
+	 *
+	 * <p>Orden de columnas:
+	 * <pre>
+	 * [0] idResultado (Long)
+	 * [1] total descargas (Long)
+	 * </pre>
+	 */
+	@Query("""
+			SELECT e.idResultado, COUNT(e)
+			FROM EventoVista e
+			WHERE e.tipoEvento = pe.com.qallpatic.osteoperu.resultados.entity.TipoEvento.DESCARGA
+			GROUP BY e.idResultado
+			""")
+	List<Object[]> descargasPorCabecera();
+
+	/**
+	 * Todas las cabeceras vivas con su contador de aperturas, para que el
+	 * service arme los buckets (1, 2-5, 6-10, 11+) en Java sumando las
+	 * descargas obtenidas por {@link #descargasPorCabecera()}. El dataset
+	 * es chico (~50 cabeceras), por eso el merge se hace en memoria.
+	 */
+	@Query("SELECT r.idResultadoCarga, r.contadorVistas FROM ResultadoCarga r WHERE r.estado = 1")
+	List<Object[]> cabecerasVivasConContador();
 
 	/**
 	 * Lista plana para el reporte Excel de "Resultados cargados". Devuelve

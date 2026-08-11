@@ -1,16 +1,25 @@
 package pe.com.qallpatic.osteoperu.dashboard.dto;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
  * Detalle de la pestana "Vistas de pacientes" del Dashboard.
  *
- * <p>Incluye: top 10 resultados mas vistos, distribucion por buckets
- * (1, 2-5, 6-10, 11+) y curva temporal de aperturas (grafico de linea).
+ * <p>Incluye:
+ * <ul>
+ *   <li>KPIs accionables: total aperturas, total descargas, ratio
+ *       descargas/apertura, hora pico de actividad.</li>
+ *   <li>Curva temporal densa con dos series: aperturas del visor y
+ *       descargas de archivos (stacked bar).</li>
+ *   <li>Heatmap dia-de-la-semana x hora-del-dia (grilla 7x24 = 168
+ *       puntos, 0 si no hubo actividad) para detectar patrones
+ *       circadianos y semanales en una sola mirada.</li>
+ * </ul>
  *
  * <p>Datos: cabecera viva de {@code RESULTADO_CARGA.CONTADOR_VISTAS}
- * para top/buckets; eventos individuales de {@code EVENTO_VISTA} para
- * la curva temporal.
+ * (combinado con descargas por cabecera); eventos individuales de
+ * {@code EVENTO_VISTA} para las curvas y KPIs.
  */
 public record VistasDetalleResponse(
 
@@ -18,12 +27,41 @@ public record VistasDetalleResponse(
 		String desde,
 		String hasta,
 
-		/** Top 10 resultados mas vistos (tabla + barras). */
-		List<ResultadoMasVistoResponse> resultadosMasVistos,
+		/** Curva temporal del total combinado (aperturas + descargas). */
+		List<PuntoVistaDiaria> curvaTemporal,
 
-		/** Distribucion de vistas por buckets (grafico de barras). */
-		List<BucketVistasResponse> distribucionBuckets,
+		/** Curva temporal SOLO de aperturas del visor (base del stacked bar). */
+		List<PuntoVistaDiaria> curvaTemporalAperturas,
 
-		/** Curva temporal de aperturas (grafico de linea, denso). */
-		List<PuntoVistaDiaria> curvaTemporal) {
+		/** Curva temporal SOLO de descargas de archivos (segmento superior). */
+		List<PuntoVistaDiaria> curvaTemporalDescargas,
+
+		/** Total de eventos VISTA en el rango (aperturas del visor). */
+		Long totalAperturas,
+
+		/** Total de eventos DESCARGA en el rango (descargas de archivos). */
+		Long totalDescargas,
+
+		/**
+		 * Ratio descargas / aperturas como porcentaje redondeado a 1
+		 * decimal (ej. 22.5 = 22.5%). 0 si no hay aperturas en el rango.
+		 */
+		BigDecimal ratioDescargaPorApertura,
+
+		/** Hora del dia con mas interacciones (0-23). null si no hubo actividad. */
+		Integer horaPico,
+
+		/** Cantidad de interacciones registradas en la hora pico. */
+		Long totalHoraPico,
+
+		/**
+		 * Heatmap dia-de-la-semana x hora (7x24 = 168 puntos densos).
+		 * Cada punto = total de interacciones en esa franja del rango.
+		 * Las celdas sin actividad vienen con total=0.
+		 *
+		 * <p>{@code diaSemana} usa la convencion MySQL DAYOFWEEK default:
+		 * 1=Domingo, 2=Lunes, ..., 7=Sabado. El front la reordena para
+		 * mostrar L M M J V S D.
+		 */
+		List<PuntoHeatmap> heatmap) {
 }

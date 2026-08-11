@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import pe.com.qallpatic.osteoperu.compartido.excepcion.LimiteIntentosSuperadoException;
-import pe.com.qallpatic.osteoperu.compartido.util.GeneradorCodigos;
 import pe.com.qallpatic.osteoperu.compartido.util.UtilTelefono;
 import pe.com.qallpatic.osteoperu.config.AppProperties;
 import pe.com.qallpatic.osteoperu.config.RecuperacionProperties;

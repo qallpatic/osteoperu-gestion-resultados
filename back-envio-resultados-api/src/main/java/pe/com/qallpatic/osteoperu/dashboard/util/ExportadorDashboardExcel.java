@@ -75,7 +75,8 @@ public final class ExportadorDashboardExcel {
 		fila = par(sh, e, fila, "Total resultados cargados", formatearNumero(r.totalResultados()));
 		fila = par(sh, e, fila, "Total archivos registrados", formatearNumero(r.totalArchivos()));
 		fila = par(sh, e, fila, "Peso total acumulado", formatearPesoMb(r.pesoTotalMb()));
-		fila = par(sh, e, fila, "Vistas del visor (visor publico)", formatearNumero(r.totalVistas()));
+		fila = par(sh, e, fila, "Interacciones acumuladas (aperturas + descargas, historico)",
+				formatearNumero(r.totalVistas()));
 		fila++;
 
 		PicoRegistrosResponse pico = r.picoUsuarios();
