@@ -193,6 +193,8 @@ export class AdmisionComponent implements OnInit {
     this.nuevoUsuario.set(true);
     this.genNombreTocado.set(false);
     this.credencial.set(null);
+    this.ultimoDniReniec = '';
+    this.consultandoReniec.set(false);
     this.genOpen.set(true);
   }
 
@@ -245,7 +247,7 @@ export class AdmisionComponent implements OnInit {
     this.reniec.consultarNombre(dni).subscribe({
       next: (nombre) => {
         this.consultandoReniec.set(false);
-        if (nombre && !this.genNombre.trim()) {
+        if (nombre) {
           this.genNombre = nombre;
         }
       },

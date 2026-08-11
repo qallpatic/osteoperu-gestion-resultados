@@ -14,19 +14,44 @@ import java.util.Optional;
 /**
  * Implementacion HTTP real (activa cuando {@code reniec.enabled=true}). Consulta
  * el proveedor configurado en {@code reniec.url} con {@code reniec.token}.
- * <p>JSON real que devuelve decolecta:
+ *
+ * <p>Proveedor actual: <b>apiperu.dev</b> (POST con JSON).
+ * <p>Peticion:
  * <pre>
- * {
- *   "first_name": "REYLY MABELY",
- *   "first_last_name": "JULCA",
- *   "second_last_name": "MELENDRES",
- *   "full_name": "JULCA MELENDRES REYLY MABELY",
- *   "document_number": "75700133"
- * }
+ *   POST {reniec.url}
+ *   Authorization: Bearer {reniec.token}
+ *   Content-Type: application/json
+ *
+ *   { "dni": "42834028" }
  * </pre>
- * <p>Normalizamos los campos a la representacion canonica del proyecto:
- * {@code nombres} = first_name, {@code apellidoPaterno} = first_last_name,
- * {@code apellidoMaterno} = second_last_name.
+ *
+ * <p>Respuesta (envelope):
+ * <pre>
+ *   {
+ *     "success": true,
+ *     "data": {
+ *       "numero": "42834028",
+ *       "nombre_completo": "LABAN GARCIA, CLAUDINA",
+ *       "nombres": "CLAUDINA",
+ *       "apellido_paterno": "LABAN",
+ *       "apellido_materno": "GARCIA",
+ *       "codigo_verificacion": 6,
+ *       "direccion": "",
+ *       "ubigeo": [ null, null, null ]
+ *     },
+ *     "time": 0.127
+ *   }
+ * </pre>
+ *
+ * <p>Normalizamos al formato canonico del proyecto:
+ * {@code nombres} = data.nombres, {@code apellidoPaterno} = data.apellido_paterno,
+ * {@code apellidoMaterno} = data.apellido_materno. El codigo de verificacion se
+ * persiste cuando viene.
+ *
+ * <p><b>Nota historica</b>: hasta 2026-08-10 el cliente apuntaba a decolecta
+ * (GET con query param {@code ?numero=}). El proveedor dejo de responder con
+ * ese token y se migro a apiperu.dev. Si vuelve a cambiar, ver estructura de
+ * {@code RespuestaApiperu} abajo y adaptar.
  */
 @Component("clienteReniecHttp")
 @ConditionalOnProperty(prefix = "reniec", name = "enabled", havingValue = "true")
@@ -44,31 +69,38 @@ public class ClienteReniecHttp implements ClienteReniec {
 	@Override
 	public Optional<DatosReniec> consultar(String dni) {
 		try {
-			RespuestaReniec r = webClient.get()
-					.uri(propiedades.getUrl() + "?numero=" + dni)
+			RespuestaApiperu envelope = webClient.post()
+					.uri(propiedades.getUrl())
 					.header(HttpHeaders.AUTHORIZATION, "Bearer " + propiedades.getToken())
+					.header(HttpHeaders.CONTENT_TYPE, "application/json")
 					.header(HttpHeaders.ACCEPT, "application/json")
+					.bodyValue(new SolicitudDni(dni))
 					.retrieve()
-					.bodyToMono(RespuestaReniec.class)
+					.bodyToMono(RespuestaApiperu.class)
 					.timeout(Duration.ofMillis(propiedades.getTimeoutMs()))
 					.block();
 
-			if (r == null) {
+			if (envelope == null) {
+				log.warn("RENIEC (apiperu.dev) respondio cuerpo vacio para dni={}", dni);
+				return Optional.empty();
+			}
+			if (envelope.success() == null || !envelope.success() || envelope.data() == null) {
+				log.warn("RENIEC (apiperu.dev) respondio success=false o sin data para dni={}", dni);
 				return Optional.empty();
 			}
 
-			String nombres = blankToNull(r.firstName());
-			String apPat = blankToNull(r.firstLastName());
-			String apMat = blankToNull(r.secondLastName());
+			DatosApiperu d = envelope.data();
+			String nombres = blankToNull(d.nombres());
+			String apPat = blankToNull(d.apellidoPaterno());
+			String apMat = blankToNull(d.apellidoMaterno());
 
-			// Si no llega NADA, no devolvemos DatosReniec vacio: queremos que el
-			// cache NO persista un registro inutil.
 			if (nombres == null && apPat == null && apMat == null) {
+				log.warn("RENIEC (apiperu.dev) devolvio data sin nombres/apellidos para dni={}", dni);
 				return Optional.empty();
 			}
-			return Optional.of(new DatosReniec(dni, nombres, apPat, apMat));
+			return Optional.of(new DatosReniec(dni, nombres, apPat, apMat, d.codigoVerificacion()));
 		} catch (Exception e) {
-			log.error("Error consultando RENIEC para dni {}: {}", dni, e.getMessage());
+			log.warn("RENIEC (apiperu.dev) fallo para dni={}: {}", dni, e.toString());
 			return Optional.empty();
 		}
 	}
@@ -77,13 +109,22 @@ public class ClienteReniecHttp implements ClienteReniec {
 		return (s == null || s.isBlank()) ? null : s.trim();
 	}
 
-	/** Respuesta de decolecta (/v1/reniec/dni). */
+	/** Body de la peticion a apiperu.dev. */
+	private record SolicitudDni(@JsonProperty("dni") String dni) {}
+
+	/** Envelope de apiperu.dev POST /api/dni. */
 	@JsonIgnoreProperties(ignoreUnknown = true)
-	private record RespuestaReniec(
-			@JsonProperty("first_name") String firstName,
-			@JsonProperty("first_last_name") String firstLastName,
-			@JsonProperty("second_last_name") String secondLastName,
-			@JsonProperty("full_name") String fullName,
-			@JsonProperty("document_number") String documentNumber) {
-	}
+	private record RespuestaApiperu(
+			@JsonProperty("success") Boolean success,
+			@JsonProperty("data") DatosApiperu data) {}
+
+	/** Bloque "data" de la respuesta de apiperu.dev. */
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	private record DatosApiperu(
+			@JsonProperty("numero") String numero,
+			@JsonProperty("nombre_completo") String nombreCompleto,
+			@JsonProperty("nombres") String nombres,
+			@JsonProperty("apellido_paterno") String apellidoPaterno,
+			@JsonProperty("apellido_materno") String apellidoMaterno,
+			@JsonProperty("codigo_verificacion") Integer codigoVerificacion) {}
 }
