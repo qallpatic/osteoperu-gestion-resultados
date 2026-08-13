@@ -9,6 +9,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 
 import pe.com.qallpatic.osteoperu.compartido.excepcion.SolicitudInvalidaException;
+import pe.com.qallpatic.osteoperu.integracion.captcha.VerificadorCaptcha;
 import pe.com.qallpatic.osteoperu.seguridad.dto.LoginRequest;
 import pe.com.qallpatic.osteoperu.seguridad.jwt.ProveedorJwt;
 import pe.com.qallpatic.osteoperu.seguridad.jwt.SeguridadProperties;
@@ -35,6 +36,8 @@ class ServicioAutenticacionImplTest {
 	private UsuarioRepository usuarioRepository;
 	@Mock
 	private TasaLimitLoginService tasaLimitLogin;
+	@Mock
+	private VerificadorCaptcha verificadorCaptcha;
 
 	private ServicioAutenticacionImpl servicio;
 
@@ -47,12 +50,13 @@ class ServicioAutenticacionImplTest {
 				tokenRefrescoRepository,
 				usuarioRepository,
 				propiedades,
-				tasaLimitLogin);
+				tasaLimitLogin,
+				verificadorCaptcha);
 	}
 
 	@Test
 	void registraElIntentoSoloCuandoFallaLaAutenticacion() {
-		LoginRequest solicitud = new LoginRequest("12345678", "incorrecta");
+		LoginRequest solicitud = new LoginRequest("12345678", "incorrecta", null);
 		when(authenticationManager.authenticate(any()))
 				.thenThrow(new BadCredentialsException("Credenciales invalidas"));
 
@@ -65,7 +69,7 @@ class ServicioAutenticacionImplTest {
 
 	@Test
 	void rechazaEmailAntesDeAutenticar() {
-		LoginRequest solicitud = new LoginRequest("alejandrogallegos8483@gmail.com", "x");
+		LoginRequest solicitud = new LoginRequest("alejandrogallegos8483@gmail.com", "x", null);
 
 		SolicitudInvalidaException error = assertThrows(SolicitudInvalidaException.class,
 				() -> servicio.login(solicitud, "203.0.113.25"));
@@ -81,7 +85,7 @@ class ServicioAutenticacionImplTest {
 		when(authenticationManager.authenticate(any()))
 				.thenThrow(new BadCredentialsException("Credenciales invalidas"));
 
-		LoginRequest solicitud = new LoginRequest("admin", "incorrecta");
+		LoginRequest solicitud = new LoginRequest("admin", "incorrecta", null);
 
 		assertThrows(BadCredentialsException.class,
 				() -> servicio.login(solicitud, "203.0.113.25"));
@@ -94,7 +98,7 @@ class ServicioAutenticacionImplTest {
 		when(authenticationManager.authenticate(any()))
 				.thenThrow(new BadCredentialsException("Credenciales invalidas"));
 
-		LoginRequest solicitud = new LoginRequest("resultados", "incorrecta");
+		LoginRequest solicitud = new LoginRequest("resultados", "incorrecta", null);
 
 		assertThrows(BadCredentialsException.class,
 				() -> servicio.login(solicitud, "203.0.113.25"));
@@ -108,7 +112,7 @@ class ServicioAutenticacionImplTest {
 		when(authenticationManager.authenticate(any()))
 				.thenThrow(new BadCredentialsException("Credenciales invalidas"));
 
-		LoginRequest solicitud = new LoginRequest("12345678", "incorrecta");
+		LoginRequest solicitud = new LoginRequest("12345678", "incorrecta", null);
 
 		assertThrows(BadCredentialsException.class,
 				() -> servicio.login(solicitud, "203.0.113.25"));
@@ -121,7 +125,7 @@ class ServicioAutenticacionImplTest {
 		when(authenticationManager.authenticate(any()))
 				.thenThrow(new BadCredentialsException("Credenciales invalidas"));
 
-		LoginRequest solicitud = new LoginRequest("E1234567", "incorrecta");
+		LoginRequest solicitud = new LoginRequest("E1234567", "incorrecta", null);
 
 		assertThrows(BadCredentialsException.class,
 				() -> servicio.login(solicitud, "203.0.113.25"));
@@ -131,7 +135,7 @@ class ServicioAutenticacionImplTest {
 
 	@Test
 	void rechazaUsernameConArrobaTipicoEmail() {
-		LoginRequest solicitud = new LoginRequest("alejandrogallegos8483@gmail.com", "x");
+		LoginRequest solicitud = new LoginRequest("alejandrogallegos8483@gmail.com", "x", null);
 
 		SolicitudInvalidaException error = assertThrows(SolicitudInvalidaException.class,
 				() -> servicio.login(solicitud, "203.0.113.25"));
@@ -143,7 +147,7 @@ class ServicioAutenticacionImplTest {
 
 	@Test
 	void rechazaUsernameConEspacios() {
-		LoginRequest solicitud = new LoginRequest("juan perez", "x");
+		LoginRequest solicitud = new LoginRequest("juan perez", "x", null);
 
 		assertThrows(SolicitudInvalidaException.class,
 				() -> servicio.login(solicitud, "203.0.113.25"));
@@ -153,7 +157,7 @@ class ServicioAutenticacionImplTest {
 
 	@Test
 	void rechazaUsernameConSimbolos() {
-		LoginRequest solicitud = new LoginRequest("12345678-x", "x");
+		LoginRequest solicitud = new LoginRequest("12345678-x", "x", null);
 
 		assertThrows(SolicitudInvalidaException.class,
 				() -> servicio.login(solicitud, "203.0.113.25"));

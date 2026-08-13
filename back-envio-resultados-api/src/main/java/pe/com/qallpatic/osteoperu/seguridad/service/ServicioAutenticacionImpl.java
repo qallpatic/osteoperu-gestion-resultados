@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import pe.com.qallpatic.osteoperu.compartido.excepcion.SolicitudInvalidaException;
 import pe.com.qallpatic.osteoperu.compartido.util.GeneradorCodigos;
+import pe.com.qallpatic.osteoperu.integracion.captcha.VerificadorCaptcha;
 import pe.com.qallpatic.osteoperu.seguridad.dto.LoginRequest;
 import pe.com.qallpatic.osteoperu.seguridad.dto.TokenResponse;
 import pe.com.qallpatic.osteoperu.seguridad.entity.TokenRefresco;
@@ -41,6 +42,7 @@ public class ServicioAutenticacionImpl implements ServicioAutenticacion {
 	private final UsuarioRepository usuarioRepository;
 	private final SeguridadProperties propiedades;
 	private final TasaLimitLoginService tasaLimitLogin;
+	private final VerificadorCaptcha verificadorCaptcha;
 
 	@Override
 	@Transactional
@@ -56,6 +58,11 @@ public class ServicioAutenticacionImpl implements ServicioAutenticacion {
 						"El usuario debe ser alfanumerico, sin espacios ni simbolos (ejemplo: 12345678, E1234567, resultados).");
 			}
 		}
+
+		// CAPTCHA antes de rate-limit y autenticacion: un bot no debe ni
+		// consumir cupo de la ventana ni aprender si el usuario existe.
+		// El impl no-op se activa cuando recaptcha.enabled=false (compat).
+		verificadorCaptcha.verificar(solicitud.recaptchaToken(), ip);
 
 		// Rate-limit ANTES de delegar a Spring Security. Si la dupla
 		// ip+usuario esta bloqueada, devolvemos 429 sin enumerar usuarios.
