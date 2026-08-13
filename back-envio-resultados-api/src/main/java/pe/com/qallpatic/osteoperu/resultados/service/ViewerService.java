@@ -41,14 +41,42 @@ public class ViewerService {
 	public ResultadoCarga loadAndRegisterView(String token, String ip, String userAgent) {
 		ResultadoCarga carga = resultadoCargaRepository.findByTokenPublico(token)
 				.orElseThrow(() -> new RecursoNoEncontradoException("Resultados no encontrados."));
+		assertVisible(carga);
+		applyViewCountersAndEvent(carga, ip, userAgent, LocalDateTime.now());
+		return carga;
+	}
+
+	/**
+	 * Idem {@link #loadAndRegisterView} pero a partir del ID interno de la cabecera
+	 * (usado por el portal del paciente cuando hace click en "Ver archivo": el
+	 * paciente ya paso por las validaciones de autorizacion del portal, pero
+	 * igualmente se valida estado activo y vigencia para no inflar contadores
+	 * de cabeceras soft-deleted o caducadas).
+	 */
+	@Transactional
+	public void registerView(Long idResultado, String ip, String userAgent) {
+		ResultadoCarga carga = resultadoCargaRepository.findById(idResultado)
+				.orElseThrow(() -> new RecursoNoEncontradoException("Resultados no encontrados."));
+		assertVisible(carga);
+		applyViewCountersAndEvent(carga, ip, userAgent, LocalDateTime.now());
+	}
+
+	private void assertVisible(ResultadoCarga carga) {
 		if (carga.getEstado() == null || carga.getEstado() != 1) {
 			throw new RecursoNoEncontradoException("Resultados no encontrados.");
 		}
 		if (carga.getFechaVigenciaHasta() != null && carga.getFechaVigenciaHasta().isBefore(LocalDateTime.now())) {
 			throw new ResultadoCaducadoException("Resultados caducados.", carga.getDocumentoIdentidad());
 		}
+	}
 
-		LocalDateTime now = LocalDateTime.now();
+	/**
+	 * Logica comun: incrementa CONTADOR_VISTAS, setea FECHA_PRIMERA_VISTA si
+	 * era null, actualiza FECHA_ULTIMA_VISTA y persiste un EVENTO_VISTA.
+	 * Usada por el visor Thymeleaf publico ({@link #loadAndRegisterView}) y
+	 * por el portal del paciente ({@link #registerView}).
+	 */
+	private void applyViewCountersAndEvent(ResultadoCarga carga, String ip, String userAgent, LocalDateTime now) {
 		carga.setContadorVistas(carga.getContadorVistas() + 1);
 		if (carga.getFechaPrimeraVista() == null) {
 			carga.setFechaPrimeraVista(now);
@@ -64,8 +92,6 @@ public class ViewerService {
 				.userAgent(userAgent)
 				.fechaCreacion(now)
 				.build());
-
-		return carga;
 	}
 
 	@Transactional(readOnly = true)

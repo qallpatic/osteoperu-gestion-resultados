@@ -73,8 +73,9 @@ public class PacientePortalController {
 
 	@Operation(summary = "Ver un archivo en linea")
 	@GetMapping("/resultados/{id}/archivos/{archivoId}")
-	public ResponseEntity<Resource> ver(@PathVariable Long id, @PathVariable Long archivoId, Authentication auth) {
-		return servir(auth, id, archivoId, false, null);
+	public ResponseEntity<Resource> ver(@PathVariable Long id, @PathVariable Long archivoId,
+			Authentication auth, HttpServletRequest request) {
+		return servir(auth, id, archivoId, false, request);
 	}
 
 	@Operation(summary = "Descargar un archivo")
@@ -101,9 +102,14 @@ public class PacientePortalController {
 		ArchivoLocalizado loc = portalService.localizarArchivo(auth.getName(), admin, id, archivoId);
 		ArchivoDescargable descargable = portalService.descargarArchivo(auth.getName(), admin, id, archivoId);
 
-		if (request != null && comoAdjunto) {
-			viewerService.registerDownload(id,
-					UtilInfoCliente.ipCliente(request), UtilInfoCliente.userAgent(request));
+		if (request != null) {
+			String ip = UtilInfoCliente.ipCliente(request);
+			String ua = UtilInfoCliente.userAgent(request);
+			if (comoAdjunto) {
+				viewerService.registerDownload(id, ip, ua);
+			} else {
+				viewerService.registerView(id, ip, ua);
+			}
 		}
 
 		MediaType mediaType = descargable.contentType() == null
