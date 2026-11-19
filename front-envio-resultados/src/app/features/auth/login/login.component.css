@@ -36,7 +36,7 @@
 }
 
 .brand__copy { position: relative; z-index: 1; text-align: center; max-width: 440px; }
-.brand__copy p { line-height: 1.6; color: rgba(255, 255, 255, 0.92); }
+.brand__copy p { font-size: 1.5625rem; line-height: 1.6; color: rgba(255, 255, 255, 0.92); }
 
 .brand__features { list-style: none; display: flex; justify-content: center; gap: 28px; margin-top: 28px; }
 .brand__features li { display: flex; flex-direction: column; align-items: center; gap: 8px; }
@@ -172,49 +172,41 @@
   gap: 8px;
   justify-content: center;
   margin-bottom: 8px;
+  width: 100%;
 }
 
 .contact-btn {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
   text-decoration: none;
   transition: all 0.3s ease;
   border: none;
   cursor: pointer;
+  flex: 1;
+  max-width: 100%;
 }
 
 .contact-btn i {
-  font-size: 0.9rem;
+  font-size: 1.3rem;
 }
 
 .contact-btn--whatsapp {
   background: linear-gradient(135deg, #25d366, #20ba5f);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+  box-shadow: 0 6px 18px rgba(37, 211, 102, 0.45);
+  font-size: 1.05rem;
 }
 
 .contact-btn--whatsapp:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(37, 211, 102, 0.4);
-}
-
-.contact-btn--phone {
-  background: linear-gradient(135deg, #075e54, #054a40);
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(7, 94, 84, 0.4);
-  border: 2px solid #075e54;
-}
-
-.contact-btn--phone:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(7, 94, 84, 0.5);
-  background: linear-gradient(135deg, #054a40, #043a32);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 22px rgba(37, 211, 102, 0.55);
+  background: linear-gradient(135deg, #20ba5f, #1ca040);
 }
 
 .contact-info {
